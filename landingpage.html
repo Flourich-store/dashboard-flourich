@@ -528,6 +528,20 @@ footer p{font-size:10px}
     }
   }());
 
+  function notifyParentHeight() {
+    if (window.parent === window) return;
+    window.parent.postMessage({
+      type: 'landing-height',
+      height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+    }, window.location.origin);
+  }
+
+  window.addEventListener('load', function () {
+    notifyParentHeight();
+    setTimeout(notifyParentHeight, 500);
+  });
+  window.addEventListener('resize', notifyParentHeight);
+
   function goToLogin() {
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'flourich-dashboard' }, window.location.origin);
