@@ -1498,12 +1498,18 @@
 
     function notifyParentHeight() {
       if (window.parent === window) return;
-      var height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+      var height = Math.max(
+        document.body.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.scrollHeight,
+        document.documentElement.offsetHeight
+      );
       window.parent.postMessage({ type: 'dashboard-height', height: height }, '*');
     }
 
     window.addEventListener('load', notifyParentHeight);
     window.addEventListener('resize', notifyParentHeight);
+    window.setInterval(notifyParentHeight, 500);
     if (window.ResizeObserver) {
       new ResizeObserver(notifyParentHeight).observe(document.body);
     } else if (window.MutationObserver) {

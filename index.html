@@ -36,7 +36,7 @@
       <button class="return-button" type="button" onclick="switchView('landing')">&#8592; Kembali ke Landing Page</button>
     </header>
     <main class="dashboard-shell">
-      <iframe id="dashboard-frame" title="Flourich Dashboard" src="about:blank" loading="lazy" allow="fullscreen"></iframe>
+      <iframe id="dashboard-frame" title="Flourich Dashboard" src="about:blank" loading="lazy" scrolling="no" allow="fullscreen"></iframe>
     </main>
   </section>
 
@@ -68,7 +68,7 @@
       }
       var dashboardFrame = document.getElementById('dashboard-frame');
       if (event.source === dashboardFrame.contentWindow && event.data && event.data.type === 'dashboard-height') {
-        dashboardFrame.style.height = Math.max(600, Number(event.data.height) || 0) + 'px';
+        dashboardFrame.style.height = Math.max(760, Number(event.data.height) || 0) + 'px';
       }
     });
     window.addEventListener('popstate', function () { switchView(location.hash === '#dashboard' ? 'dashboard' : 'landing', false); });
