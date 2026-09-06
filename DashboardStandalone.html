@@ -59,6 +59,11 @@
       min-height: 100dvh;
     }
 
+    html.embedded,
+    html.embedded body {
+      overflow-y: hidden !important;
+    }
+
     body.modal-open {
       overflow: hidden;
       position: fixed;
@@ -1461,6 +1466,8 @@
 
       var btnEdit = document.getElementById('btnSimpanEdit');
       if (btnEdit) btnEdit.style.display = (role === 'SUPER_ADMIN') ? 'inline-flex' : 'none';
+      notifyParentState('logged-in');
+      notifyParentHeight();
     }
 
     function logout() {
@@ -1483,6 +1490,8 @@
         loginButton.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
       }
       if (loginPage) loginPage.style.display = 'flex';
+      notifyParentState('logged-out');
+      notifyParentHeight();
     }
 
     function getRole() {
@@ -1510,6 +1519,12 @@
       window.parent.postMessage({ type: 'dashboard-height', height: height }, '*');
     }
 
+    function notifyParentState(state) {
+      if (window.parent === window) return;
+      window.parent.postMessage({ type: 'dashboard-state', state: state }, '*');
+    }
+
+    if (window.parent !== window) document.documentElement.classList.add('embedded');
     window.addEventListener('load', notifyParentHeight);
     window.addEventListener('resize', notifyParentHeight);
     window.setInterval(notifyParentHeight, 500);
