@@ -78,6 +78,10 @@
       gap: 15px;
     }
 
+    .app-header {
+      display: none !important;
+    }
+
     .brand-wrapper, .header-info {
       display: flex;
       align-items: center;
@@ -1473,13 +1477,12 @@
       if (mHeader) mHeader.style.display = 'none';
 
       var loginPage = document.getElementById('loginPage');
-      if (loginPage) loginPage.style.display = 'flex';
-
-      if (typeof window.switchView === 'function') {
-        window.switchView('landing');
-      } else if (typeof goToLogin === 'function') {
-        goToLogin();
+      var loginButton = document.getElementById('btnLogin');
+      if (loginButton) {
+        loginButton.disabled = false;
+        loginButton.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
       }
+      if (loginPage) loginPage.style.display = 'flex';
     }
 
     function getRole() {
