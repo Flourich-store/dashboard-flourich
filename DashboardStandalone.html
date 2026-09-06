@@ -1517,6 +1517,10 @@
         document.documentElement.offsetHeight
       );
       window.parent.postMessage({ type: 'dashboard-height', height: height }, '*');
+      var loginPage = document.getElementById('loginPage');
+      var dashboardPage = document.getElementById('page-dashboard');
+      var isLoggedIn = loginPage && loginPage.style.display === 'none' && dashboardPage && !dashboardPage.classList.contains('hidden');
+      notifyParentState(isLoggedIn ? 'logged-in' : 'logged-out');
     }
 
     function notifyParentState(state) {
