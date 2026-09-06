@@ -1,0 +1,2204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>FLOURICH DASHBOARD</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" type="image/png" sizes="192x192"
+    href="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT">
+  <link rel="apple-touch-icon" sizes="192x192"
+    href="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --primary: #059669;
+      --primary-hover: #047857;
+      --primary-light: #ecfdf5;
+      --green: #059669;
+      --accent: #10b981;
+      --coral: #f43f5e;
+      --dark: #0f172a;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-400: #94a3b8;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+      --shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+      --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--dark);
+      -webkit-tap-highlight-color: transparent;
+      width: 100%;
+      overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
+
+    /* HEADER UI */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #ffffff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+      gap: 15px;
+    }
+
+    .brand-wrapper, .header-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-left {
+      height: 35px;
+      object-fit: contain;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: #e6f4ea;
+      color: #137333;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #34a853;
+      border-radius: 50%;
+    }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: #f8f9fa;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+    }
+
+    .btn-logout {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background-color: #fce8e6;
+      color: #c5221f;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-logout:hover {
+      background-color: #fad2cf;
+    }
+
+    /* CONTAINER & GRID */
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 16px auto 30px;
+      padding: 0 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    @media (min-width: 520px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 980px) {
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    /* CARD DESIGN */
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    .kpi-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--slate-600);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .kpi-title i {
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--slate-400);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    /* FILTERS & INPUTS */
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: flex-end;
+      margin-top: 16px;
+      background: var(--card-bg);
+      padding: 18px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .filter-group {
+      flex: 1;
+      min-width: 160px;
+    }
+
+    label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-600);
+      margin-bottom: 6px;
+      display: block;
+      letter-spacing: 0.2px;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      background-color: #fff;
+      font-family: inherit;
+      color: var(--dark);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+    }
+
+    /* BUTTONS */
+    .btn {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 700;
+      border: none;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: white;
+      padding: 12px 18px;
+      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+      box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
+    }
+
+    .btn-secondary {
+      background: #475569;
+      color: white;
+      padding: 12px 18px;
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-left: 4px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-edit {
+      position: relative;
+      z-index: 9999 !important;
+      pointer-events: auto !important;
+      cursor: pointer;
+      background: #3b82f6;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      border: none;
+      font-weight: 600;
+    }
+
+    .btn-edit:hover {
+      background: #2563eb;
+    }
+
+    .btn-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+      width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 769px) {
+      .btn-bar {
+        flex: 0 0 280px;
+        width: auto;
+      }
+    }
+
+    /* TABLES */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-top: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    table {
+      width: 100%;
+      min-width: auto;
+      table-layout: fixed;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    th {
+      background-color: #f8fafc;
+      color: var(--slate-600);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+
+    .section-title {
+      margin-top: 24px;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      letter-spacing: -0.2px;
+    }
+
+    .chart-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .muted {
+      color: var(--slate-400);
+      font-size: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* LOGIN UI MODERN & PEEK PASSWORD */
+    .login-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 60px);
+      padding: 20px;
+      background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 40%),
+        radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%);
+    }
+
+    .login-card {
+      background: white;
+      padding: 36px 28px;
+      border-radius: 20px;
+      box-shadow: var(--shadow-md);
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      border: 1px solid var(--border);
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .logo-login {
+      display: block;
+      width: 210px;
+      height: auto;
+      margin-bottom: 12px;
+      margin-left: auto;
+      margin-right: auto;
+      object-fit: contain;
+    }
+
+    .login-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--dark);
+      margin-top: 4px;
+    }
+
+    .login-sub {
+      font-size: 13px;
+      color: var(--slate-400);
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    .input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .input-group input {
+      padding-left: 42px;
+      padding-right: 42px;
+      height: 46px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      color: var(--slate-400);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .btn-toggle-pass {
+      position: absolute;
+      right: 10px;
+      background: transparent;
+      border: none;
+      color: var(--slate-400);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .btn-toggle-pass:hover {
+      color: var(--primary);
+    }
+
+    .login-hint {
+      font-size: 12px;
+      color: var(--slate-600);
+      margin-top: 18px;
+      line-height: 1.4;
+      background: var(--primary-light);
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+    }
+
+    .login-hint i {
+      color: var(--primary);
+      font-size: 14px;
+    }
+
+    /* MODAL MODERN */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .25s ease, visibility .25s ease;
+      pointer-events: none;
+    }
+
+    .modal.show {
+      display: flex !important;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: #fff;
+      border-radius: 18px;
+      width: 95% !important;
+      margin: 10px auto;
+      padding: 15px;
+      max-height: 88vh;
+      overflow: auto;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      z-index: 10000;
+      border: 1px solid var(--border);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+      position: sticky;
+      top: -22px;
+      background: white;
+      z-index: 10;
+      padding: 4px 0 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+      border: none;
+      background: #f1f5f9;
+      color: var(--slate-600);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+      background: #e2e8f0;
+      color: var(--dark);
+    }
+
+    /* TOAST MODERN */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--dark);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 999999;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      box-shadow: var(--shadow-md);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* LOADING OVERLAY */
+    #loadingOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(248, 250, 252, 0.75);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #loadingOverlay.show {
+      display: flex;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e2e8f0;
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+      color: var(--slate-600);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .empty-text {
+      color: var(--slate-400);
+      text-align: center;
+      padding: 20px 12px;
+      font-size: 13px;
+    }
+
+    /* MENU MODUL GRID */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    @media (min-width: 600px) {
+      .menu-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    /* RESPONSIVE LAYOUT */
+    @media (max-width: 1024px) {
+      .container { max-width: 100%; padding: 0 16px; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (min-width: 1024px) {
+      .grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .container {
+        max-width: 1350px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .kpi-title { font-size: 12px; }
+      .kpi-value { font-size: 18px; }
+      .kpi-sub { font-size: 11px; white-space: normal; word-wrap: break-word; line-height: 1.2; }
+      .app-header {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+        gap: 12px;
+      }
+      .brand-wrapper {
+        justify-content: space-between;
+        width: 100%;
+      }
+      .header-info {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        border-top: 1px solid #f1f3f4;
+        padding-top: 10px;
+      }
+      .user-badge {
+        max-width: 60%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      .card { padding: 14px; }
+      .filter-row { flex-direction: column; align-items: stretch; padding: 14px; }
+      .btn-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .table-responsive { border-radius: 12px; }
+      table { min-width: 520px; }
+      .chart-box { padding: 12px; }
+      #chartKategori { height: 280px !important; }
+      .btn, .btn-primary, .btn-secondary { min-height: 44px; }
+      .modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        border-radius: 20px 20px 0 0 !important;
+        max-height: 88vh !important;
+        overflow-y: auto !important;   
+        padding: 16px 16px 80px 16px !important;
+        align-self: flex-end;
+      }
+      .modal.show {
+        align-items: flex-end;
+      }
+      .modal-content .btn-bar {
+        margin-bottom: 40px !important;
+      }
+    }
+
+    @media (max-width: 500px) {
+      .hide-mobile {
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body { font-size: 14px; }
+      .grid { grid-template-columns: 1fr; }
+      .kpi-title { font-size: 13px; }
+      .kpi-value { font-size: 20px; }
+      .kpi-sub { font-size: 12px; }
+      .logo-left { height: 30px; max-width: 120px; }
+      .login-card { padding: 24px 20px; }
+      .filter-row {
+        padding: 12px;
+      }
+      .modal-content {
+        width: 100% !important;
+        padding: 12px;
+        max-height: 94vh;
+      }
+      th, td {
+        padding: 8px 6px;
+        font-size: 11px;
+      }
+      .btn-bar { grid-template-columns: 1fr; }
+      table { min-width: 480px; }
+    }
+
+    @media (max-width: 600px) {
+      .hide-on-mobile {
+        display: none !important;
+      }
+      .hide-mobile {
+        display: none !important;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .logo-left { height: 38px; }
+    }
+  </style>
+
+  <!-- CSP handling for iframe -->
+  <script>
+    window.addEventListener('error', function (event) {
+      var message = event && event.message ? event.message : 'Kesalahan JavaScript tidak diketahui.';
+      var box = document.getElementById('runtimeError');
+      if (!box) return;
+      box.textContent = 'Dashboard gagal menjalankan komponen: ' + message;
+      box.style.display = 'block';
+    });
+
+    window.addEventListener('unhandledrejection', function (event) {
+      var reason = event && event.reason ? String(event.reason.message || event.reason) : 'Promise gagal.';
+      var box = document.getElementById('runtimeError');
+      if (!box) return;
+      box.textContent = 'Dashboard gagal memproses permintaan: ' + reason;
+      box.style.display = 'block';
+    });
+
+    if (window.self !== window.top) {
+      window.addEventListener('error', function (e) {
+        if (e.message && e.message.indexOf('frame-ancestors') >= 0) {
+          console.log('CSP frame-ancestors warning ignored');
+        }
+      });
+    }
+
+    function goToLogin() {
+      if (typeof window.openLogin === 'function') {
+        window.openLogin();
+      } else {
+        var lp = document.getElementById('landingPage');
+        var logp = document.getElementById('loginPage');
+        if (lp) lp.style.display = 'none';
+        if (logp) logp.style.display = 'flex';
+      }
+    }
+
+    function goToLanding() {
+      var landingUrl = 'https://script.google.com/macros/s/AKfycbweVGh3stQEsi_HEOSNAQQqZMre802gz9ntXDkUDpLOkQBbEEqJiZqaHQDnTyxvPzKUVA/exec';
+      window.open(landingUrl, '_top');
+    }
+  </script>
+</head>
+
+<body>
+
+  <div id="runtimeError" role="alert" style="display:none;position:fixed;top:12px;left:12px;right:12px;z-index:100000;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font:13px Arial,sans-serif;"></div>
+
+  <section id="loginPage" class="login-wrapper" aria-label="Login dashboard">
+    <form id="loginForm" class="login-card" onsubmit="handleLogin(event)">
+      <img class="logo-login" src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" alt="Flourich">
+      <h1 class="login-title">Masuk ke Dashboard</h1>
+      <p class="login-sub">Gunakan akun yang terdaftar untuk melanjutkan.</p>
+      <div class="input-group">
+        <i class="input-icon fa-solid fa-user"></i>
+        <input id="userInp" type="text" autocomplete="username" placeholder="Username" required>
+      </div>
+      <div class="input-group" style="margin-top:10px;">
+        <i class="input-icon fa-solid fa-lock"></i>
+        <input id="passInp" type="password" autocomplete="current-password" placeholder="Password" required>
+        <button class="btn-toggle-pass" type="button" onclick="togglePassword()" aria-label="Tampilkan password">
+          <i id="eyeIcon" class="fa-solid fa-eye"></i>
+        </button>
+      </div>
+      <button id="btnLogin" class="btn-primary btn" type="submit" style="width:100%; margin-top:16px;">
+        <i class="fa-solid fa-right-to-bracket"></i> Masuk
+      </button>
+      <button class="btn btn-secondary" type="button" onclick="goToLanding()" style="width:100%; margin-top:10px;">
+        <i class="fa-solid fa-arrow-left"></i> Kembali ke Landing Page
+      </button>
+      <div id="loginError" class="login-hint" style="display:none; color:#b91c1c; background:#fef2f2;" role="alert"></div>
+    </form>
+  </section>
+
+  <header class="app-header" id="mainHeader" style="display: none;">
+    <div class="brand-wrapper">
+      <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" class="logo-left"
+        onerror="this.src='https://placehold.co/180x40?text=FLOURICH'">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        <span id="systemStatusText">Dashboard Active</span>
+      </div>
+    </div>
+    <div class="header-info">
+      <div class="user-badge" id="userDisplayBadge">
+        <i class="fa-solid fa-user-circle"></i>
+        <span id="lblUserEmail">email@example.com</span>
+      </div>
+      <button id="btnLogout" class="btn-logout" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket"></i> Keluar
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="page-dashboard" class="hidden" style="position:relative; z-index:1;">
+
+      <!-- FILTER TANGGAL -->
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Periode Mulai</label>
+          <input type="date" id="startDate" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <label>Periode Selesai</label>
+          <input type="date" id="endDate" autocomplete="off">
+        </div>
+        <div class="btn-bar">
+          <button class="btn-primary btn" onclick="loadReport()"><i
+              class="fa-solid fa-magnifying-glass"></i>&nbsp;Tampilkan</button>
+          <button class="btn-secondary btn" onclick="resetFilters()"><i
+              class="fa-solid fa-trash"></i>&nbsp;Reset</button>
+        </div>
+      </div>
+
+      <!-- KPI CARDS -->
+      <div class="grid">
+        <div class="card">
+          <div class="kpi-title"><i class="fa-solid fa-receipt"></i> Transaksi</div>
+          <div class="kpi-value" id="kpiTx">0</div>
+          <div class="kpi-sub">Jumlah baris transaksi</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title"><i class="fa-solid fa-money-bill-wave"></i> Omset</div>
+          <div class="kpi-value" id="kpiGross">Rp 0</div>
+          <div class="kpi-sub">Total penjualan</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title"><i class="fa-solid fa-piggy-bank"></i> Laba Kotor</div>
+          <div class="kpi-value" id="kpiNet">Rp 0</div>
+          <div class="kpi-sub">Omset - HPP</div>
+        </div>
+        <div class="card">
+          <div class="kpi-title"><i class="fa-solid fa-ranking-star"></i> Top Produk</div>
+          <div class="kpi-value" id="kpiTopProd">-</div>
+          <div class="kpi-sub" id="kpiTopQty">Qty 0</div>
+          <div style="margin-top:8px; border-top:1px solid #e2e8f0; padding-top:8px;">
+            <span style="font-size:11px; color:#64748b;">Laba Bersih</span>
+            <div style="font-size:18px; font-weight:900; color:var(--green);" id="netTotalValue">Rp 0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP PRODUK TERLARIS -->
+      <div class="section-title"><i class="fa-solid fa-chart-bar"></i> Top Produk Terlaris</div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:42%">Produk</th>
+              <th style="width:18%">Qty</th>
+              <th style="width:20%">Metode Terbanyak</th>
+              <th style="width:20%">Omset</th>
+            </tr>
+          </thead>
+          <tbody id="topProductsBody">
+            <tr>
+              <td colspan="4" class="loading-text">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CHART KATEGORI -->
+      <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Performa Penjualan per Kategori</div>
+      <div class="chart-box">
+        <div id="chartKategori" style="width:100%; height:340px;"></div>
+        <div id="chartHint" class="muted" style="margin-top:10px;">Jika grafik tidak tampil, aktifkan koneksi internet untuk Google Charts.</div>
+        <div id="chartTotalOmset" class="muted" style="margin-top:8px; font-weight:800;"></div>
+      </div>
+
+      <!-- MENU NAVIGATION -->
+      <div class="card" style="margin-top:12px; padding:12px;">
+        <div class="section-title" style="margin-top:0; font-size:13px;"><i class="fa-solid fa-bars"></i> Menu Modul</div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+          <button class="btn-primary btn" type="button" onclick="openModal('modalPenjualan')"><i
+              class="fa-solid fa-cart-plus"></i>&nbsp;Input Penjualan</button>
+          <button class="btn-secondary btn" type="button" onclick="openModal('modalPengeluaran')"><i
+              class="fa-solid fa-money-bill-wave"></i>&nbsp;Catatan Pengeluaran</button>
+          <button class="btn-secondary btn" type="button" onclick="openModal('modalProduk')"><i
+              class="fa-solid fa-box"></i>&nbsp;Kelola Produk</button>
+        </div>
+      </div>
+
+      <!-- DATA PENJUALAN (RIWAYAT) -->
+      <div class="section-title"><i class="fa-solid fa-table"></i> Data Penjualan</div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Produk</th>
+              <th class="hide-mobile">Harga</th>
+              <th>Qty</th>
+              <th>Total</th>
+              <th>Metode</th>
+            </tr>
+          </thead>
+          <tbody id="tabelData">
+            <tr>
+              <td colspan="6" class="loading-text">Pilih periode tanggal dan klik "Tampilkan"</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DATA PENGELUARAN -->
+      <div class="section-title">
+        <i class="fa-solid fa-wallet"></i>
+        Catatan Keuangan
+      </div>
+
+      <div class="filter-row" style="margin-top:10px;">
+        <div class="filter-group">
+          <label>Tanggal Mulai</label>
+          <input type="date" id="cdStartDate">
+        </div>
+
+        <div class="filter-group">
+          <label>Tanggal Selesai</label>
+          <input type="date" id="cdEndDate">
+        </div>
+
+        <div class="btn-bar">
+          <button class="btn-primary btn" onclick="loadCreditDebit()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            Tampilkan
+          </button>
+
+          <button class="btn-secondary btn" onclick="resetCreditDebit()">
+            <i class="fa-solid fa-trash"></i>&nbsp;Reset
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Tipe</th>
+              <th>Kategori</th>
+              <th>Deskripsi</th>
+              <th>Metode</th>
+              <th>Nominal</th>
+            </tr>
+          </thead>
+          <tbody id="cdTbody">
+            <tr>
+              <td colspan="6" class="loading-text">
+                Pilih periode dan klik "Tampilkan"
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- DAFTAR PRODUK -->
+      <div class="section-title"><i class="fa-solid fa-box"></i> Daftar Produk</div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Produk</th>
+              <th>Nama Produk</th>
+              <th>Stok</th>
+              <th>Harga</th>
+            </tr>
+          </thead>
+          <tbody id="produkTbody">
+            <tr>
+              <td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <!-- Modal Input Penjualan -->
+  <div id="modalPenjualan" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:var(--green);font-size:16px;"><i class="fa-solid fa-cart-plus"></i> Input Penjualan</h2>
+        <button class="modal-close" type="button" onclick="closeModal('modalPenjualan')">&times;</button>
+      </div>
+      <div class="filter-row" style="margin-top:0;">
+        <div class="filter-group">
+          <label>Tanggal</label>
+          <input type="date" id="inTanggal" value="">
+        </div>
+        <div class="filter-group">
+          <label>Nama Produk</label>
+          <input type="text" id="inNamaProduk" placeholder="Nama Produk" list="produkListDatalist">
+          <datalist id="produkListDatalist"></datalist>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Harga Satuan (Rp)</label>
+          <input type="number" id="inHarga" placeholder="0" min="0">
+        </div>
+        <div class="filter-group">
+          <label>Jumlah</label>
+          <input type="number" id="inJumlah" placeholder="0" min="1" value="1">
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Volume</label>
+          <select id="inVolume">
+            <option value="250">250ml</option>
+            <option value="350">350ml</option>
+            <option value="500">500ml</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Metode Pembayaran</label>
+          <select id="inMetode">
+            <option value="Cash">Cash</option>
+            <option value="QRIS">QRIS</option>
+          </select>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px; background:#f0fdf4;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:700; color:var(--green);">Total Penjualan:</span>
+          <span id="inTotalDisplay" style="font-size:20px; font-weight:900; color:var(--green);">Rp 0</span>
+        </div>
+      </div>
+      <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
+        <button class="btn-primary btn" onclick="aksiInputPenjualan()"><i class="fa-solid fa-plus"></i>&nbsp;Simpan Penjualan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Pengeluaran -->
+  <div id="modalPengeluaran" class="modal" aria-hidden="true">
+    <div class="modal-content" id="modalPengeluaranBody">
+      <div class="modal-header">
+        <h2 style="color:var(--green);font-size:16px;"><i class="fa-solid fa-money-bill-wave"></i> Catatan Pengeluaran</h2>
+        <button class="modal-close" type="button" onclick="closeModal('modalPengeluaran')">&times;</button>
+      </div>
+      <div class="filter-row" style="margin-top:0;">
+        <div class="filter-group">
+          <label>Tanggal</label>
+          <input type="date" id="cdTanggalInp">
+        </div>
+        <div class="filter-group">
+          <label>Tipe</label>
+          <select id="cdTipeInp">
+            <option value="CREDIT">Pengeluaran (Credit)</option>
+            <option value="DEBIT">Pemasukan (Debit)</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Kategori</label>
+          <input type="text" id="cdKategoriInp" placeholder="Contoh: Bahan baku, Operasional">
+        </div>
+        <div class="filter-group">
+          <label>Metode Pembayaran</label>
+          <select id="cdMetodePembayaranInp">
+            <option value="Cash">Cash</option>
+            <option value="QRIS">QRIS</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group" style="flex:2;">
+          <label>Deskripsi</label>
+          <input type="text" id="cdDeskripsiInp" placeholder="Contoh: Pembelian tepung 5kg">
+        </div>
+        <div class="filter-group">
+          <label>Nominal (Rp)</label>
+          <input type="number" id="cdNominalInp" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
+        <button class="btn-primary btn" onclick="aksiAddCreditDebit()"><i class="fa-solid fa-plus"></i>&nbsp;Simpan Catatan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Produk (CRUD) -->
+  <div id="modalProduk" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:var(--green);font-size:16px;"><i class="fa-solid fa-box"></i> Kelola Produk</h2>
+        <button class="modal-close" type="button" onclick="closeModal('modalProduk')">&times;</button>
+      </div>
+      <div class="card" style="margin-top:0;">
+        <div class="filter-row" style="margin-top:0;">
+          <div class="filter-group">
+            <label>ID Produk</label>
+            <input type="text" id="prodIdInp" placeholder="Contoh: PRD001">
+          </div>
+          <div class="filter-group">
+            <label>Nama Produk</label>
+            <input type="text" id="prodNamaInp" placeholder="Nama produk">
+          </div>
+        </div>
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Stok</label>
+            <input type="number" id="prodStokInp" min="0" step="1" placeholder="0">
+          </div>
+          <div class="filter-group">
+            <label>Harga (Rp)</label>
+            <input type="number" id="prodHargaInp" min="0" step="1" placeholder="0">
+          </div>
+        </div>
+        <div class="btn-bar" style="grid-template-columns: 1fr 1fr; margin-top:15px;">
+          <button class="btn-primary btn" onclick="aksiCreateProduk()"><i class="fa-solid fa-plus"></i>&nbsp;Tambah Baru</button>
+          <button id="btnSimpanEdit" class="btn-secondary btn" onclick="aksiUpdateProduk()">
+            <i class="fa-solid fa-pen-to-square"></i>&nbsp;Simpan Edit
+          </button>
+        </div>
+      </div>
+      <div class="table-responsive" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nama</th>
+              <th>Stok</th>
+              <th>Harga</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="modalProdukTbody">
+            <tr>
+              <td colspan="5" class="loading-text">Memuat...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" aria-hidden="true">
+    <div class="loading-spinner"></div>
+    <div id="loadingText" class="loading-text">Memuat...</div>
+  </div>
+
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script>
+    // ============================================================
+    // KONFIGURASI & STATE
+    // ============================================================
+    var HPP_RATES = {
+      DEFAULT: { 250: 7000, 350: 8000, 500: 12000 },
+      WNA: { 250: 8500, 350: 11700, 500: 17000 }
+    };
+
+    function getHppRate(namaProduk, volume) {
+      var nama = String(namaProduk || '').toUpperCase();
+      var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
+      var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
+      var volNum = Number(volume || 250);
+      return rates[volNum] || (isWNA ? 8500 : 7000);
+    }
+    var cachedProduk = [];
+    var cachedPenjualan = [];
+    var cachedCD = [];
+    var pendingRequests = {};
+    var chartsReady = false;
+    var reportLoading = false;
+    var lastChartData = [];
+
+    // ============================================================
+    // LOADING STATE
+    // ============================================================
+    function showLoading(msg) {
+      var overlay = document.getElementById('loadingOverlay');
+      var text = document.getElementById('loadingText');
+      if (text) text.textContent = msg || 'Memuat...';
+      if (overlay) {
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    function hideLoading() {
+      var overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    function setButtonsDisabled(disabled, selector) {
+      var btns = document.querySelectorAll(selector || '.btn-primary, .btn-secondary');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].disabled = disabled;
+      }
+    }
+
+    function preloadCharts() {
+      if (typeof google === 'undefined' || !google.charts) return;
+      if (chartsReady) return;
+      google.charts.load('current', { packages: ['corechart'] });
+      google.charts.setOnLoadCallback(function () {
+        chartsReady = true;
+      });
+    }
+
+    // ============================================================
+    // MODAL
+    // ============================================================
+    function openModal(modalId, evt) {
+      if (evt && typeof evt.preventDefault === 'function') evt.preventDefault();
+      if (!modalId) return;
+      const el = document.getElementById(modalId);
+      if (!el) return;
+      el.style.display = 'flex';
+      el.classList.add('show');
+      el.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+
+      if (modalId === 'modalProduk') {
+        try { loadProdukCRUD(); } catch (e) { }
+      } else if (modalId === 'modalPengeluaran') {
+        var dateEl = document.getElementById('cdTanggalInp');
+        if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
+      } else if (modalId === 'modalPenjualan') {
+        var dateEl = document.getElementById('inTanggal');
+        if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
+      }
+    }
+
+    function closeModal(modalId) {
+      var el = document.getElementById(modalId);
+      if (!el) return;
+      el.classList.remove('show');
+      el.style.display = 'none';
+      el.setAttribute('aria-hidden', 'true');
+      var anyOpen = document.querySelector('.modal.show');
+      if (!anyOpen) document.body.classList.remove('modal-open');
+    }
+
+    function togglePassword() {
+      const passInp = document.getElementById('passInp');
+      const eyeIcon = document.getElementById('eyeIcon');
+      if (!passInp || !eyeIcon) return;
+      if (passInp.type === 'password') {
+        passInp.type = 'text';
+        eyeIcon.classList.remove('fa-eye');
+        eyeIcon.classList.add('fa-eye-slash');
+      } else {
+        passInp.type = 'password';
+        eyeIcon.classList.remove('fa-eye-slash');
+        eyeIcon.classList.add('fa-eye');
+      }
+    }
+
+    // ============================================================
+    // SESSION & CONTROL
+    // ============================================================
+    function initDashboardData() {
+      var savedStart = localStorage.getItem('startDate');
+      var savedEnd = localStorage.getItem('endDate');
+      var today = getTodayISO();
+
+      var startEl = document.getElementById('startDate');
+      var endEl = document.getElementById('endDate');
+      if (startEl) startEl.value = savedStart || today;
+      if (endEl) endEl.value = savedEnd || today;
+
+      loadProduk();
+      loadReport();
+      preloadCharts();
+    }
+
+    function handleLogin(event) {
+      event.preventDefault();
+
+      var username = String(document.getElementById('userInp').value || '').trim();
+      var password = String(document.getElementById('passInp').value || '');
+      var button = document.getElementById('btnLogin');
+      var errorBox = document.getElementById('loginError');
+
+      if (!username || !password) return;
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        errorBox.textContent = 'Google Apps Script tidak tersedia.';
+        errorBox.style.display = 'flex';
+        return;
+      }
+
+      button.disabled = true;
+      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
+      errorBox.style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          if (!result || result.status !== 'success') {
+            errorBox.textContent = (result && result.message) || 'Username atau password salah.';
+            errorBox.style.display = 'flex';
+            button.disabled = false;
+            button.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
+            return;
+          }
+
+          sessionStorage.setItem('dash_username', result.username || username);
+          sessionStorage.setItem('dash_role', result.role || 'KASIR');
+          sessionStorage.setItem('dash_session_expiry', String(Date.now() + 30 * 60 * 1000));
+          document.getElementById('loginPage').style.display = 'none';
+          showDashboard();
+          startSessionTimer(30 * 60 * 1000);
+          initDashboardData();
+        })
+        .withFailureHandler(function (error) {
+          errorBox.textContent = error && error.message ? error.message : 'Login gagal. Coba lagi.';
+          errorBox.style.display = 'flex';
+          button.disabled = false;
+          button.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
+        })
+        .checkLogin(username, password);
+    }
+
+    function showDashboard() {
+      var loginPage = document.getElementById('loginPage');
+      if (loginPage) loginPage.style.display = 'none';
+      var pDash = document.getElementById('page-dashboard');
+      if (pDash) pDash.classList.remove('hidden');
+
+      var mHeader = document.getElementById('mainHeader');
+      if (mHeader) mHeader.style.display = 'flex';
+
+      var username = sessionStorage.getItem('dash_username') || '';
+      var role = String(sessionStorage.getItem('dash_role') || '').toUpperCase();
+      var lblEmail = document.getElementById('lblUserEmail');
+      if (lblEmail) lblEmail.textContent = username;
+
+      var btnEdit = document.getElementById('btnSimpanEdit');
+      if (btnEdit) btnEdit.style.display = (role === 'SUPER_ADMIN') ? 'inline-flex' : 'none';
+    }
+
+    function logout() {
+      if (typeof sessionTimer !== 'undefined' && sessionTimer) {
+        clearTimeout(sessionTimer);
+      }
+      sessionStorage.clear();
+      localStorage.clear();
+
+      var pDash = document.getElementById('page-dashboard');
+      if (pDash) pDash.classList.add('hidden');
+
+      var mHeader = document.getElementById('mainHeader');
+      if (mHeader) mHeader.style.display = 'none';
+
+      var loginPage = document.getElementById('loginPage');
+      if (loginPage) loginPage.style.display = 'flex';
+
+      if (typeof window.switchView === 'function') {
+        window.switchView('landing');
+      } else if (typeof goToLogin === 'function') {
+        goToLogin();
+      }
+    }
+
+    function getRole() {
+      return String(sessionStorage.getItem('dash_role') || '').toUpperCase();
+    }
+
+    function isSessionValid() {
+      var expiry = sessionStorage.getItem('dash_session_expiry');
+      if (!expiry || Date.now() > Number(expiry)) {
+        logout();
+        showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
+        return false;
+      }
+      return true;
+    }
+
+    function editProduk(id) {
+      const produk = cachedProduk.find(p => (p.idProduk || p.id_produk || p.id) === id);
+      if (produk) {
+        const idInp = document.getElementById('prodIdInp');
+        idInp.value = id;
+        idInp.dataset.idLama = id;
+
+        document.getElementById('prodNamaInp').value = produk.namaProduk || produk.nama_produk || produk.nama;
+        document.getElementById('prodStokInp').value = produk.stok;
+        document.getElementById('prodHargaInp').value = produk.harga;
+
+        idInp.disabled = false;
+        document.getElementById('btnSimpanEdit').style.display = 'block';
+        openModal('modalProduk');
+      }
+    }
+
+    // ============================================================
+    // UTILS
+    // ============================================================
+    function safeGoogleRun(method, args, success, onComplete) {
+      if (!isSessionValid()) {
+        if (onComplete) onComplete();
+        return;
+      }
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        showToast('Google Apps Script tidak tersedia.', 'error');
+        if (onComplete) onComplete();
+        return;
+      }
+
+      var reqKey = method + ':' + JSON.stringify(args || []);
+      if (pendingRequests[reqKey]) {
+        showToast('Permintaan sedang diproses, tunggu sebentar...', 'error');
+        if (onComplete) onComplete();
+        return;
+      }
+      pendingRequests[reqKey] = true;
+
+      var finished = false;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        delete pendingRequests[reqKey];
+        if (onComplete) onComplete();
+      }
+
+      var timeoutId = setTimeout(function () {
+        finish();
+        showToast('Request timeout. Coba lagi atau periksa Execution Logs.', 'error');
+      }, 30000);
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          clearTimeout(timeoutId);
+          finish();
+          if (!res) {
+            showToast('Respons kosong dari server. Periksa console logs.', 'error');
+            return;
+          }
+          if (res.status === 'error') {
+            showToast('Backend Error: ' + (res.message || 'Unknown error'), 'error');
+            return;
+          }
+          success(res);
+        })
+        .withFailureHandler(function (e) {
+          clearTimeout(timeoutId);
+          finish();
+          var errMsg = e && e.message ? e.message : 'Terjadi kesalahan sistem';
+          showToast('Error: ' + errMsg, 'error');
+        })
+      [method](...args);
+    }
+
+    function safeGoogleRunPublic(method, args, success, onComplete) {
+      if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        showToast('Google Apps Script tidak tersedia.', 'error');
+        if (onComplete) onComplete();
+        return;
+      }
+
+      var reqKey = 'pub:' + method + ':' + JSON.stringify(args || []);
+      if (pendingRequests[reqKey]) {
+        if (onComplete) onComplete();
+        return;
+      }
+      pendingRequests[reqKey] = true;
+
+      var finished = false;
+      function finish() {
+        if (finished) return;
+        finished = true;
+        delete pendingRequests[reqKey];
+        if (onComplete) onComplete();
+      }
+
+      var timeoutId = setTimeout(function () {
+        finish();
+        showToast('Request timeout. Periksa Execution Logs di Apps Script editor.', 'error');
+      }, 30000);
+
+      google.script.run
+        .withSuccessHandler(function (res) {
+          clearTimeout(timeoutId);
+          finish();
+          if (!res) {
+            showToast('Respons kosong dari server', 'error');
+            return;
+          }
+          success(res);
+        })
+        .withFailureHandler(function (e) {
+          clearTimeout(timeoutId);
+          finish();
+          var errMsg = e && e.message ? e.message : 'Terjadi kesalahan sistem';
+          showToast('Error: ' + errMsg, 'error');
+        })
+      [method](...args);
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function escapeJs(str) {
+      return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function formatIDR(n) {
+      return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+    }
+
+    function getTodayISO() {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    function showToast(msg, type) {
+      var toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.style.background = type === 'error' ? '#dc2626' : (type === 'success' ? '#0B7A46' : '#1e293b');
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 3000);
+    }
+
+    function reportRuntimeError(context, error) {
+      var message = error && error.message ? error.message : String(error || 'Kesalahan tidak diketahui');
+      console.error('[Dashboard] ' + context + ':', error);
+      var box = document.getElementById('runtimeError');
+      if (box) {
+        box.textContent = 'Komponen dashboard gagal dimuat (' + context + '): ' + message;
+        box.style.display = 'block';
+      }
+    }
+
+    function runSafely(context, callback) {
+      try {
+        return callback();
+      } catch (error) {
+        reportRuntimeError(context, error);
+        return null;
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target.classList.contains('modal') && e.target.classList.contains('show')) {
+        closeModal(e.target.id);
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        var modals = document.querySelectorAll('.modal.show');
+        for (var m = 0; m < modals.length; m++) {
+          closeModal(modals[m].id);
+        }
+      }
+    });
+
+    // ============================================================
+    // FILTER TANGGAL - REPORT
+    // ============================================================
+    function setTodayRange(autoLoad) {
+      var today = getTodayISO();
+      document.getElementById('startDate').value = today;
+      document.getElementById('endDate').value = today;
+      if (autoLoad !== false) loadReport();
+    }
+
+    function loadReport() {
+      if (reportLoading) {
+        showToast('Laporan sedang dimuat, tunggu sebentar...', 'error');
+        return;
+      }
+
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+
+      if (!start || !end) {
+        showToast('Pilih periode tanggal terlebih dahulu!', 'error');
+        return;
+      }
+      localStorage.setItem('startDate', start);
+      localStorage.setItem('endDate', end);
+
+      reportLoading = true;
+      setButtonsDisabled(true);
+
+      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
+      document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
+
+      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+        if (res && res.status === 'success') {
+          cachedPenjualan = res.data || [];
+          renderReport(res);
+          renderTopProducts(res.topProducts || []);
+          renderChart(res.chartData || []);
+          updateKPI(res);
+        } else {
+          showToast(res.message || 'Gagal memuat laporan', 'error');
+          document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
+        }
+      }, function () {
+        reportLoading = false;
+        setButtonsDisabled(false);
+      });
+    }
+
+    function renderReport(res) {
+      var tbody = document.getElementById('tabelData');
+      var data = res.data || [];
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tidak ada data untuk ditampilkan.</td></tr>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var row = data[i];
+        var isQris = String(row.metode || '').toUpperCase().indexOf('QR') !== -1;
+        var mBadge = isQris
+          ? '<span style="background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-qrcode"></i> QRIS</span>'
+          : '<span style="background:#f1f5f9;color:#475569;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:700;"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>';
+        html += '<tr>' +
+          '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+          '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
+          '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
+          '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
+          '<td><b style="color:var(--dark);">' + formatIDR(row.total || 0) + '</b></td>' +
+          '<td>' + mBadge + '</td>' +
+          '</tr>';
+      }
+      tbody.innerHTML = html;
+    }
+
+    function renderTopProducts(topProducts) {
+      var tbody = document.getElementById('topProductsBody');
+      if (!topProducts || topProducts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Tidak ada data</td></tr>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < topProducts.length; i++) {
+        var p = topProducts[i];
+        html += '<tr>' +
+          '<td>' + escapeHtml(p.nama || '-') + '</td>' +
+          '<td style="font-weight:800;">' + Number(p.qty || 0) + '</td>' +
+          '<td>' + escapeHtml(p.metodeDominan || '-') + '</td>' +
+          '<td>' + formatIDR(p.omset || 0) + '</td>' +
+          '</tr>';
+      }
+      tbody.innerHTML = html;
+    }
+
+    function updateKPI(res) {
+      document.getElementById('kpiTx').textContent = Number(res.totalTransaksi || 0).toLocaleString('id-ID');
+      document.getElementById('kpiGross').textContent = formatIDR(res.omsetKotor || 0);
+      document.getElementById('kpiNet').textContent = formatIDR(res.labaKotor || 0);
+      document.getElementById('kpiTopProd').textContent = escapeHtml(res.topProductName || '-');
+      document.getElementById('kpiTopQty').textContent = 'Qty ' + Number(res.topProductQty || 0);
+      document.getElementById('netTotalValue').textContent = formatIDR(res.labaBersih || 0);
+      document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
+    }
+
+    // ============================================================
+    // GOOGLE CHARTS
+    // ============================================================
+    function renderChart(chartData) {
+      lastChartData = chartData || [];
+      if (!lastChartData.length) {
+        document.getElementById('chartKategori').innerHTML = '<div class="empty-text">Tidak ada data untuk grafik</div>';
+        return;
+      }
+
+      function drawChart() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Kategori');
+        data.addColumn('number', 'Omset');
+
+        for (var i = 0; i < lastChartData.length; i++) {
+          var item = lastChartData[i];
+          data.addRow([item.kategori || '', Number(item.omset || 0)]);
+        }
+
+        var isMobile = window.innerWidth <= 768;
+        var options = {
+          title: 'Perbandingan Omset (Cash vs QRIS)',
+          colors: ['#0B7A46'],
+          chartArea: { width: isMobile ? '75%' : '60%', height: '65%', left: isMobile ? 80 : 100 },
+          hAxis: { title: 'Total (Rp)', minValue: 0, textStyle: { fontSize: isMobile ? 10 : 12 } },
+          vAxis: { title: 'Metode', textStyle: { fontSize: isMobile ? 10 : 12 } },
+          legend: { position: 'none' },
+          animation: { startup: true, duration: 600, easing: 'out' },
+          titleTextStyle: { fontSize: isMobile ? 13 : 16, bold: true, color: '#1e293b' }
+        };
+
+        var chartEl = document.getElementById('chartKategori');
+        var chart = new google.visualization.BarChart(chartEl);
+        chart.draw(data, options);
+      }
+
+      if (chartsReady && typeof google !== 'undefined' && google.visualization) {
+        drawChart();
+      } else if (typeof google !== 'undefined' && google.charts) {
+        google.charts.setOnLoadCallback(function () {
+          chartsReady = true;
+          drawChart();
+        });
+      }
+    }
+
+    // ============================================================
+    // MODUL PENJUALAN - INPUT
+    // ============================================================
+    function aksiInputPenjualan() {
+      const data = {
+        tanggal: document.getElementById('inTanggal').value || getTodayISO(),
+        namaProduk: document.getElementById('inNamaProduk').value.trim(),
+        harga: Number(document.getElementById('inHarga').value) || 0,
+        jumlah: Number(document.getElementById('inJumlah').value) || 1,
+        volume: Number(document.getElementById('inVolume').value) || 250,
+        metode: document.getElementById('inMetode').value
+      };
+
+      if (!data.namaProduk) return showToast('Nama produk wajib diisi!', 'error');
+      if (data.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
+      if (data.jumlah <= 0) return showToast('Jumlah harus lebih dari 0!', 'error');
+
+      safeGoogleRun('addPenjualan', [data], function (res) {
+        if (res && res.status === 'success') {
+          showToast('Penjualan berhasil disimpan!', 'success');
+          closeModal('modalPenjualan');
+          document.getElementById('inNamaProduk').value = '';
+          document.getElementById('inHarga').value = '';
+          document.getElementById('inJumlah').value = '1';
+          document.getElementById('inTotalDisplay').textContent = 'Rp 0';
+          loadReport();
+        } else {
+          showToast(res.message || 'Gagal menyimpan penjualan', 'error');
+        }
+      });
+    }
+
+    function initPenjualanCalc() {
+      const hargaInp = document.getElementById('inHarga');
+      const jumlahInp = document.getElementById('inJumlah');
+      if (!hargaInp || !jumlahInp) return;
+
+      function updateTotal() {
+        const total = (Number(hargaInp.value) || 0) * (Number(jumlahInp.value) || 0);
+        const el = document.getElementById('inTotalDisplay');
+        if (el) el.textContent = formatIDR(total);
+      }
+      hargaInp.addEventListener('input', updateTotal);
+      jumlahInp.addEventListener('input', updateTotal);
+    }
+
+    // ============================================================
+    // MODUL PRODUK (CRUD)
+    // ============================================================
+    function loadProduk() {
+      var tbody = document.getElementById('produkTbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td></tr>';
+
+      safeGoogleRun('getProdukList', [], function (res) {
+        cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
+        renderProdukMain(cachedProduk);
+        updateProdukDatalist(cachedProduk);
+      }, function () {
+        var t = document.getElementById('produkTbody');
+        if (t && t.innerHTML.indexOf('fa-spin') !== -1) {
+          t.innerHTML = '<tr><td colspan="4" class="empty-text">Gagal memuat produk. Periksa koneksi atau Spreadsheet.</td></tr>';
+        }
+      });
+    }
+
+    function loadProdukCRUD() {
+      safeGoogleRun('getProdukList', [], function (res) {
+        if (res && (res.products || res.data)) {
+          cachedProduk = res.products || res.data || [];
+          renderProdukModal(cachedProduk);
+          renderProdukMain(cachedProduk);
+          updateProdukDatalist(cachedProduk);
+        } else {
+          document.getElementById('modalProdukTbody').innerHTML = '<tr><td colspan="5" class="empty-text">Gagal memuat produk</td></tr>';
+        }
+      });
+    }
+
+    function renderProdukMain(products) {
+      const tbody = document.getElementById('produkTbody');
+      if (!products || products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Tidak ada produk</td></tr>';
+        return;
+      }
+      tbody.innerHTML = products.map(function (p) {
+        const id = p.idProduk || p.id_produk || p.id || '';
+        const nama = p.namaProduk || p.nama_produk || p.nama || '';
+        return '<tr>' +
+          '<td>' + escapeHtml(id) + '</td>' +
+          '<td>' + escapeHtml(nama) + '</td>' +
+          '<td>' + Number(p.stok || 0) + '</td>' +
+          '<td>' + formatIDR(p.harga || 0) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function renderProdukModal(products) {
+      const tbody = document.getElementById('modalProdukTbody');
+      if (!tbody) return;
+
+      tbody.innerHTML = products.map(function (p) {
+        const id = p.idProduk || p.id_produk || p.id || '';
+        const nama = p.namaProduk || p.nama_produk || p.nama || '';
+        return '<tr>' +
+          '<td>' + escapeHtml(id) + '</td>' +
+          '<td>' + escapeHtml(nama) + '</td>' +
+          '<td>' + Number(p.stok || 0) + '</td>' +
+          '<td>' + formatIDR(p.harga || 0) + '</td>' +
+          '<td>' +
+          '<button class="btn-edit" onclick="event.stopPropagation(); editProduk(&#39;' + escapeJs(id) + '&#39;)">Edit</button>' +
+          '<button class="btn-danger" style="margin-left:4px;" onclick="event.stopPropagation(); aksiDeleteProduk(&#39;' + escapeJs(id) + '&#39;)">Hapus</button>' +
+          '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function updateProdukDatalist(products) {
+      const dl = document.getElementById('produkListDatalist');
+      if (!dl) return;
+      dl.innerHTML = products.map(function (p) {
+        return '<option value="' + escapeHtml(p.namaProduk || p.nama_produk || p.nama || '') + '">';
+      }).join('');
+    }
+
+    function aksiCreateProduk() {
+      const payload = {
+        role: getRole(),
+        idProduk: document.getElementById('prodIdInp').value.trim(),
+        namaProduk: document.getElementById('prodNamaInp').value.trim(),
+        stok: Number(document.getElementById('prodStokInp').value) || 0,
+        harga: Number(document.getElementById('prodHargaInp').value) || 0
+      };
+      if (!payload.idProduk || !payload.namaProduk) return showToast('ID dan Nama Produk wajib diisi!', 'error');
+      if (payload.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
+
+      safeGoogleRun('createProduk', [payload], function (res) {
+        if (res && res.status === 'success') {
+          showToast('Produk berhasil ditambahkan!', 'success');
+          clearProdukForm();
+          loadProdukCRUD();
+        } else {
+          showToast(res.message || 'Gagal menambah produk', 'error');
+        }
+      });
+    }
+
+    function aksiUpdateProduk() {
+      const idInp = document.getElementById('prodIdInp');
+      const idLama = idInp.dataset.idLama || idInp.value.trim();
+      const payload = {
+        role: getRole(),
+        idProduk: idInp.value.trim(),
+        namaProduk: document.getElementById('prodNamaInp').value.trim(),
+        stok: Number(document.getElementById('prodStokInp').value) || 0,
+        harga: Number(document.getElementById('prodHargaInp').value) || 0
+      };
+
+      if (!idLama) return showToast('Pilih produk yang ingin di-edit terlebih dahulu!', 'error');
+
+      safeGoogleRun('updateProduk', [idLama, payload], function (res) {
+        if (res && res.status === 'success') {
+          showToast('Produk berhasil diperbarui!', 'success');
+          clearProdukForm();
+          closeModal('modalProduk');
+          loadProdukCRUD();
+        } else {
+          showToast('Gagal update: ' + (res ? res.message : 'Unknown error'), 'error');
+        }
+      });
+    }
+
+    function aksiDeleteProduk(id) {
+      if (!confirm('Yakin hapus produk "' + id + '"?')) return;
+      safeGoogleRun('deleteProduk', [id, getRole()], function (res) {
+        if (res && res.status === 'success') {
+          showToast('Produk berhasil dihapus!', 'success');
+          loadProdukCRUD();
+        } else {
+          showToast(res.message || 'Gagal menghapus produk', 'error');
+        }
+      });
+    }
+
+    function clearProdukForm() {
+      const idInp = document.getElementById('prodIdInp');
+      idInp.value = '';
+      delete idInp.dataset.idLama;
+      document.getElementById('prodNamaInp').value = '';
+      document.getElementById('prodStokInp').value = '';
+      document.getElementById('prodHargaInp').value = '';
+      idInp.disabled = false;
+      idInp.style.background = '#fff';
+    }
+
+    // ============================================================
+    // MODUL KEUANGAN (CREDIT/DEBIT)
+    // ============================================================
+    function loadCreditDebit() {
+      const start = document.getElementById('cdStartDate').value;
+      const end = document.getElementById('cdEndDate').value;
+
+      if (!start || !end) {
+        showToast('Pilih periode tanggal terlebih dahulu!', 'error');
+        return;
+      }
+
+      document.getElementById('cdTbody').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
+
+      safeGoogleRun('getCreditDebitByRange', [start, end], function (res) {
+        if (res && res.status === 'success') {
+          cachedCD = res.data || [];
+          renderCreditDebit(cachedCD);
+        } else {
+          showToast(res.message || 'Gagal memuat data keuangan', 'error');
+          document.getElementById('cdTbody').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
+        }
+      });
+    }
+
+    function renderCreditDebit(data) {
+      const tbody = document.getElementById('cdTbody');
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tidak ada data pada periode ini</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(function (row) {
+        var isCredit = String(row.tipe || '').toUpperCase() === 'CREDIT';
+        var badgeStyle = isCredit
+          ? 'background:#fee2e2;color:#991b1b;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;'
+          : 'background:#dcfce7;color:#166534;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;';
+        var nominalColor = isCredit ? 'color:#ef4444;' : 'color:#10b981;';
+        return '<tr>' +
+          '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+          '<td><span style="' + badgeStyle + '">' + escapeHtml(row.tipe || 'DEBIT') + '</span></td>' +
+          '<td>' + escapeHtml(row.kategori || '-') + '</td>' +
+          '<td>' + escapeHtml(row.deskripsi || '-') + '</td>' +
+          '<td>' + escapeHtml(row.metodePembayaran || '-') + '</td>' +
+          '<td style="font-weight:800;' + nominalColor + '">' + formatIDR(row.nominal || 0) + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function aksiAddCreditDebit() {
+      const data = {
+        role: getRole(),
+        tanggal: document.getElementById('cdTanggalInp').value || getTodayISO(),
+        tipe: document.getElementById('cdTipeInp').value,
+        kategori: document.getElementById('cdKategoriInp').value.trim(),
+        deskripsi: document.getElementById('cdDeskripsiInp').value.trim(),
+        metodePembayaran: document.getElementById('cdMetodePembayaranInp').value,
+        nominal: Number(document.getElementById('cdNominalInp').value) || 0
+      };
+
+      if (!data.tanggal) return showToast('Tanggal wajib diisi!', 'error');
+      if (!data.kategori) return showToast('Kategori wajib diisi!', 'error');
+      if (!data.deskripsi) return showToast('Deskripsi wajib diisi!', 'error');
+      if (data.nominal <= 0) return showToast('Nominal harus lebih dari 0!', 'error');
+
+      safeGoogleRun('addCreditDebit', [data.tipe, data], function (res) {
+        if (res && res.status === 'success') {
+          showToast('Catatan keuangan tersimpan!', 'success');
+          clearPengeluaranForm();
+          closeModal('modalPengeluaran');
+
+          const start = document.getElementById('cdStartDate').value;
+          const end = document.getElementById('cdEndDate').value;
+
+          if (start && end) {
+            loadCreditDebit();
+          }
+          loadReport();
+        } else {
+          showToast(res.message || 'Gagal menyimpan catatan', 'error');
+        }
+      });
+    }
+
+    function clearPengeluaranForm() {
+      document.getElementById('cdTanggalInp').value = getTodayISO();
+      document.getElementById('cdTipeInp').value = 'CREDIT';
+      document.getElementById('cdKategoriInp').value = '';
+      document.getElementById('cdDeskripsiInp').value = '';
+      document.getElementById('cdMetodePembayaranInp').value = 'Cash';
+      document.getElementById('cdNominalInp').value = '';
+    }
+
+    function loadPengeluaranCRUD() {
+      loadCreditDebit();
+    }
+
+    function resetCreditDebit() {
+      document.getElementById("cdStartDate").value = "";
+      document.getElementById("cdEndDate").value = "";
+
+      cachedCD = [];
+      document.getElementById("cdTbody").innerHTML =
+        `<tr>
+          <td colspan="6" class="empty-text">
+            Pilih periode dan klik "Tampilkan"
+          </td>
+        </tr>`;
+    }
+
+    // ============================================================
+    // INIT
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function () {
+      runSafely('preloadCharts', preloadCharts);
+      runSafely('initPenjualanCalc', initPenjualanCalc);
+
+      runSafely('setInitialDates', function () {
+        var today = getTodayISO();
+        var startEl = document.getElementById('cdStartDate');
+        var endEl = document.getElementById('cdEndDate');
+        if (startEl) startEl.value = today;
+        if (endEl) endEl.value = today;
+        var cdDateInp = document.getElementById('cdTanggalInp');
+        if (cdDateInp) cdDateInp.value = today;
+        var inDateInp = document.getElementById('inTanggal');
+        if (inDateInp) inDateInp.value = today;
+      });
+
+      var resizeTimer;
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          runSafely('renderChartOnResize', function () {
+            if (lastChartData.length > 0 && chartsReady) {
+              renderChart(lastChartData);
+            }
+          });
+        }, 300);
+      });
+    }, false);
+
+    var sessionTimer;
+    function startSessionTimer(duration) {
+      if (sessionTimer) clearTimeout(sessionTimer);
+      sessionTimer = setTimeout(function () {
+        logout();
+      }, duration);
+    }
+
+    function resetFilters() {
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      localStorage.removeItem('startDate');
+      localStorage.removeItem('endDate');
+      cachedPenjualan = [];
+      document.getElementById('kpiTx').textContent = '0';
+      document.getElementById('kpiGross').textContent = 'Rp 0';
+      document.getElementById('kpiNet').textContent = 'Rp 0';
+      document.getElementById('netTotalValue').textContent = 'Rp 0';
+      document.getElementById('chartTotalOmset').textContent = '';
+      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
+      document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
+      document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
+    }
+
+    window.resetPengeluaranFilters = function () {
+      clearPengeluaranForm();
+    };
+  </script>
+</body>
+</html>
