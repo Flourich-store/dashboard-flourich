@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Flourich Store dan dashboard penjualan terintegrasi">
+  <title>Flourich Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { ink: '#102a24', leaf: '#079669', mint: '#e4f7ed', peach: '#ffe0cb' },
+          fontFamily: { display: ['Georgia', 'serif'], sans: ['Trebuchet MS', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    html { scroll-behavior: smooth; }
+    body { background: #f8fbf7; }
+    .view { display: none; }
+    .view.active { display: block; animation: enter .25s ease-out; }
+    @keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .dashboard-frame { height: calc(100vh - 155px); min-height: 560px; }
+  </style>
+</head>
+<body class="font-sans text-ink">
+  <div id="landing-view" class="view active">
+    <header class="sticky top-0 z-20 border-b border-ink/10 bg-[#f8fbf7]/90 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 lg:px-8">
+        <a href="#beranda" aria-label="Flourich Store" class="flex items-center gap-3">
+          <img src="flourich_logo.png" alt="Flourich" class="h-11 w-auto object-contain" onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG'">
+          <span class="font-bold tracking-tight">Flourich</span>
+        </a>
+        <nav class="hidden gap-8 text-sm font-bold md:flex" aria-label="Navigasi utama">
+          <a href="#beranda" class="hover:text-leaf">Beranda</a>
+          <a href="#produk" class="hover:text-leaf">Produk</a>
+          <a href="#tentang" class="hover:text-leaf">Tentang Kami</a>
+        </nav>
+        <button type="button" onclick="switchView('dashboard')" class="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white hover:bg-leaf">Masuk ke Dashboard</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="beranda" class="overflow-hidden bg-[radial-gradient(circle_at_8%_20%,#b9eed533,transparent_30%),radial-gradient(circle_at_92%_10%,#ffd8c855,transparent_27%),linear-gradient(#fff,#f8fbf7)]">
+        <div class="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-28">
+          <div>
+            <p class="mb-5 inline-flex rounded-full bg-mint px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-leaf">Segar setiap hari</p>
+            <h1 class="max-w-2xl font-display text-5xl leading-[.98] sm:text-7xl">Kelola penjualan.<br><span class="text-leaf">Pantau keuangan.</span><br>Tumbuh lebih terarah.</h1>
+            <p class="mt-7 max-w-xl text-base leading-8 text-ink/70">Flourich menyajikan minuman segar pilihan dan dashboard sederhana untuk memantau transaksi, omset, laba, produk, dan catatan keuangan.</p>
+            <div class="mt-9 flex flex-wrap gap-3">
+              <button type="button" onclick="switchView('dashboard')" class="rounded-full bg-leaf px-6 py-3.5 text-sm font-bold text-white hover:bg-ink">Masuk ke Dashboard <span aria-hidden="true">→</span></button>
+              <a href="#produk" class="rounded-full border border-ink/20 px-6 py-3.5 text-sm font-bold hover:border-leaf hover:text-leaf">Lihat Produk</a>
+            </div>
+            <div class="mt-6 flex flex-wrap gap-5 text-xs font-bold text-ink/60"><span>✓ Bahan pilihan</span><span>✓ Diracik setiap hari</span></div>
+          </div>
+          <div class="relative mx-auto w-full max-w-md">
+            <div class="absolute -right-5 -top-5 h-28 w-28 rounded-full bg-peach"></div>
+            <div class="absolute -bottom-8 -left-7 h-36 w-36 rounded-full bg-[#cbe78c]"></div>
+            <div class="relative overflow-hidden rounded-[2rem] border-8 border-white bg-mint shadow-2xl">
+              <img src="flourich_logo.png" alt="Logo Flourich" class="mx-auto h-64 w-full object-contain p-10" onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG'">
+              <div class="bg-ink px-7 py-6 text-white"><p class="text-xs font-bold uppercase tracking-[.18em] text-[#cbe78c]">Made with care</p><p class="mt-2 font-display text-2xl">Sederhana, segar, Flourich.</p></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="produk" class="mx-auto max-w-6xl px-5 py-20 lg:px-8">
+        <div class="mb-10"><p class="text-xs font-bold uppercase tracking-[.18em] text-leaf">Pilihan favorit</p><h2 class="mt-2 font-display text-4xl">Produk terlaris</h2><p class="mt-3 max-w-xl text-sm leading-6 text-ink/60">Dibuat segar, diracik dengan teliti, dan siap menemani aktivitasmu.</p></div>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-ink/10"><div class="flex h-40 items-center justify-center rounded-2xl bg-mint text-7xl">🥤</div><h3 class="mt-5 text-lg font-bold">Semgaci</h3><p class="mt-1 text-sm text-ink/60">Semangka, mangga, jeruk</p><strong class="mt-4 block text-leaf">Rp 14.000</strong></article>
+          <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-ink/10"><div class="flex h-40 items-center justify-center rounded-2xl bg-peach text-7xl">🍎</div><h3 class="mt-5 text-lg font-bold">Wonapel</h3><p class="mt-1 text-sm text-ink/60">Wortel, nanas, apel</p><strong class="mt-4 block text-leaf">Rp 15.000</strong></article>
+          <article class="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-ink/10"><div class="flex h-40 items-center justify-center rounded-2xl bg-[#e5f2b9] text-7xl">🍊</div><h3 class="mt-5 text-lg font-bold">Jus segar</h3><p class="mt-1 text-sm text-ink/60">Pilihan rasa harian</p><strong class="mt-4 block text-leaf">Rp 12.000</strong></article>
+        </div>
+      </section>
+
+      <section id="tentang" class="border-y border-ink/10 bg-mint/60"><div class="mx-auto grid max-w-6xl gap-8 px-5 py-16 lg:grid-cols-2 lg:px-8"><h2 class="font-display text-4xl">Bisnis kecil, perhatian yang besar.</h2><p class="max-w-xl text-base leading-8 text-ink/70">Kami percaya minuman yang baik dimulai dari bahan yang baik. Flourich hadir untuk membuat pilihan segar terasa dekat, mudah, dan menyenangkan setiap hari.</p></div></section>
+    </main>
+    <footer class="bg-ink px-5 py-8 text-sm text-white/70"><div class="mx-auto flex max-w-6xl justify-between gap-4 lg:px-3"><span>© 2026 Flourich Store</span><span>Segar dalam setiap tegukan.</span></div></footer>
+  </div>
+
+  <div id="dashboard-view" class="view min-h-screen bg-slate-100">
+    <header class="sticky top-0 z-20 border-b border-slate-200 bg-white"><div class="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6"><div><p class="text-xs font-bold uppercase tracking-[.18em] text-leaf">Flourich Store</p><h1 class="mt-1 text-xl font-bold">Dashboard Penjualan</h1></div><button type="button" onclick="switchView('landing')" class="rounded-full border border-ink/20 px-4 py-2.5 text-sm font-bold hover:border-leaf hover:text-leaf">← Kembali ke Landing Page</button></div></header>
+    <main class="mx-auto max-w-[1600px] px-3 py-4 sm:px-6"><div class="mb-3 flex items-center gap-2 text-xs text-slate-500"><span class="h-2 w-2 animate-pulse rounded-full bg-leaf"></span> Dashboard produksi</div><iframe id="dashboard-frame" class="dashboard-frame w-full rounded-2xl border border-slate-200 bg-white shadow-lg" title="Flourich Dashboard" src="about:blank" loading="lazy" allow="fullscreen"></iframe></main>
+  </div>
+
+  <script>
+    var DASHBOARD_URL = 'https://script.google.com/macros/s/AKfycbweVGh3stQEsi_HEOSNAQQqZMre802gz9ntXDkUDpLOkQBbEEqJiZqaHQDnTyxvPzKUVA/exec?page=dashboard';
+    var dashboardLoaded = false;
+    function switchView(view, updateHistory) {
+      var dashboard = view === 'dashboard';
+      document.getElementById('landing-view').classList.toggle('active', !dashboard);
+      document.getElementById('dashboard-view').classList.toggle('active', dashboard);
+      if (dashboard && !dashboardLoaded) { document.getElementById('dashboard-frame').src = DASHBOARD_URL; dashboardLoaded = true; }
+      if (updateHistory !== false) history.pushState({ view: dashboard ? 'dashboard' : 'landing' }, '', dashboard ? '#dashboard' : '#beranda');
+      window.scrollTo(0, 0);
+    }
+    window.addEventListener('popstate', function () { switchView(location.hash === '#dashboard' ? 'dashboard' : 'landing', false); });
+    window.addEventListener('hashchange', function () { switchView(location.hash === '#dashboard' ? 'dashboard' : 'landing', false); });
+    switchView(location.hash === '#dashboard' ? 'dashboard' : 'landing', false);
+  </script>
+</body>
+</html>
