@@ -29,7 +29,8 @@
     html { scroll-behavior: smooth; }
     body { background: #f8fbf5; }
     .view { display: none; }
-    .view.active { display: block; }
+    .view.active { display: block; animation: view-enter .28s ease-out both; }
+    @keyframes view-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .dashboard-frame { height: calc(100vh - 174px); min-height: 560px; }
     .pattern { background-image: radial-gradient(#1d8b5f18 1.2px, transparent 1.2px); background-size: 18px 18px; }
     @media (max-width: 640px) { .dashboard-frame { height: calc(100vh - 158px); min-height: 620px; } }
@@ -58,13 +59,14 @@
       <section id="beranda" class="pattern overflow-hidden">
         <div class="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 lg:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-28">
           <div>
-            <p class="mb-5 inline-flex rounded-full bg-mint px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-leaf">Segar setiap hari</p>
+            <p class="mb-5 inline-flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-xs font-bold uppercase tracking-[.18em] text-leaf"><span class="h-2 w-2 rounded-full bg-leaf"></span> Segar setiap hari</p>
             <h1 class="max-w-2xl font-display text-5xl leading-[.98] tracking-tight sm:text-7xl">Rasa baik untuk hari yang <span class="text-leaf">lebih hidup.</span></h1>
             <p class="mt-7 max-w-xl text-base leading-8 text-ink/70">Flourich menyajikan minuman segar pilihan dengan bahan berkualitas. Temukan rasa favoritmu dan nikmati kebaikan dalam setiap tegukan.</p>
             <div class="mt-9 flex flex-wrap gap-3">
               <a href="#produk" class="rounded-full bg-leaf px-6 py-3.5 text-sm font-bold text-white transition hover:bg-ink">Lihat produk</a>
               <button type="button" onclick="switchView('dashboard')" class="rounded-full border border-ink/20 px-6 py-3.5 text-sm font-bold transition hover:border-leaf hover:text-leaf">Buka dashboard <span aria-hidden="true">→</span></button>
             </div>
+            <div class="mt-6 flex flex-wrap gap-5 text-xs font-bold text-ink/60"><span>✓ Bahan pilihan</span><span>✓ Diracik setiap hari</span><span>✓ Pesan dengan mudah</span></div>
           </div>
           <div class="relative mx-auto w-full max-w-md">
             <div class="absolute -right-5 -top-5 h-28 w-28 rounded-full bg-peach/70"></div>
