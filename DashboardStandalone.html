@@ -885,7 +885,7 @@
       <button id="btnLogin" class="btn-primary btn" type="submit" style="width:100%; margin-top:16px;">
         <i class="fa-solid fa-right-to-bracket"></i> Masuk
       </button>
-      <button class="btn btn-secondary" type="button" onclick="goToLandingPage()" style="width:100%; margin-top:10px;">
+      <button id="loginLandingButton" class="btn btn-secondary" type="button" onclick="goToLandingPage()" style="width:100%; margin-top:10px;">
         <i class="fa-solid fa-arrow-left"></i> Kembali ke Landing Page
       </button>
       <div id="loginError" class="login-hint" style="display:none; color:#b91c1c; background:#fef2f2;" role="alert"></div>
@@ -908,9 +908,6 @@
       </div>
       <button id="btnLogout" class="btn-logout" onclick="logout()">
         <i class="fa-solid fa-right-from-bracket"></i> Keluar
-      </button>
-      <button class="btn-secondary btn" type="button" onclick="goToLandingPage()">
-        <i class="fa-solid fa-arrow-left"></i> Landing Page
       </button>
     </div>
   </header>
@@ -1455,6 +1452,8 @@
 
       var mHeader = document.getElementById('mainHeader');
       if (mHeader) mHeader.style.display = 'flex';
+      var landingButton = document.getElementById('loginLandingButton');
+      if (landingButton) landingButton.style.display = 'none';
 
       var username = sessionStorage.getItem('dash_username') || '';
       var role = String(sessionStorage.getItem('dash_role') || '').toUpperCase();
@@ -1487,6 +1486,8 @@
         loginButton.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
       }
       if (loginPage) loginPage.style.display = 'flex';
+      var landingButton = document.getElementById('loginLandingButton');
+      if (landingButton) landingButton.style.display = 'inline-flex';
       notifyParentState('logged-out');
       notifyParentHeight();
     }
