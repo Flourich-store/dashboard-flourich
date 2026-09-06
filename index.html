@@ -13,16 +13,16 @@
     .spa-view.active { display: block; animation: spa-enter .24s ease-out; }
     #landing-view { min-height: 100vh; }
     #landing-frame { width: 100%; height: 100vh; min-height: 760px; border: 0; display: block; overflow: hidden; }
-    #dashboard-view { height: 100dvh; min-height: 0; overflow: hidden; }
+    #dashboard-view { min-height: 100vh; }
     .dashboard-header { height: 76px; flex: 0 0 76px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff; border-bottom: 1px solid #e2e8f0; font-family: Arial, sans-serif; }
     .dashboard-title { color: #0f172a; font-size: 18px; font-weight: 800; }
     .dashboard-kicker { color: #059669; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
     .return-button { border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #334155; cursor: pointer; font: 700 13px Arial, sans-serif; padding: 11px 16px; }
     .return-button:hover { border-color: #34d399; color: #047857; }
-    .dashboard-shell { height: calc(100dvh - 76px); padding: 0; background: #f1f5f9; }
-    #dashboard-frame { width: 100%; height: 100%; min-height: 0; display: block; border: 0; border-radius: 0; background: #fff; }
+    .dashboard-shell { min-height: calc(100vh - 76px); padding: 0; background: #f1f5f9; }
+    #dashboard-frame { width: 100%; height: 760px; min-height: 760px; display: block; border: 0; border-radius: 0; background: #fff; overflow: hidden; }
     @keyframes spa-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 640px) { #dashboard-view { height: 100dvh; } .dashboard-header { height: 70px; flex-basis: 70px; padding: 0 12px; } .dashboard-title { font-size: 15px; } .return-button { font-size: 11px; padding: 10px 11px; } .dashboard-shell { height: calc(100dvh - 70px); } }
+    @media (max-width: 640px) { .dashboard-header { height: 70px; flex-basis: 70px; padding: 0 12px; } .dashboard-title { font-size: 15px; } .return-button { font-size: 11px; padding: 10px 11px; } #dashboard-frame { height: 900px; min-height: 900px; } .dashboard-shell { min-height: calc(100vh - 70px); } }
   </style>
 </head>
 <body>
@@ -65,6 +65,10 @@
       }
       if (event.source === landingFrame.contentWindow && event.data && event.data.type === 'flourich-dashboard') {
         switchView('dashboard');
+      }
+      var dashboardFrame = document.getElementById('dashboard-frame');
+      if (event.source === dashboardFrame.contentWindow && event.data && event.data.type === 'dashboard-height') {
+        dashboardFrame.style.height = Math.max(600, Number(event.data.height) || 0) + 'px';
       }
     });
     window.addEventListener('popstate', function () { switchView(location.hash === '#dashboard' ? 'dashboard' : 'landing', false); });
