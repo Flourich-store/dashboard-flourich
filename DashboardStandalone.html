@@ -17,24 +17,26 @@
 
   <style>
     :root {
-      --primary: #059669;
-      --primary-hover: #047857;
-      --primary-light: #ecfdf5;
-      --green: #059669;
-      --accent: #10b981;
-      --coral: #f43f5e;
-      --dark: #0f172a;
-      --slate-700: #334155;
-      --slate-600: #475569;
-      --slate-400: #94a3b8;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --border: #e2e8f0;
-      --radius: 1rem; /* rounded-2xl */
+      --primary: #10b981;
+      --primary-hover: #34d399;
+      --primary-light: rgba(16, 185, 129, 0.14);
+      --green: #34d399;
+      --accent: #2dd4bf;
+      --coral: #fb7185;
+      --dark: #0f172a; /* dipakai sebagai warna dasar gelap (mis. toast) */
+      --text: #e2e8f0;
+      --slate-700: #cbd5e1;
+      --slate-600: #94a3b8;
+      --slate-400: #64748b;
+      --bg: #070b16;
+      --card-bg: #0f1a2e;
+      --border: rgba(148, 163, 184, 0.16);
+      --radius: 1.25rem;
       --radius-sm: 12px;
-      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
-      --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.06);
-      --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
+      --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 14px 34px rgba(0, 0, 0, 0.35);
+      --shadow-md: 0 18px 50px rgba(0, 0, 0, 0.5);
+      color-scheme: dark;
     }
 
     * {
@@ -182,6 +184,7 @@
     .logo-left {
       height: 35px;
       object-fit: contain;
+      border-radius: 9px;
     }
 
     .live-badge {
@@ -669,6 +672,8 @@
       margin-left: auto;
       margin-right: auto;
       object-fit: contain;
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
     }
 
     .login-title {
@@ -1121,6 +1126,291 @@
 
     @media (min-width: 769px) {
       .logo-left { height: 38px; }
+    }
+  </style>
+
+  <!-- ============ DARK MODERN THEME OVERRIDE ============ -->
+  <style>
+    body {
+      color: var(--text);
+      background-color: #070b16;
+      background-image:
+        radial-gradient(1200px 600px at 85% -10%, rgba(16, 185, 129, 0.09), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(45, 212, 191, 0.06), transparent 55%),
+        radial-gradient(700px 400px at 50% 50%, rgba(99, 102, 241, 0.05), transparent 60%);
+      background-attachment: fixed;
+    }
+
+    ::selection { background: rgba(16, 185, 129, 0.35); }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+      50% { box-shadow: 0 0 0 7px rgba(52, 211, 153, 0); }
+    }
+
+    /* --- Shell & Sidebar --- */
+    .app-shell { background: transparent; }
+    .main-panel { background: transparent; }
+
+    .sidebar {
+      background: rgba(10, 16, 32, 0.92);
+      border-right: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: none;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .sidebar-label { color: #64748b; }
+
+    .nav-item { color: #cbd5e1; }
+    .nav-item:hover { background: rgba(148, 163, 184, 0.08); color: #f1f5f9; }
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.07));
+      color: #34d399;
+      box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.28);
+    }
+
+    .mobile-menu-btn { color: var(--text); }
+
+    /* --- Header --- */
+    .app-header {
+      background: rgba(10, 16, 32, 0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .header-info { border-top-color: rgba(148, 163, 184, 0.12); }
+
+    .live-badge {
+      background: rgba(52, 211, 153, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(52, 211, 153, 0.28);
+    }
+
+    .live-dot { background: #34d399; animation: pulseDot 2s ease-in-out infinite; }
+
+    .user-badge {
+      background: rgba(148, 163, 184, 0.08);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .btn-logout {
+      background: rgba(244, 63, 94, 0.12);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.28);
+    }
+
+    .btn-logout:hover { background: rgba(244, 63, 94, 0.22); }
+
+    /* --- Cards / KPI --- */
+    .card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20px;
+      right: 20px;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, rgba(52, 211, 153, 0.6), transparent);
+    }
+
+    .kpi-card::after {
+      background: radial-gradient(circle, rgba(52, 211, 153, 0.12) 0%, transparent 70%);
+    }
+
+    .kpi-card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-3px);
+      border-color: rgba(52, 211, 153, 0.3);
+    }
+
+    .kpi-title { color: #94a3b8; }
+    .kpi-icon { box-shadow: none; }
+
+    .kpi-icon--tx { color: #34d399; background: rgba(16, 185, 129, 0.16); box-shadow: 0 0 20px rgba(16, 185, 129, 0.22); }
+    .kpi-icon--omset { color: #22d3ee; background: rgba(34, 211, 238, 0.14); box-shadow: 0 0 20px rgba(34, 211, 238, 0.18); }
+    .kpi-icon--laba { color: #fbbf24; background: rgba(251, 191, 36, 0.14); box-shadow: 0 0 20px rgba(251, 191, 36, 0.18); }
+    .kpi-icon--top { color: #a78bfa; background: rgba(167, 139, 250, 0.16); box-shadow: 0 0 20px rgba(167, 139, 250, 0.2); }
+
+    .kpi-value { color: #f1f5f9; text-shadow: 0 0 24px rgba(52, 211, 153, 0.25); }
+    .kpi-footer { border-top: 1px solid rgba(148, 163, 184, 0.12); }
+    .kpi-footer span { color: #64748b; }
+    .kpi-footer-value { color: #34d399; }
+
+    /* --- Filter & Input --- */
+    .filter-panel,
+    .filter-row {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .filter-panel-head { color: #94a3b8; }
+    .filter-panel-head i { color: #34d399; background: rgba(16, 185, 129, 0.14); }
+
+    label { color: #94a3b8; }
+
+    input,
+    select {
+      background-color: #0b1424;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: var(--text);
+    }
+
+    input::placeholder { color: #475569; }
+
+    input:focus,
+    select:focus {
+      border-color: #34d399;
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.16);
+    }
+
+    /* --- Buttons --- */
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 8px 22px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      box-shadow: 0 10px 28px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(148, 163, 184, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .btn-secondary:hover { background: rgba(148, 163, 184, 0.22); }
+
+    /* --- Tables --- */
+    .table-responsive {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      box-shadow: var(--shadow-sm);
+    }
+
+    th {
+      background-color: rgba(148, 163, 184, 0.07);
+      color: #94a3b8;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    td {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.09);
+      color: #cbd5e1;
+    }
+
+    tr:hover td { background-color: rgba(148, 163, 184, 0.05); }
+
+    /* --- Title, Chart, Teks --- */
+    .section-title { color: #34d399; }
+
+    .chart-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(148, 163, 184, 0.13);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .muted { color: #64748b; }
+    .empty-text { color: #64748b; }
+    .loading-text { color: #94a3b8; }
+
+    /* --- Login --- */
+    .login-wrapper {
+      background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.16), transparent 45%),
+        radial-gradient(circle at bottom left, rgba(45, 212, 191, 0.1), transparent 45%),
+        #070b16;
+    }
+
+    .login-card {
+      background: rgba(13, 20, 38, 0.92);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(16, 185, 129, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .login-title { color: #f1f5f9; }
+    .login-sub { color: #94a3b8; }
+    .input-icon { color: #475569; }
+
+    .login-hint {
+      color: #94a3b8;
+      background: rgba(16, 185, 129, 0.1);
+    }
+
+    #loginError {
+      color: #fca5a5 !important;
+      background: rgba(248, 113, 113, 0.1) !important;
+      border: 1px solid rgba(248, 113, 113, 0.25);
+    }
+
+    /* --- Modal --- */
+    .modal-content {
+      background: #0f1a2e;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      background: #0f1a2e;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .modal-close { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; }
+    .modal-close:hover { background: rgba(148, 163, 184, 0.2); color: #f1f5f9; }
+
+    /* --- Toast & Loading --- */
+    .toast {
+      background: #0b1424;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    #loadingOverlay { background: rgba(7, 11, 22, 0.72); }
+    .loading-spinner { border: 3px solid rgba(148, 163, 184, 0.18); border-top-color: #34d399; }
+
+    /* --- Menu Modul --- */
+    .module-menu-list {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(148, 163, 184, 0.13);
+    }
+
+    .module-menu-label { color: #34d399; }
+
+    .module-menu-card {
+      background: linear-gradient(135deg, #10b981, #0d9488);
+      box-shadow: 0 10px 24px rgba(16, 185, 129, 0.25);
+    }
+
+    .module-menu-card:nth-of-type(2) {
+      background: linear-gradient(135deg, #475569, #334155);
+      box-shadow: 0 10px 24px rgba(51, 65, 85, 0.35);
+    }
+
+    .module-menu-card:nth-of-type(3) {
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      box-shadow: 0 10px 24px rgba(124, 58, 237, 0.3);
     }
   </style>
 
@@ -2281,15 +2571,21 @@
         }
 
         var isMobile = window.innerWidth <= 768;
+        // Mobile: margin kiri & lebar chartArea dalam persen agar tidak pernah
+        // melebihi kontainer sempit (penyebab grafik terpotong/melebar).
+        var chartArea = isMobile
+          ? { left: '18%', width: '70%', height: '62%' }
+          : { width: '60%', height: '65%', left: 100 };
         var options = {
           title: 'Perbandingan Omset (Cash vs QRIS)',
-          colors: ['#0B7A46'],
-          chartArea: { width: isMobile ? '75%' : '60%', height: '65%', left: isMobile ? 80 : 100 },
-          hAxis: { title: 'Total (Rp)', minValue: 0, textStyle: { fontSize: isMobile ? 10 : 12 } },
-          vAxis: { title: 'Metode', textStyle: { fontSize: isMobile ? 10 : 12 } },
+          colors: ['#34d399'],
+          backgroundColor: 'transparent',
+          chartArea: chartArea,
+          hAxis: { title: 'Total (Rp)', minValue: 0, textStyle: { fontSize: isMobile ? 10 : 12, color: '#94a3b8' }, titleTextStyle: { color: '#94a3b8' }, gridlines: { color: 'rgba(148,163,184,0.15)' }, baselineColor: 'rgba(148,163,184,0.3)' },
+          vAxis: { title: 'Metode', textStyle: { fontSize: isMobile ? 10 : 12, color: '#94a3b8' }, titleTextStyle: { color: '#94a3b8' }, gridlines: { color: 'rgba(148,163,184,0.15)' }, baselineColor: 'rgba(148,163,184,0.3)' },
           legend: { position: 'none' },
           animation: { startup: true, duration: 600, easing: 'out' },
-          titleTextStyle: { fontSize: isMobile ? 13 : 16, bold: true, color: '#1e293b' }
+          titleTextStyle: { fontSize: isMobile ? 13 : 16, bold: true, color: '#e2e8f0' }
         };
 
         var chartEl = document.getElementById('chartKategori');
@@ -2692,6 +2988,14 @@
           var targetId = navItem.getAttribute('data-target');
           if (!targetId) return;
           activateSection(targetId);
+          // Grafik digambar ulang saat tab Grafik dibuka: jika sebelumnya
+          // dirender saat section masih display:none, SVG-nya memakai lebar
+          // default (±400px) dan jadi melebar/terpotong di layar mobile.
+          if (targetId === 'section-chart' && lastChartData.length > 0 && chartsReady) {
+            runSafely('renderChartOnTabOpen', function () {
+              renderChart(lastChartData);
+            });
+          }
           if (window.innerWidth <= 768) {
             var sidebar = document.getElementById('mainSidebar');
             if (sidebar && sidebar.classList.contains('open')) {
@@ -2743,6 +3047,24 @@
           });
         }, 300);
       });
+
+      // Gambar ulang grafik bila lebar kontainernya berubah (mis. di dalam iframe embed).
+      if (window.ResizeObserver) {
+        var chartROTimer;
+        var chartRO = new ResizeObserver(function () {
+          clearTimeout(chartROTimer);
+          chartROTimer = setTimeout(function () {
+            runSafely('renderChartOnContainerResize', function () {
+              var secChart = document.getElementById('section-chart');
+              if (secChart && secChart.classList.contains('active') && lastChartData.length > 0 && chartsReady) {
+                renderChart(lastChartData);
+              }
+            });
+          }, 250);
+        });
+        var chartElRO = document.getElementById('chartKategori');
+        if (chartElRO) chartRO.observe(chartElRO);
+      }
     }, false);
 
     var sessionTimer;
@@ -2775,6 +3097,26 @@
     window.resetPengeluaranFilters = function () {
       clearPengeluaranForm();
     };
+  </script>
+
+  <script>
+    // Penanda versi build - diisi otomatis oleh deploy.mjs lewat atribut data-build pada <html>.
+    // Tanpa script deploy (misal preview lokal), badge menampilkan 'dev'.
+    (function () {
+      try {
+        var build = document.documentElement.getAttribute('data-build') || 'dev';
+        var el = document.createElement('div');
+        el.id = 'buildBadge';
+        el.textContent = 'build: ' + build;
+        el.style.cssText =
+          'position:fixed;left:8px;bottom:6px;z-index:99990;' +
+          'font:10px/1.4 Consolas,monospace;color:#64748b;' +
+          'background:rgba(7,11,22,.65);border:1px solid rgba(148,163,184,.15);' +
+          'padding:2px 8px;border-radius:8px;' +
+          'pointer-events:none;letter-spacing:.3px;';
+        document.body.appendChild(el);
+      } catch (e) { /* abaikan */ }
+    })();
   </script>
 </body>
 </html>

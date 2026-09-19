@@ -9,19 +9,19 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; }
     body { background: #f8fafc; }
-    body.is-dashboard { overflow: hidden; }
+    body.is-dashboard { overflow-x: hidden; overflow-y: auto; }
     .spa-view { display: none; min-height: 100vh; }
     .spa-view.active { display: block; animation: spa-enter .24s ease-out; }
     #landing-view { min-height: 100vh; }
     #landing-frame { width: 100%; height: 100vh; min-height: 760px; border: 0; display: block; overflow: hidden; }
     #dashboard-view { min-height: 100vh; position: relative; }
     .dashboard-shell { min-height: 100vh; padding: 0; background: #f1f5f9; }
-    #dashboard-frame { width: 100%; height: 100vh; min-height: 100vh; display: block; border: 0; border-radius: 0; background: #fff; overflow: hidden; }
+    #dashboard-frame { width: 100%; height: 100vh; display: block; border: 0; border-radius: 0; background: #fff; }
     .floating-back { position: fixed; top: 16px; right: 24px; z-index: 10; border: 1px solid #cbd5e1; border-radius: 10px; background: rgba(255,255,255,.96); color: #334155; cursor: pointer; font: 700 13px Arial, sans-serif; padding: 11px 16px; box-shadow: 0 4px 16px rgba(15,23,42,.08); transition: opacity .2s, visibility .2s; }
     .floating-back.is-hidden { opacity: 0; visibility: hidden; pointer-events: none; }
     .floating-back:hover { border-color: #34d399; color: #047857; }
     @keyframes spa-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 640px) { .floating-back { top: 10px; right: 10px; font-size: 11px; padding: 10px 11px; } #dashboard-frame { height: 100vh; min-height: 100vh; } }
+    @media (max-width: 640px) { .floating-back { top: 10px; right: 10px; font-size: 11px; padding: 10px 11px; } }
   </style>
 </head>
 <body>
@@ -32,7 +32,7 @@
   <section id="dashboard-view" class="spa-view" aria-label="Dashboard Flourich">
     <button class="floating-back" type="button" onclick="switchView('landing')">&#8592; Kembali ke Landing Page</button>
     <main class="dashboard-shell">
-      <iframe id="dashboard-frame" title="Flourich Dashboard" src="about:blank" loading="lazy" scrolling="no" allow="fullscreen"></iframe>
+      <iframe id="dashboard-frame" title="Flourich Dashboard" src="about:blank" loading="lazy" allow="fullscreen"></iframe>
     </main>
   </section>
 
