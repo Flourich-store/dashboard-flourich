@@ -1042,11 +1042,9 @@
       <div class="sidebar-label">Menu</div>
       <nav class="sidebar-nav" aria-label="Sidebar navigation">
         <button class="nav-item active" type="button" data-target="section-overview"><span class="nav-icon"><i class="fa-solid fa-chart-column"></i></span><span>Overview</span></button>
-        <button class="nav-item" type="button" data-target="section-top-products"><span class="nav-icon"><i class="fa-solid fa-ranking-star"></i></span><span>Top Produk</span></button>
         <button class="nav-item" type="button" data-target="section-chart"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span><span>Grafik</span></button>
-        <button class="nav-item" type="button" data-target="section-module-pencatatan"><span class="nav-icon"><i class="fa-solid fa-book-open"></i></span><span>Module Pencatatan</span></button>
+        <button class="nav-item" type="button" data-target="section-pencatatan-keuangan"><span class="nav-icon"><i class="fa-solid fa-book-open"></i></span><span>Pencatatan & Keuangan</span></button>
         <button class="nav-item" type="button" data-target="section-penjualan"><span class="nav-icon"><i class="fa-solid fa-table"></i></span><span>Penjualan</span></button>
-        <button class="nav-item" type="button" data-target="section-keuangan"><span class="nav-icon"><i class="fa-solid fa-wallet"></i></span><span>Keuangan</span></button>
         <button class="nav-item" type="button" data-target="section-produk"><span class="nav-icon"><i class="fa-solid fa-box"></i></span><span>Produk</span></button>
       </nav>
     </aside>
@@ -1119,9 +1117,6 @@
             </div>
           </div>
         </div>
-      </section>
-
-      <section id="section-top-products" class="content-section">
         <div class="section-title"><i class="fa-solid fa-chart-bar"></i> Top Produk Terlaris</div>
         <div class="table-responsive">
           <table>
@@ -1144,6 +1139,20 @@
 
       <section id="section-chart" class="content-section">
         <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Performa Penjualan per Kategori</div>
+        <div class="filter-row" style="margin-top:10px;">
+          <div class="filter-group">
+            <label>Start Date</label>
+            <input type="date" id="chartStartDate" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label>End Date</label>
+            <input type="date" id="chartEndDate" autocomplete="off">
+          </div>
+          <div class="btn-bar">
+            <button class="btn-primary btn" onclick="loadChartByDateRange()"><i class="fa-solid fa-filter"></i>&nbsp;Tampilkan</button>
+            <button class="btn-secondary btn" onclick="resetChartFilters()"><i class="fa-solid fa-trash"></i>&nbsp;Reset</button>
+          </div>
+        </div>
         <div class="chart-box">
           <div id="chartKategori" style="width:100%; height:340px;"></div>
           <div id="chartHint" class="muted" style="margin-top:10px;">Jika grafik tidak tampil, aktifkan koneksi internet untuk Google Charts.</div>
@@ -1151,7 +1160,7 @@
         </div>
       </section>
 
-      <section id="section-module-pencatatan" class="content-section">
+      <section id="section-pencatatan-keuangan" class="content-section">
         <div class="module-menu-list">
           <div class="module-menu-label"><i class="fa-solid fa-bars"></i><span>Menu Modul</span></div>
           <button class="module-menu-card" type="button" onclick="openModal('modalPenjualan')">
@@ -1167,10 +1176,58 @@
             <span>Kelola Produk</span>
           </button>
         </div>
+        <div class="section-title"><i class="fa-solid fa-wallet"></i> Catatan Keuangan</div>
+        <div class="filter-row" style="margin-top:10px;">
+          <div class="filter-group">
+            <label>Start Date</label>
+            <input type="date" id="cdStartDate">
+          </div>
+          <div class="filter-group">
+            <label>End Date</label>
+            <input type="date" id="cdEndDate">
+          </div>
+          <div class="btn-bar">
+            <button class="btn-primary btn" onclick="loadCreditDebit()"><i class="fa-solid fa-filter"></i>&nbsp;Tampilkan</button>
+            <button class="btn-secondary btn" onclick="resetCreditDebit()"><i class="fa-solid fa-trash"></i>&nbsp;Reset</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Tipe</th>
+                <th>Kategori</th>
+                <th>Deskripsi</th>
+                <th>Metode</th>
+                <th>Nominal</th>
+              </tr>
+            </thead>
+            <tbody id="cdTbody">
+              <tr>
+                <td colspan="6" class="loading-text">Pilih periode tanggal dan klik "Tampilkan"</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section id="section-penjualan" class="content-section">
         <div class="section-title"><i class="fa-solid fa-table"></i> Data Penjualan</div>
+        <div class="filter-row" style="margin-top:10px;">
+          <div class="filter-group">
+            <label>Start Date</label>
+            <input type="date" id="salesStartDate" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label>End Date</label>
+            <input type="date" id="salesEndDate" autocomplete="off">
+          </div>
+          <div class="btn-bar">
+            <button class="btn-primary btn" onclick="loadSalesByDateRange()"><i class="fa-solid fa-filter"></i>&nbsp;Tampilkan</button>
+            <button class="btn-secondary btn" onclick="resetSalesFilters()"><i class="fa-solid fa-trash"></i>&nbsp;Reset</button>
+          </div>
+        </div>
         <div class="table-responsive">
           <table>
             <thead>
@@ -1186,58 +1243,6 @@
             <tbody id="tabelData">
               <tr>
                 <td colspan="6" class="loading-text">Pilih periode tanggal dan klik "Tampilkan"</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="section-keuangan" class="content-section">
-        <div class="section-title">
-          <i class="fa-solid fa-wallet"></i>
-          Catatan Keuangan
-        </div>
-
-        <div class="filter-row" style="margin-top:10px;">
-          <div class="filter-group">
-            <label>Tanggal Mulai</label>
-            <input type="date" id="cdStartDate">
-          </div>
-
-          <div class="filter-group">
-            <label>Tanggal Selesai</label>
-            <input type="date" id="cdEndDate">
-          </div>
-
-          <div class="btn-bar">
-            <button class="btn-primary btn" onclick="loadCreditDebit()">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              Tampilkan
-            </button>
-
-            <button class="btn-secondary btn" onclick="resetCreditDebit()">
-              <i class="fa-solid fa-trash"></i>&nbsp;Reset
-            </button>
-          </div>
-        </div>
-
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Tanggal</th>
-                <th>Tipe</th>
-                <th>Kategori</th>
-                <th>Deskripsi</th>
-                <th>Metode</th>
-                <th>Nominal</th>
-              </tr>
-            </thead>
-            <tbody id="cdTbody">
-              <tr>
-                <td colspan="6" class="loading-text">
-                  Pilih periode dan klik "Tampilkan"
-                </td>
               </tr>
             </tbody>
           </table>
@@ -2027,6 +2032,38 @@
       tbody.innerHTML = html;
     }
 
+    function loadSalesByDateRange() {
+      var start = document.getElementById('salesStartDate').value;
+      var end = document.getElementById('salesEndDate').value;
+      if (!start || !end) {
+        showToast('Pilih start date dan end date terlebih dahulu!', 'error');
+        return;
+      }
+      if (start > end) {
+        showToast('Start date tidak boleh lebih besar dari end date!', 'error');
+        return;
+      }
+
+      var tbody = document.getElementById('tabelData');
+      tbody.innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
+      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+        if (res && res.status === 'success') {
+          cachedPenjualan = res.data || [];
+          renderReport(res);
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data penjualan</td></tr>';
+          showToast((res && res.message) || 'Gagal memuat data penjualan', 'error');
+        }
+      });
+    }
+
+    function resetSalesFilters() {
+      var today = getTodayISO();
+      document.getElementById('salesStartDate').value = today;
+      document.getElementById('salesEndDate').value = today;
+      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode tanggal dan klik "Tampilkan"</td></tr>';
+    }
+
     function renderTopProducts(topProducts) {
       var tbody = document.getElementById('topProductsBody');
       if (!topProducts || topProducts.length === 0) {
@@ -2101,6 +2138,38 @@
           drawChart();
         });
       }
+    }
+
+    function loadChartByDateRange() {
+      var start = document.getElementById('chartStartDate').value;
+      var end = document.getElementById('chartEndDate').value;
+      if (!start || !end) {
+        showToast('Pilih start date dan end date terlebih dahulu!', 'error');
+        return;
+      }
+      if (start > end) {
+        showToast('Start date tidak boleh lebih besar dari end date!', 'error');
+        return;
+      }
+
+      document.getElementById('chartKategori').innerHTML = '<div class="loading-text" style="padding:60px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat grafik...</div>';
+      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+        if (res && res.status === 'success') {
+          document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
+          renderChart(res.chartData || []);
+        } else {
+          document.getElementById('chartKategori').innerHTML = '<div class="empty-text">Gagal memuat grafik</div>';
+          showToast((res && res.message) || 'Gagal memuat grafik', 'error');
+        }
+      });
+    }
+
+    function resetChartFilters() {
+      var today = getTodayISO();
+      document.getElementById('chartStartDate').value = today;
+      document.getElementById('chartEndDate').value = today;
+      document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
+      document.getElementById('chartTotalOmset').textContent = '';
     }
 
     // ============================================================
@@ -2451,6 +2520,14 @@
         var endEl = document.getElementById('cdEndDate');
         if (startEl) startEl.value = today;
         if (endEl) endEl.value = today;
+        var chartStartEl = document.getElementById('chartStartDate');
+        var chartEndEl = document.getElementById('chartEndDate');
+        if (chartStartEl) chartStartEl.value = today;
+        if (chartEndEl) chartEndEl.value = today;
+        var salesStartEl = document.getElementById('salesStartDate');
+        var salesEndEl = document.getElementById('salesEndDate');
+        if (salesStartEl) salesStartEl.value = today;
+        if (salesEndEl) salesEndEl.value = today;
         var cdDateInp = document.getElementById('cdTanggalInp');
         if (cdDateInp) cdDateInp.value = today;
         var inDateInp = document.getElementById('inTanggal');
