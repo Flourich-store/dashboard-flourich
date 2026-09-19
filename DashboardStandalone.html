@@ -65,7 +65,97 @@
       width: 100%;
     }
 
-    /* HEADER UI */
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      background: #f8fafc;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: rgba(255, 255, 255, 0.92);
+      border-right: 1px solid #e5e7eb;
+      padding: 20px 16px 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.03);
+    }
+
+    .sidebar-brand {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #111827;
+      margin: 8px 8px 18px;
+      line-height: 1;
+    }
+
+    .sidebar-label {
+      font-size: 12px;
+      color: #6b7280;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 0 10px 10px;
+      margin-top: 4px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .nav-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 0;
+      background: transparent;
+      color: #374151;
+      border-radius: 12px;
+      padding: 12px 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .nav-item:hover {
+      background: #f3f4f6;
+      color: #0f172a;
+      transform: translateX(2px);
+    }
+
+    .nav-item.active {
+      background: #f3f4f6;
+      color: #111827;
+      box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.04);
+    }
+
+    .nav-icon {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 14px;
+      color: inherit;
+    }
+
+    .main-panel {
+      flex: 1;
+      min-width: 0;
+      padding: 16px 18px 24px;
+    }
+
     .app-header {
       display: flex;
       justify-content: space-between;
@@ -892,28 +982,46 @@
     </form>
   </section>
 
-  <header class="app-header" id="mainHeader" style="display: none;">
-    <div class="brand-wrapper">
-      <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" class="logo-left"
-        onerror="this.src='https://placehold.co/180x40?text=FLOURICH'">
-      <div class="live-badge">
-        <div class="live-dot"></div>
-        <span id="systemStatusText">Dashboard Active</span>
-      </div>
-    </div>
-    <div class="header-info">
-      <div class="user-badge" id="userDisplayBadge">
-        <i class="fa-solid fa-user-circle"></i>
-        <span id="lblUserEmail">email@example.com</span>
-      </div>
-      <button id="btnLogout" class="btn-logout" onclick="logout()">
-        <i class="fa-solid fa-right-from-bracket"></i> Keluar
-      </button>
-    </div>
-  </header>
+  <div id="appShell" class="app-shell" style="display:none;">
+    <aside class="sidebar">
+      <div class="sidebar-brand">explorin.</div>
+      <div class="sidebar-label">Menu</div>
+      <nav class="sidebar-nav" aria-label="Sidebar navigation">
+        <button class="nav-item active" type="button"><span class="nav-icon"><i class="fa-solid fa-user"></i></span><span>User</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-user-tie"></i></span><span>Pemilik</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-id-card"></i></span><span>Pengemudi</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-car-side"></i></span><span>Kendaraan</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-clipboard-list"></i></span><span>Data Membership</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-arrow-trend-up"></i></span><span>Transaksi Member</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-bag-shopping"></i></span><span>Pesanan</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-calendar-days"></i></span><span>Kalender Kerja</span></button>
+        <button class="nav-item" type="button"><span class="nav-icon"><i class="fa-solid fa-clipboard-check"></i></span><span>Check-in Kendaraan</span></button>
+      </nav>
+    </aside>
 
-  <div class="container">
-    <div id="page-dashboard" class="hidden" style="position:relative; z-index:1;">
+    <div class="main-panel">
+      <header class="app-header" id="mainHeader" style="display: flex;">
+        <div class="brand-wrapper">
+          <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" class="logo-left"
+            onerror="this.src='https://placehold.co/180x40?text=FLOURICH'">
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            <span id="systemStatusText">Dashboard Active</span>
+          </div>
+        </div>
+        <div class="header-info">
+          <div class="user-badge" id="userDisplayBadge">
+            <i class="fa-solid fa-user-circle"></i>
+            <span id="lblUserEmail">email@example.com</span>
+          </div>
+          <button id="btnLogout" class="btn-logout" onclick="logout()">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </header>
+
+      <div class="container">
+        <div id="page-dashboard" class="hidden" style="position:relative; z-index:1;">
 
       <!-- FILTER TANGGAL -->
       <div class="filter-row">
@@ -1093,6 +1201,8 @@
             </tr>
           </tbody>
         </table>
+      </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1502,6 +1612,8 @@
     function showDashboard() {
       var loginPage = document.getElementById('loginPage');
       if (loginPage) loginPage.style.display = 'none';
+      var appShell = document.getElementById('appShell');
+      if (appShell) appShell.style.display = 'flex';
       var pDash = document.getElementById('page-dashboard');
       if (pDash) pDash.classList.remove('hidden');
 
@@ -1525,6 +1637,9 @@
       resetSessionTimer();
       clearSessionState();
       window.__dashSessionBound = false;
+
+      var appShell = document.getElementById('appShell');
+      if (appShell) appShell.style.display = 'none';
 
       var pDash = document.getElementById('page-dashboard');
       if (pDash) pDash.classList.add('hidden');
