@@ -82,15 +82,6 @@
       box-shadow: inset -1px 0 0 rgba(17, 24, 39, 0.02);
     }
 
-    .sidebar-brand {
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.06em;
-      color: #111827;
-      margin: 8px 8px 18px;
-      line-height: 1;
-    }
-
     .sidebar-label {
       font-size: 12px;
       color: #6b7280;
@@ -153,6 +144,14 @@
       min-width: 0;
       padding: 16px 18px 24px;
       background: #f5f5f3;
+    }
+
+    .content-section {
+      display: none;
+    }
+
+    .content-section.active {
+      display: block;
     }
 
     .app-header {
@@ -790,6 +789,62 @@
       margin-top: 12px;
     }
 
+    .module-menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 0;
+      padding: 12px 8px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .module-menu-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 2px 2px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .module-menu-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 43px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #0b8b64, #0d7a5a);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: none;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    }
+
+    .module-menu-card:nth-child(2),
+    .module-menu-card:nth-child(3) {
+      background: linear-gradient(135deg, #5a6c7a, #485c6c);
+      box-shadow: 0 8px 18px rgba(90, 108, 122, 0.12);
+    }
+
+    .module-menu-card:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02);
+    }
+
+    .module-menu-card i {
+      font-size: 18px;
+    }
+
     @media (min-width: 600px) {
       .menu-grid {
         grid-template-columns: repeat(3, 1fr);
@@ -984,12 +1039,12 @@
 
   <div id="appShell" class="app-shell" style="display:none;">
     <aside class="sidebar">
-      <div class="sidebar-brand">explorin.</div>
       <div class="sidebar-label">Menu</div>
       <nav class="sidebar-nav" aria-label="Sidebar navigation">
         <button class="nav-item active" type="button" data-target="section-overview"><span class="nav-icon"><i class="fa-solid fa-chart-column"></i></span><span>Overview</span></button>
         <button class="nav-item" type="button" data-target="section-top-products"><span class="nav-icon"><i class="fa-solid fa-ranking-star"></i></span><span>Top Produk</span></button>
         <button class="nav-item" type="button" data-target="section-chart"><span class="nav-icon"><i class="fa-solid fa-chart-pie"></i></span><span>Grafik</span></button>
+        <button class="nav-item" type="button" data-target="section-module-pencatatan"><span class="nav-icon"><i class="fa-solid fa-book-open"></i></span><span>Module Pencatatan</span></button>
         <button class="nav-item" type="button" data-target="section-penjualan"><span class="nav-icon"><i class="fa-solid fa-table"></i></span><span>Penjualan</span></button>
         <button class="nav-item" type="button" data-target="section-keuangan"><span class="nav-icon"><i class="fa-solid fa-wallet"></i></span><span>Keuangan</span></button>
         <button class="nav-item" type="button" data-target="section-produk"><span class="nav-icon"><i class="fa-solid fa-box"></i></span><span>Produk</span></button>
@@ -1020,185 +1075,195 @@
       <div class="container">
         <div id="page-dashboard" class="hidden" style="position:relative; z-index:1;">
 
-      <!-- FILTER TANGGAL -->
-      <div class="filter-row">
-        <div class="filter-group">
-          <label>Periode Mulai</label>
-          <input type="date" id="startDate" autocomplete="off">
-        </div>
-        <div class="filter-group">
-          <label>Periode Selesai</label>
-          <input type="date" id="endDate" autocomplete="off">
-        </div>
-        <div class="btn-bar">
-          <button class="btn-primary btn" onclick="loadReport()"><i
-              class="fa-solid fa-magnifying-glass"></i>&nbsp;Tampilkan</button>
-          <button class="btn-secondary btn" onclick="resetFilters()"><i
-              class="fa-solid fa-trash"></i>&nbsp;Reset</button>
-        </div>
-      </div>
-
-      <!-- KPI CARDS -->
-      <div class="grid" id="section-overview">
-        <div class="card">
-          <div class="kpi-title"><i class="fa-solid fa-receipt"></i> Transaksi</div>
-          <div class="kpi-value" id="kpiTx">0</div>
-          <div class="kpi-sub">Jumlah baris transaksi</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title"><i class="fa-solid fa-money-bill-wave"></i> Omset</div>
-          <div class="kpi-value" id="kpiGross">Rp 0</div>
-          <div class="kpi-sub">Total penjualan</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title"><i class="fa-solid fa-piggy-bank"></i> Laba Kotor</div>
-          <div class="kpi-value" id="kpiNet">Rp 0</div>
-          <div class="kpi-sub">Omset - HPP</div>
-        </div>
-        <div class="card">
-          <div class="kpi-title"><i class="fa-solid fa-ranking-star"></i> Top Produk</div>
-          <div class="kpi-value" id="kpiTopProd">-</div>
-          <div class="kpi-sub" id="kpiTopQty">Qty 0</div>
-          <div style="margin-top:8px; border-top:1px solid #e2e8f0; padding-top:8px;">
-            <span style="font-size:11px; color:#64748b;">Laba Bersih</span>
-            <div style="font-size:18px; font-weight:900; color:var(--green);" id="netTotalValue">Rp 0</div>
+      <section id="section-overview" class="content-section active">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Periode Mulai</label>
+            <input type="date" id="startDate" autocomplete="off">
+          </div>
+          <div class="filter-group">
+            <label>Periode Selesai</label>
+            <input type="date" id="endDate" autocomplete="off">
+          </div>
+          <div class="btn-bar">
+            <button class="btn-primary btn" onclick="loadReport()"><i
+                class="fa-solid fa-magnifying-glass"></i>&nbsp;Tampilkan</button>
+            <button class="btn-secondary btn" onclick="resetFilters()"><i
+                class="fa-solid fa-trash"></i>&nbsp;Reset</button>
           </div>
         </div>
-      </div>
 
-      <!-- TOP PRODUK TERLARIS -->
-      <div class="section-title" id="section-top-products"><i class="fa-solid fa-chart-bar"></i> Top Produk Terlaris</div>
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:42%">Produk</th>
-              <th style="width:18%">Qty</th>
-              <th style="width:20%">Metode Terbanyak</th>
-              <th style="width:20%">Omset</th>
-            </tr>
-          </thead>
-          <tbody id="topProductsBody">
-            <tr>
-              <td colspan="4" class="loading-text">Memuat...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- CHART KATEGORI -->
-      <div class="section-title" id="section-chart"><i class="fa-solid fa-chart-pie"></i> Performa Penjualan per Kategori</div>
-      <div class="chart-box">
-        <div id="chartKategori" style="width:100%; height:340px;"></div>
-        <div id="chartHint" class="muted" style="margin-top:10px;">Jika grafik tidak tampil, aktifkan koneksi internet untuk Google Charts.</div>
-        <div id="chartTotalOmset" class="muted" style="margin-top:8px; font-weight:800;"></div>
-      </div>
-
-      <!-- MENU NAVIGATION -->
-      <div class="card" style="margin-top:12px; padding:12px;">
-        <div class="section-title" style="margin-top:0; font-size:13px;"><i class="fa-solid fa-bars"></i> Menu Modul</div>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-          <button class="btn-primary btn" type="button" onclick="openModal('modalPenjualan')"><i
-              class="fa-solid fa-cart-plus"></i>&nbsp;Input Penjualan</button>
-          <button class="btn-secondary btn" type="button" onclick="openModal('modalPengeluaran')"><i
-              class="fa-solid fa-money-bill-wave"></i>&nbsp;Catatan Pengeluaran</button>
-          <button class="btn-secondary btn" type="button" onclick="openModal('modalProduk')"><i
-              class="fa-solid fa-box"></i>&nbsp;Kelola Produk</button>
+        <div class="grid">
+          <div class="card">
+            <div class="kpi-title"><i class="fa-solid fa-receipt"></i> Transaksi</div>
+            <div class="kpi-value" id="kpiTx">0</div>
+            <div class="kpi-sub">Jumlah baris transaksi</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title"><i class="fa-solid fa-money-bill-wave"></i> Omset</div>
+            <div class="kpi-value" id="kpiGross">Rp 0</div>
+            <div class="kpi-sub">Total penjualan</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title"><i class="fa-solid fa-piggy-bank"></i> Laba Kotor</div>
+            <div class="kpi-value" id="kpiNet">Rp 0</div>
+            <div class="kpi-sub">Omset - HPP</div>
+          </div>
+          <div class="card">
+            <div class="kpi-title"><i class="fa-solid fa-ranking-star"></i> Top Produk</div>
+            <div class="kpi-value" id="kpiTopProd">-</div>
+            <div class="kpi-sub" id="kpiTopQty">Qty 0</div>
+            <div style="margin-top:8px; border-top:1px solid #e2e8f0; padding-top:8px;">
+              <span style="font-size:11px; color:#64748b;">Laba Bersih</span>
+              <div style="font-size:18px; font-weight:900; color:var(--green);" id="netTotalValue">Rp 0</div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- DATA PENJUALAN (RIWAYAT) -->
-      <div class="section-title" id="section-penjualan"><i class="fa-solid fa-table"></i> Data Penjualan</div>
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Produk</th>
-              <th class="hide-mobile">Harga</th>
-              <th>Qty</th>
-              <th>Total</th>
-              <th>Metode</th>
-            </tr>
-          </thead>
-          <tbody id="tabelData">
-            <tr>
-              <td colspan="6" class="loading-text">Pilih periode tanggal dan klik "Tampilkan"</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- DATA PENGELUARAN -->
-      <div class="section-title" id="section-keuangan">
-        <i class="fa-solid fa-wallet"></i>
-        Catatan Keuangan
-      </div>
-
-      <div class="filter-row" style="margin-top:10px;">
-        <div class="filter-group">
-          <label>Tanggal Mulai</label>
-          <input type="date" id="cdStartDate">
+      <section id="section-top-products" class="content-section">
+        <div class="section-title"><i class="fa-solid fa-chart-bar"></i> Top Produk Terlaris</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:42%">Produk</th>
+                <th style="width:18%">Qty</th>
+                <th style="width:20%">Metode Terbanyak</th>
+                <th style="width:20%">Omset</th>
+              </tr>
+            </thead>
+            <tbody id="topProductsBody">
+              <tr>
+                <td colspan="4" class="loading-text">Memuat...</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </section>
 
-        <div class="filter-group">
-          <label>Tanggal Selesai</label>
-          <input type="date" id="cdEndDate">
+      <section id="section-chart" class="content-section">
+        <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Performa Penjualan per Kategori</div>
+        <div class="chart-box">
+          <div id="chartKategori" style="width:100%; height:340px;"></div>
+          <div id="chartHint" class="muted" style="margin-top:10px;">Jika grafik tidak tampil, aktifkan koneksi internet untuk Google Charts.</div>
+          <div id="chartTotalOmset" class="muted" style="margin-top:8px; font-weight:800;"></div>
         </div>
+      </section>
 
-        <div class="btn-bar">
-          <button class="btn-primary btn" onclick="loadCreditDebit()">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            Tampilkan
+      <section id="section-module-pencatatan" class="content-section">
+        <div class="module-menu-list">
+          <div class="module-menu-label"><i class="fa-solid fa-bars"></i><span>Menu Modul</span></div>
+          <button class="module-menu-card" type="button" onclick="openModal('modalPenjualan')">
+            <i class="fa-solid fa-cart-plus"></i>
+            <span>Input Penjualan</span>
           </button>
-
-          <button class="btn-secondary btn" onclick="resetCreditDebit()">
-            <i class="fa-solid fa-trash"></i>&nbsp;Reset
+          <button class="module-menu-card" type="button" onclick="openModal('modalPengeluaran')">
+            <i class="fa-solid fa-receipt"></i>
+            <span>Catatan Pengeluaran</span>
+          </button>
+          <button class="module-menu-card" type="button" onclick="openModal('modalProduk')">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            <span>Kelola Produk</span>
           </button>
         </div>
-      </div>
+      </section>
 
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Tipe</th>
-              <th>Kategori</th>
-              <th>Deskripsi</th>
-              <th>Metode</th>
-              <th>Nominal</th>
-            </tr>
-          </thead>
-          <tbody id="cdTbody">
-            <tr>
-              <td colspan="6" class="loading-text">
-                Pilih periode dan klik "Tampilkan"
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <section id="section-penjualan" class="content-section">
+        <div class="section-title"><i class="fa-solid fa-table"></i> Data Penjualan</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Produk</th>
+                <th class="hide-mobile">Harga</th>
+                <th>Qty</th>
+                <th>Total</th>
+                <th>Metode</th>
+              </tr>
+            </thead>
+            <tbody id="tabelData">
+              <tr>
+                <td colspan="6" class="loading-text">Pilih periode tanggal dan klik "Tampilkan"</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      <!-- DAFTAR PRODUK -->
-      <div class="section-title" id="section-produk"><i class="fa-solid fa-box"></i> Daftar Produk</div>
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>ID Produk</th>
-              <th>Nama Produk</th>
-              <th>Stok</th>
-              <th>Harga</th>
-            </tr>
-          </thead>
-          <tbody id="produkTbody">
-            <tr>
-              <td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <section id="section-keuangan" class="content-section">
+        <div class="section-title">
+          <i class="fa-solid fa-wallet"></i>
+          Catatan Keuangan
+        </div>
+
+        <div class="filter-row" style="margin-top:10px;">
+          <div class="filter-group">
+            <label>Tanggal Mulai</label>
+            <input type="date" id="cdStartDate">
+          </div>
+
+          <div class="filter-group">
+            <label>Tanggal Selesai</label>
+            <input type="date" id="cdEndDate">
+          </div>
+
+          <div class="btn-bar">
+            <button class="btn-primary btn" onclick="loadCreditDebit()">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              Tampilkan
+            </button>
+
+            <button class="btn-secondary btn" onclick="resetCreditDebit()">
+              <i class="fa-solid fa-trash"></i>&nbsp;Reset
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Tipe</th>
+                <th>Kategori</th>
+                <th>Deskripsi</th>
+                <th>Metode</th>
+                <th>Nominal</th>
+              </tr>
+            </thead>
+            <tbody id="cdTbody">
+              <tr>
+                <td colspan="6" class="loading-text">
+                  Pilih periode dan klik "Tampilkan"
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="section-produk" class="content-section">
+        <div class="section-title"><i class="fa-solid fa-box"></i> Daftar Produk</div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>ID Produk</th>
+                <th>Nama Produk</th>
+                <th>Stok</th>
+                <th>Harga</th>
+              </tr>
+            </thead>
+            <tbody id="produkTbody">
+              <tr>
+                <td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
         </div>
       </div>
     </div>
@@ -2347,19 +2412,29 @@
     // ============================================================
     function bindSidebarNavigation() {
       var navItems = document.querySelectorAll('.nav-item');
+      var sections = document.querySelectorAll('.content-section');
+
+      function activateSection(targetId) {
+        navItems.forEach(function (item) {
+          item.classList.toggle('active', item.getAttribute('data-target') === targetId);
+        });
+
+        sections.forEach(function (section) {
+          var isActive = section.id === targetId;
+          section.classList.toggle('active', isActive);
+          section.classList.toggle('hidden', !isActive);
+        });
+      }
+
       navItems.forEach(function (navItem) {
         navItem.addEventListener('click', function () {
           var targetId = navItem.getAttribute('data-target');
-          navItems.forEach(function (item) {
-            item.classList.toggle('active', item === navItem);
-          });
           if (!targetId) return;
-          var target = document.getElementById(targetId);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
+          activateSection(targetId);
         });
       });
+
+      activateSection('section-overview');
     }
 
     document.addEventListener('DOMContentLoaded', function () {
