@@ -80,6 +80,12 @@
       top: 0;
       height: 100vh;
       box-shadow: inset -1px 0 0 rgba(17, 24, 39, 0.02);
+      transition: transform 0.3s ease;
+      z-index: 9999;
+    }
+
+    .hide-on-desktop {
+      display: none;
     }
 
     .sidebar-label {
@@ -870,6 +876,43 @@
     }
 
     @media (max-width: 768px) {
+      .hide-on-desktop {
+        display: inline-flex;
+      }
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        z-index: 9998;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      .sidebar-overlay.show {
+        display: block;
+        opacity: 1;
+      }
+      .mobile-menu-btn {
+        background: transparent;
+        border: none;
+        font-size: 22px;
+        color: var(--dark);
+        cursor: pointer;
+        padding: 4px;
+        align-items: center;
+        justify-content: center;
+      }
       .kpi-title { font-size: 12px; }
       .kpi-value { font-size: 18px; }
       .kpi-sub { font-size: 11px; white-space: normal; word-wrap: break-word; line-height: 1.2; }
@@ -1038,7 +1081,8 @@
   </section>
 
   <div id="appShell" class="app-shell" style="display:none;">
-    <aside class="sidebar">
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <aside class="sidebar" id="mainSidebar">
       <div class="sidebar-label">Menu</div>
       <nav class="sidebar-nav" aria-label="Sidebar navigation">
         <button class="nav-item active" type="button" data-target="section-overview"><span class="nav-icon"><i class="fa-solid fa-chart-column"></i></span><span>Overview</span></button>
@@ -1052,6 +1096,9 @@
     <div class="main-panel">
       <header class="app-header" id="mainHeader" style="display: flex;">
         <div class="brand-wrapper">
+          <button id="mobileMenuBtn" class="mobile-menu-btn hide-on-desktop" onclick="toggleSidebar()" type="button" aria-label="Toggle Menu">
+            <i class="fa-solid fa-bars"></i>
+          </button>
           <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" class="logo-left"
             onerror="this.src='https://placehold.co/180x40?text=FLOURICH'">
           <div class="live-badge">
@@ -2477,6 +2524,31 @@
     }
 
     // ============================================================
+    // SIDEBAR MOBILE
+    // ============================================================
+    function toggleSidebar() {
+      var sidebar = document.getElementById('mainSidebar');
+      var overlay = document.getElementById('sidebarOverlay');
+      if (!sidebar || !overlay) return;
+      var isOpen = sidebar.classList.contains('open');
+      if (isOpen) {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('show');
+        setTimeout(function() {
+          if (!sidebar.classList.contains('open')) {
+            overlay.style.display = 'none';
+          }
+        }, 300);
+      } else {
+        overlay.style.display = 'block';
+        // force reflow
+        void overlay.offsetWidth;
+        sidebar.classList.add('open');
+        overlay.classList.add('show');
+      }
+    }
+
+    // ============================================================
     // INIT
     // ============================================================
     function bindSidebarNavigation() {
@@ -2500,6 +2572,12 @@
           var targetId = navItem.getAttribute('data-target');
           if (!targetId) return;
           activateSection(targetId);
+          if (window.innerWidth <= 768) {
+            var sidebar = document.getElementById('mainSidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+              toggleSidebar();
+            }
+          }
         });
       });
 
