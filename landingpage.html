@@ -238,6 +238,112 @@ footer p{font-size:10px}
   .stats-section{padding:25px 0}
 }
 </style>
+
+<style>
+  /* ============ DARK MODERN THEME OVERRIDE (senada dashboard) ============ */
+  body {
+    background-color: #070b16;
+    background-image:
+      radial-gradient(1100px 560px at 85% -10%, rgba(16, 185, 129, 0.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 30%, rgba(45, 212, 191, 0.07), transparent 55%),
+      radial-gradient(760px 420px at 50% 110%, rgba(99, 102, 241, 0.06), transparent 60%);
+    background-attachment: fixed;
+    color: #e2e8f0;
+  }
+
+  ::selection { background: rgba(16, 185, 129, 0.35); }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #070b16; }
+  ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 8px; }
+
+  /* NAVBAR */
+  .navbar { background: rgba(7, 11, 22, 0.85); border-bottom: 1px solid rgba(148, 163, 184, 0.12); backdrop-filter: blur(16px); }
+  .nav-links { color: #94a3b8; }
+  .nav-links a:hover { color: #34d399; }
+  .btn-outline { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.25); color: #e2e8f0; }
+  .btn-outline:hover { border-color: rgba(52, 211, 153, 0.5); color: #34d399; background: rgba(16, 185, 129, 0.12); }
+  .menu-btn { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.25); color: #e2e8f0; }
+  .brand img { mix-blend-mode: normal; background: #fff; border-radius: 11px; padding: 3px 7px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
+
+  /* HERO */
+  .hero {
+    background:
+      radial-gradient(circle at 8% 20%, rgba(16, 185, 129, 0.14), transparent 30%),
+      radial-gradient(circle at 92% 8%, rgba(244, 63, 94, 0.07), transparent 26%),
+      #070b16;
+  }
+  .hero::before { border-color: rgba(16, 185, 129, 0.14); }
+  .eyebrow { background: rgba(52, 211, 153, 0.1); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+  .hero h1 { color: #f1f5f9; }
+  .hero h1 span { color: #34d399; text-shadow: 0 0 30px rgba(52, 211, 153, 0.35); }
+  .hero-copy { color: #94a3b8; }
+  .hero-note { color: #64748b; }
+
+  /* MOCKUP DASHBOARD MINI */
+  .mockup-glow { background: rgba(16, 185, 129, 0.16); }
+  .dashboard-mockup { background: #0d1526; border-color: rgba(148, 163, 184, 0.14); box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 0 80px rgba(16, 185, 129, 0.08); }
+  .mock-top { border-bottom-color: rgba(148, 163, 184, 0.12); }
+  .mock-user { color: #94a3b8; background: rgba(148, 163, 184, 0.08); }
+  .mock-body { background: #0a1120; }
+  .mock-filter { background: #0f1a2e; border-color: rgba(148, 163, 184, 0.13); }
+  .mock-input { background: #0b1424; color: #64748b; }
+  .mock-kpi { background: #0f1a2e; border-color: rgba(148, 163, 184, 0.13); }
+  .mock-kpi-label { color: #64748b; }
+  .mock-kpi-value { color: #34d399; text-shadow: 0 0 18px rgba(52, 211, 153, 0.3); }
+  .mock-kpi-sub { color: #475569; }
+  .mock-panel { background: #0f1a2e; border-color: rgba(148, 163, 184, 0.13); }
+  .mock-title { color: #e2e8f0; }
+  .bar { background: rgba(52, 211, 153, 0.12); }
+  .mock-table-row { border-bottom-color: rgba(148, 163, 184, 0.09); color: #64748b; }
+  .mock-table-row b { color: #cbd5e1; }
+
+  /* SECTION */
+  .section-head h2 { color: #f1f5f9; }
+  .section-head p { color: #94a3b8; }
+  .section-kicker { color: #34d399; }
+
+  /* FEATURES */
+  .feature { background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)); border-color: rgba(148, 163, 184, 0.13); box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3); }
+  .feature:hover { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4); border-color: rgba(52, 211, 153, 0.28); }
+  .feature h3 { color: #f1f5f9; }
+  .feature p { color: #94a3b8; }
+  .feature-icon { background: rgba(16, 185, 129, 0.14); color: #34d399; box-shadow: 0 0 20px rgba(16, 185, 129, 0.18); }
+
+  /* STATS */
+  .stats-section { background: rgba(255, 255, 255, 0.02); border-top-color: rgba(148, 163, 184, 0.12); border-bottom-color: rgba(148, 163, 184, 0.12); }
+  .stat { border-right-color: rgba(148, 163, 184, 0.12); }
+  .stat strong { color: #34d399; text-shadow: 0 0 24px rgba(52, 211, 153, 0.3); }
+  .stat span { color: #64748b; }
+
+  /* PRODUCTS */
+  .product-card { background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)); border-color: rgba(148, 163, 184, 0.13); }
+  .product-card:hover { box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4); border-color: rgba(52, 211, 153, 0.28); }
+  .product-photo { background: #f1f5f9; border-color: rgba(148, 163, 184, 0.2); }
+  .product-name { color: #f1f5f9; }
+  .product-volume { color: #64748b; }
+  .product-bottom strong { color: #34d399; }
+  .stock-ok { background: rgba(52, 211, 153, 0.15); color: #34d399; }
+  .stock-low { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
+  /* CTA */
+  .cta { background: linear-gradient(135deg, #041f1a, #064e3b); border: 1px solid rgba(52, 211, 153, 0.25); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 60px rgba(16, 185, 129, 0.12); }
+  .cta h2 { color: #ecfdf5; }
+
+  /* FOOTER */
+  footer { background: #060a13; border-top: 1px solid rgba(148, 163, 184, 0.1); }
+  footer p { color: #64748b; }
+
+  /* LOGIN MODAL */
+  .login-modal { background: rgba(2, 6, 14, 0.7); }
+  .login-box { background: #0f1a2e; border: 1px solid rgba(148, 163, 184, 0.15); box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6); }
+  .login-box h3 { color: #f1f5f9; }
+  .login-box p { color: #94a3b8; }
+  .login-box-head img { background: #fff; border-radius: 9px; padding: 3px; }
+  .close { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; }
+  .demo-input { background: #0b1424; border-color: rgba(148, 163, 184, 0.22); color: #e2e8f0; }
+  .demo-input::placeholder { color: #475569; }
+  .bridge-note { background: rgba(16, 185, 129, 0.1); color: #94a3b8; }
+</style>
 </head>
 
 <body>
@@ -245,7 +351,7 @@ footer p{font-size:10px}
 <header class="navbar">
   <div class="container nav-inner">
     <a href="#beranda" class="brand">
-      <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" alt="Flourich" style="height: 50px; width: auto; object-fit: contain; mix-blend-mode: multiply;">
+      <img src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" alt="Flourich" style="height: 50px; width: auto; object-fit: contain;">
     </a>
     <nav class="nav-links">
       <a href="#beranda">Beranda</a>
