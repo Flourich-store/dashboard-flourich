@@ -1398,6 +1398,60 @@
       preloadCharts();
     }
 
+    var SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+    function setSessionExpiry() {
+      sessionStorage.setItem('dash_session_expiry', String(Date.now() + SESSION_TIMEOUT_MS));
+    }
+
+    function clearSessionState() {
+      sessionStorage.removeItem('dash_username');
+      sessionStorage.removeItem('dash_role');
+      sessionStorage.removeItem('dash_session_expiry');
+    }
+
+    function bindSessionActivity() {
+      if (window.__dashSessionBound) return;
+      window.__dashSessionBound = true;
+      var activityEvents = ['click', 'keydown', 'mousemove', 'touchstart', 'scroll'];
+      activityEvents.forEach(function (eventName) {
+        document.addEventListener(eventName, function () {
+          if (!sessionStorage.getItem('dash_username')) return;
+          setSessionExpiry();
+          startSessionTimer(SESSION_TIMEOUT_MS);
+        }, { passive: true });
+      });
+    }
+
+    function resetSessionTimer() {
+      if (typeof sessionTimer !== 'undefined' && sessionTimer) {
+        clearTimeout(sessionTimer);
+        sessionTimer = null;
+      }
+    }
+
+    function restoreSessionIfValid() {
+      var username = sessionStorage.getItem('dash_username');
+      var role = sessionStorage.getItem('dash_role');
+      var expiry = sessionStorage.getItem('dash_session_expiry');
+
+      if (!username || !role || !expiry) {
+        return false;
+      }
+
+      var expiryMs = Number(expiry);
+      if (!isFinite(expiryMs) || expiryMs <= Date.now()) {
+        logout();
+        return false;
+      }
+
+      bindSessionActivity();
+      showDashboard();
+      startSessionTimer(Math.max(expiryMs - Date.now(), 1000));
+      initDashboardData();
+      return true;
+    }
+
     function handleLogin(event) {
       event.preventDefault();
 
@@ -1429,10 +1483,11 @@
 
           sessionStorage.setItem('dash_username', result.username || username);
           sessionStorage.setItem('dash_role', result.role || 'KASIR');
-          sessionStorage.setItem('dash_session_expiry', String(Date.now() + 30 * 60 * 1000));
+          setSessionExpiry();
+          bindSessionActivity();
           document.getElementById('loginPage').style.display = 'none';
           showDashboard();
-          startSessionTimer(30 * 60 * 1000);
+          startSessionTimer(SESSION_TIMEOUT_MS);
           initDashboardData();
         })
         .withFailureHandler(function (error) {
@@ -1467,11 +1522,9 @@
     }
 
     function logout() {
-      if (typeof sessionTimer !== 'undefined' && sessionTimer) {
-        clearTimeout(sessionTimer);
-      }
-      sessionStorage.clear();
-      localStorage.clear();
+      resetSessionTimer();
+      clearSessionState();
+      window.__dashSessionBound = false;
 
       var pDash = document.getElementById('page-dashboard');
       if (pDash) pDash.classList.add('hidden');
@@ -2184,6 +2237,9 @@
       runSafely('preloadCharts', preloadCharts);
       runSafely('initPenjualanCalc', initPenjualanCalc);
 
+      runSafely('restoreSessionIfValid', restoreSessionIfValid);
+      bindSessionActivity();
+
       runSafely('setInitialDates', function () {
         var today = getTodayISO();
         var startEl = document.getElementById('cdStartDate');
@@ -2211,9 +2267,12 @@
 
     var sessionTimer;
     function startSessionTimer(duration) {
-      if (sessionTimer) clearTimeout(sessionTimer);
+      resetSessionTimer();
       sessionTimer = setTimeout(function () {
-        logout();
+        if (sessionStorage.getItem('dash_username')) {
+          logout();
+          showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'error');
+        }
       }, duration);
     }
 
