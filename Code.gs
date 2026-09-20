@@ -43,13 +43,16 @@ function getActiveSheetId() {
   return sheetId;
 }
 
+var __ssCache = null;
+
 function getSpreadsheet() {
   try {
+    if (__ssCache) return __ssCache; // cache dalam satu eksekusi script
     var sheetId = getActiveSheetId();
     Logger.log('DEBUG getSpreadsheet: Opening sheet ' + sheetId);
-    var ss = SpreadsheetApp.openById(sheetId);
+    __ssCache = SpreadsheetApp.openById(sheetId);
     Logger.log('DEBUG getSpreadsheet: Sheet opened successfully');
-    return ss;
+    return __ssCache;
   } catch (e) {
     Logger.log('ERROR getSpreadsheet: Failed to open - ' + e.toString());
     throw e;
@@ -344,10 +347,14 @@ function addPenjualan(data) {
     var laba = totalHarga - totalHPP;
 
     // TRX ID mengikuti format aplikasi POS: FR-<timestamp milidetik>
+    // Cek unik cukup baca kolom A saja (bukan seluruh 11 kolom sheet)
     var existingIds = {};
-    var values = sheet.getDataRange().getValues();
-    for (var vi = 1; vi < values.length; vi++) {
-      existingIds[String(values[vi][0] || '').trim()] = true;
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var idCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var vi = 0; vi < idCol.length; vi++) {
+        existingIds[String(idCol[vi][0] || '').trim()] = true;
+      }
     }
     var idTx;
     do { idTx = 'FR-' + Date.now(); } while (existingIds[idTx]);
@@ -397,6 +404,7 @@ function updateStock(namaProduk, qtySold) {
       var newStok = currentStok - qtySold;
       if (newStok < 0) newStok = 0;
       sheet.getRange(i + 1, idxStok + 1).setValue(newStok);
+      _invalidateProdukCache();
       break;
     }
   }
@@ -405,14 +413,25 @@ function updateStock(namaProduk, qtySold) {
 // ============================================================
 // PRODUK CRUD
 // ============================================================
+// Cache daftar produk dalam satu eksekusi script: getProdukList bisa
+// dipanggil beberapa kali per sesi (load awal + buka modal), dan setiap
+// pemanggilan tadinya membaca ulang seluruh sheet dari Sheets API.
+var __produkCache = null;
+
+function _invalidateProdukCache() {
+  __produkCache = null;
+}
+
 function getProdukList() {
   try {
+    if (__produkCache) return { status: 'success', products: __produkCache, cached: true };
+
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Produk');
     if (!sheet) return { status: 'error', message: "Sheet Produk tidak ditemukan" };
 
     var values = sheet.getDataRange().getValues();
-    if (!values || values.length <= 1) return { status: 'success', products: [] };
+    if (!values || values.length <= 1) { __produkCache = []; return { status: 'success', products: [] }; }
 
     var header = [];
     for (var h = 0; h < values[0].length; h++) {
@@ -442,6 +461,7 @@ function getProdukList() {
       });
     }
 
+    __produkCache = products;
     return { status: 'success', products: products };
   } catch (e) {
     return { status: 'error', message: e.toString() };
@@ -477,6 +497,7 @@ function createProduk(payload) {
     }
 
     sheet.appendRow([idProduk, namaProduk, stok, harga]);
+    _invalidateProdukCache();
     return { status: 'success', message: 'Produk berhasil ditambahkan' };
   } catch (e) {
     return { status: 'error', message: e.toString() };
@@ -532,11 +553,17 @@ function updateProduk(idProduk, payload) {
         var nextStok = stok !== null ? stok : Number(values[i][idxStok] || 0);
         var nextHarga = harga !== null ? harga : Number(values[i][idxHarga] || 0);
 
-        sheet.getRange(i + 1, idxId + 1).setValue(nextId);
-        sheet.getRange(i + 1, idxNama + 1).setValue(nextNama);
-        sheet.getRange(i + 1, idxStok + 1).setValue(nextStok);
-        sheet.getRange(i + 1, idxHarga + 1).setValue(nextHarga);
+        // Satu tulisan untuk 4 kolom (sebelumnya 4x setValue = 4 round-trip ke Sheets API)
+        var colMin = Math.min(idxId, idxNama, idxStok, idxHarga);
+        var colMax = Math.max(idxId, idxNama, idxStok, idxHarga);
+        var rowVals = values[i].slice(colMin, colMax + 1);
+        rowVals[idxId - colMin] = nextId;
+        rowVals[idxNama - colMin] = nextNama;
+        rowVals[idxStok - colMin] = nextStok;
+        rowVals[idxHarga - colMin] = nextHarga;
+        sheet.getRange(i + 1, colMin + 1, 1, colMax - colMin + 1).setValues([rowVals]);
 
+        _invalidateProdukCache();
         return { status: 'success', message: 'Produk berhasil diupdate' };
       }
     }
@@ -563,6 +590,7 @@ function deleteProduk(idProduk, role) {
       var rowId = String(values[i][0] || '').trim();
       if (rowId === id) {
         sheet.deleteRow(i + 1);
+        _invalidateProdukCache();
         return { status: 'success', message: 'Produk berhasil dihapus' };
       }
     }
