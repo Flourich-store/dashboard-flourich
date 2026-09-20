@@ -104,7 +104,7 @@
       top: 0;
       height: 100vh;
       box-shadow: inset -1px 0 0 rgba(17, 24, 39, 0.02);
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, width 0.3s ease, padding 0.3s ease;
       z-index: 9999;
     }
 
@@ -167,6 +167,58 @@
       background: transparent;
       font-size: 13px;
       color: inherit;
+    }
+
+    /* --- Sidebar collapse (khusus desktop) --- */
+    .sidebar-collapse-btn {
+      display: none;
+    }
+
+    @media (min-width: 769px) {
+      .sidebar-collapse-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 16px;
+        right: -13px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--green);
+        color: #fff;
+        border: 3px solid #f4f4f2;
+        cursor: pointer;
+        font-size: 10px;
+        z-index: 20;
+        box-shadow: var(--shadow-md);
+        transition: background 0.2s ease, transform 0.3s ease;
+      }
+      .sidebar-collapse-btn:hover {
+        background: #095c36;
+        transform: scale(1.1);
+      }
+      .app-shell.sidebar-collapsed .sidebar {
+        width: 68px;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .app-shell.sidebar-collapsed .sidebar-label {
+        visibility: hidden;
+        padding: 0;
+        margin-top: 0;
+      }
+      .app-shell.sidebar-collapsed .nav-item {
+        justify-content: center;
+        padding: 10px 8px;
+        gap: 0;
+      }
+      .app-shell.sidebar-collapsed .nav-item > span:not(.nav-icon) {
+        display: none;
+      }
+      .app-shell.sidebar-collapsed .sidebar-collapse-btn i {
+        transform: rotate(180deg);
+      }
     }
 
     .main-panel {
@@ -542,21 +594,25 @@
     }
 
     .btn-edit {
-      position: relative;
-      z-index: 9999 !important;
-      pointer-events: auto !important;
       cursor: pointer;
       background: #3b82f6;
       color: white;
       padding: 6px 12px;
       border-radius: 6px;
       font-size: 12px;
+      margin-right: 4px;
       border: none;
       font-weight: 600;
     }
 
     .btn-edit:hover {
       background: #2563eb;
+    }
+
+    /* Kasir (bukan SUPER_ADMIN): sembunyikan aksi ubah data di tabel produk */
+    html[data-can-modify="0"] #modalProdukTbody .btn-edit,
+    html[data-can-modify="0"] #modalProdukTbody .btn-danger {
+      display: none;
     }
 
     .btn-bar {
@@ -1275,6 +1331,10 @@
     }
 
     html.theme-dark .mobile-menu-btn { color: var(--text); }
+    html.theme-dark .sidebar-collapse-btn {
+      border-color: #070b16;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
+    }
 
     /* --- Header (dark) --- */
     html.theme-dark .app-header {
@@ -1582,6 +1642,9 @@
   <div id="appShell" class="app-shell" style="display:none;">
     <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <aside class="sidebar" id="mainSidebar">
+      <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" type="button" onclick="toggleSidebarCollapse()" aria-label="Ciutkan sidebar" title="Ciutkan sidebar">
+        <i class="fa-solid fa-angles-left"></i>
+      </button>
       <div class="sidebar-label">Menu</div>
       <nav class="sidebar-nav" aria-label="Sidebar navigation">
         <button class="nav-item active" type="button" data-target="section-overview"><span class="nav-icon"><i class="fa-solid fa-chart-column"></i></span><span>Overview</span></button>
@@ -1726,7 +1789,7 @@
             <i class="fa-solid fa-receipt"></i>
             <span>Catatan Pengeluaran</span>
           </button>
-          <button class="module-menu-card" type="button" onclick="openModal('modalProduk')">
+          <button class="module-menu-card" type="button" onclick="openProdukModal()">
             <i class="fa-solid fa-boxes-stacked"></i>
             <span>Kelola Produk</span>
           </button>
@@ -1806,6 +1869,9 @@
 
       <section id="section-produk" class="content-section">
         <div class="section-title"><i class="fa-solid fa-box"></i> Daftar Produk</div>
+        <div class="btn-bar" style="margin-top:10px;">
+          <button class="btn-primary btn" type="button" onclick="openProdukModal()"><i class="fa-solid fa-plus"></i>&nbsp;Kelola / Tambah Produk</button>
+        </div>
         <div class="table-responsive">
           <table>
             <thead>
@@ -1966,7 +2032,7 @@
         </div>
         <div class="btn-bar" style="grid-template-columns: 1fr 1fr; margin-top:15px;">
           <button class="btn-primary btn" onclick="aksiCreateProduk()"><i class="fa-solid fa-plus"></i>&nbsp;Tambah Baru</button>
-          <button id="btnSimpanEdit" class="btn-secondary btn" onclick="aksiUpdateProduk()">
+          <button id="btnSimpanEdit" class="btn-secondary btn" onclick="aksiUpdateProduk()" style="display:none;">
             <i class="fa-solid fa-pen-to-square"></i>&nbsp;Simpan Edit
           </button>
         </div>
@@ -2085,6 +2151,20 @@
         var dateEl = document.getElementById('inTanggal');
         if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
       }
+    }
+
+    // Buka modal Kelola Produk dari tombol menu/tabel utama: selalu mulai
+    // dengan form kosong & scroll ke atas. Tanpa ini, tombol Edit/Hapus di
+    // tabel bawah berada di luar viewport saat modal dibuka (pengguna
+    // mengira tombolnya rusak/tidak bisa diklik), dan form bisa tertinggal
+    // data edit lama dari sesi sebelumnya.
+    // CATATAN: editProduk TIDAK lewat sini (langsung openModal) agar form
+    // yang sudah diisi tidak ikut ter-reset.
+    function openProdukModal() {
+      clearProdukForm();
+      var body = document.querySelector('#modalProduk .modal-content');
+      if (body) body.scrollTop = 0;
+      openModal('modalProduk');
     }
 
     function closeModal(modalId) {
@@ -2250,7 +2330,15 @@
       if (lblEmail) lblEmail.textContent = username;
 
       var btnEdit = document.getElementById('btnSimpanEdit');
-      if (btnEdit) btnEdit.style.display = (role === 'SUPER_ADMIN') ? 'inline-flex' : 'none';
+      // Tombol Simpan Edit hanya muncul saat benar-benar mode edit (dari editProduk).
+      if (btnEdit) btnEdit.style.display = 'none';
+      // Tombol Edit/Hapus di tabel ikut role: kasir tidak perlu aksi
+      // yang pasti ditolak backend (hanya SUPER_ADMIN boleh ubah data).
+      var canModify = role === 'SUPER_ADMIN';
+      document.documentElement.setAttribute('data-can-modify', canModify ? '1' : '0');
+      if (document.getElementById('modalProdukTbody') && cachedProduk.length > 0) {
+        renderProdukModal(cachedProduk);
+      }
       notifyParentState('logged-in');
       notifyParentHeight();
     }
@@ -2332,19 +2420,39 @@
 
     function editProduk(id) {
       const produk = cachedProduk.find(p => (p.idProduk || p.id_produk || p.id) === id);
-      if (produk) {
-        const idInp = document.getElementById('prodIdInp');
-        idInp.value = id;
-        idInp.dataset.idLama = id;
+      if (!produk) { showToast('Produk tidak ditemukan', 'error'); return; }
+      const idInp = document.getElementById('prodIdInp');
+      idInp.value = id;
+      idInp.dataset.idLama = id;
 
-        document.getElementById('prodNamaInp').value = produk.namaProduk || produk.nama_produk || produk.nama;
-        document.getElementById('prodStokInp').value = produk.stok;
-        document.getElementById('prodHargaInp').value = produk.harga;
+      document.getElementById('prodNamaInp').value = produk.namaProduk || produk.nama_produk || produk.nama || '';
+      document.getElementById('prodStokInp').value = produk.stok;
+      document.getElementById('prodHargaInp').value = produk.harga;
 
-        idInp.disabled = false;
-        document.getElementById('btnSimpanEdit').style.display = 'block';
-        openModal('modalProduk');
-      }
+      idInp.disabled = true;
+      document.getElementById('btnSimpanEdit').style.display = 'inline-flex';
+      var body = document.querySelector('#modalProduk .modal-content');
+      if (body) body.scrollTop = 0;
+      openModal('modalProduk');
+    }
+
+    // ============================================================
+    // SIDEBAR COLLAPSE (DESKTOP)
+    // ============================================================
+    function toggleSidebarCollapse() {
+      var shell = document.getElementById('appShell');
+      if (!shell) return;
+      var collapsed = shell.classList.toggle('sidebar-collapsed');
+      try { localStorage.setItem('dash_sidebar_collapsed', collapsed ? '1' : '0'); } catch (e) { }
+    }
+
+    function restoreSidebarCollapse() {
+      try {
+        if (localStorage.getItem('dash_sidebar_collapsed') === '1') {
+          var shell = document.getElementById('appShell');
+          if (shell) shell.classList.add('sidebar-collapsed');
+        }
+      } catch (e) { }
     }
 
     // ============================================================
@@ -2803,7 +2911,7 @@
       });
     }
 
-    function loadProdukCRUD() {
+    function loadProdukCRUD(isRetry) {
       safeGoogleRun('getProdukList', [], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
@@ -2812,6 +2920,18 @@
           updateProdukDatalist(cachedProduk);
         } else {
           document.getElementById('modalProdukTbody').innerHTML = '<tr><td colspan="5" class="empty-text">Gagal memuat produk</td></tr>';
+        }
+      }, function () {
+        // onComplete: jika request ter-dedup (load awal masih berjalan saat
+        // modal dibuka) tabel modal bisa terjebak "Memuat..." — coba sekali lagi.
+        if (!isRetry) {
+          setTimeout(function () {
+            var el = document.getElementById('modalProduk');
+            var t = document.getElementById('modalProdukTbody');
+            if (el && el.classList.contains('show') && t && t.textContent.indexOf('Memuat') !== -1) {
+              loadProdukCRUD(true);
+            }
+          }, 600);
         }
       });
     }
@@ -2838,21 +2958,42 @@
       const tbody = document.getElementById('modalProdukTbody');
       if (!tbody) return;
 
+      const canModify = getRole() === 'SUPER_ADMIN';
+      if (!products || products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-text">Tidak ada produk. Tambahkan produk pertama Anda di form atas.</td></tr>';
+        return;
+      }
+
       tbody.innerHTML = products.map(function (p) {
         const id = p.idProduk || p.id_produk || p.id || '';
         const nama = p.namaProduk || p.nama_produk || p.nama || '';
+        const aksi = canModify
+          ? '<button class="btn-edit" data-id="' + escapeHtml(id) + '">Edit</button>' +
+            '<button class="btn-danger" data-id="' + escapeHtml(id) + '">Hapus</button>'
+          : '<span class="muted" style="font-size:11px;">Hanya SUPER_ADMIN</span>';
         return '<tr>' +
           '<td>' + escapeHtml(id) + '</td>' +
           '<td>' + escapeHtml(nama) + '</td>' +
           '<td>' + Number(p.stok || 0) + '</td>' +
           '<td>' + formatIDR(p.harga || 0) + '</td>' +
-          '<td>' +
-          '<button class="btn-edit" onclick="event.stopPropagation(); editProduk(&#39;' + escapeJs(id) + '&#39;)">Edit</button>' +
-          '<button class="btn-danger" style="margin-left:4px;" onclick="event.stopPropagation(); aksiDeleteProduk(&#39;' + escapeJs(id) + '&#39;)">Hapus</button>' +
-          '</td>' +
+          '<td>' + aksi + '</td>' +
           '</tr>';
       }).join('');
     }
+
+    // Delegasi klik: satu listener untuk semua tombol Edit/Hapus di tabel.
+    // Lebih aman daripada onclick inline + escaping manual untuk ID produk
+    // yang mengandung karakter khusus (kutip, backslash, dll).
+    (function bindProdukTableActions() {
+      document.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('#modalProdukTbody .btn-edit, #modalProdukTbody .btn-danger') : null;
+        if (!btn) return;
+        var id = btn.getAttribute('data-id');
+        if (!id) return;
+        if (btn.classList.contains('btn-edit')) editProduk(id);
+        else aksiDeleteProduk(id);
+      });
+    })();
 
     function updateProdukDatalist(products) {
       const dl = document.getElementById('produkListDatalist');
@@ -2929,7 +3070,8 @@
       document.getElementById('prodStokInp').value = '';
       document.getElementById('prodHargaInp').value = '';
       idInp.disabled = false;
-      idInp.style.background = '#fff';
+      var btnEdit = document.getElementById('btnSimpanEdit');
+      if (btnEdit) btnEdit.style.display = 'none';
     }
 
     // ============================================================
@@ -3115,6 +3257,7 @@
       runSafely('preloadCharts', preloadCharts);
       runSafely('initPenjualanCalc', initPenjualanCalc);
       runSafely('bindSidebarNavigation', bindSidebarNavigation);
+      runSafely('restoreSidebarCollapse', restoreSidebarCollapse);
 
       runSafely('restoreSessionIfValid', restoreSessionIfValid);
       bindSessionActivity();
