@@ -324,7 +324,10 @@ function addPenjualan(data) {
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) return { status: 'error', message: "Sheet Penjualan tidak ditemukan" };
 
+    var now = new Date();
+    // Tanggal & jam mengikuti aplikasi POS (datetime): tanggal terpilih + jam saat input
     var tanggal = data.tanggal ? new Date(data.tanggal + 'T00:00:00') : new Date();
+    if (data.tanggal) tanggal.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
     var namaProduk = String(data.namaProduk || '').trim();
     var harga = Number(data.harga || 0);
     var jumlah = Number(data.jumlah || 1);
@@ -340,13 +343,22 @@ function addPenjualan(data) {
     var totalHPP = hpp * jumlah;
     var laba = totalHarga - totalHPP;
 
-    var now = new Date();
-    var idTx = 'TX' + Utilities.formatDate(now, 'Asia/Jakarta', 'yyyyMMddHHmmss') + Math.floor(Math.random() * 1000);
+    // TRX ID mengikuti format aplikasi POS: FR-<timestamp milidetik>
+    var existingIds = {};
+    var values = sheet.getDataRange().getValues();
+    for (var vi = 1; vi < values.length; vi++) {
+      existingIds[String(values[vi][0] || '').trim()] = true;
+    }
+    var idTx;
+    do { idTx = 'FR-' + Date.now(); } while (existingIds[idTx]);
 
-    sheet.appendRow([idTx, tanggal, namaProduk, volume, jumlah, harga, totalHarga, metode, totalHPP, laba]);
-    var lastRow = sheet.getLastRow();
-    var cell = sheet.getRange(lastRow, 10); // 10 adalah kolom J (Laba)
-    cell.setFormula("=G" + lastRow + "-I" + lastRow); // Rumus: Total Harga - HPP
+    // Metode mengikuti gaya POS: CASH / QRIS
+    var metodePos = metode.toUpperCase().indexOf('QR') !== -1 ? 'QRIS' : 'CASH';
+
+    // Susunan kolom mengikuti skema sheet aplikasi POS (11 kolom):
+    // ID Transaksi | Tanggal | Nama Produk | Jumlah | Total Harga | Metode Pembayaran |
+    // Uang Dibayar | Uang Kembali | Modal | Biaya Operasional | Laba bersih
+    sheet.appendRow([idTx, tanggal, namaProduk, jumlah, totalHarga, metodePos, totalHarga, 0, totalHPP, 0, laba]);
 
     // Update stock
     try {
