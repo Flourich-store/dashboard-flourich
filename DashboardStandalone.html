@@ -36,6 +36,13 @@
       --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
       --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.06);
       --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.08);
+      /* Identitas "ink": permukaan gelap navy utk sidebar & hero (semua tema) */
+      --ink: #0c1222;
+      --ink-2: #101c38;
+      --ink-border: rgba(148, 163, 184, 0.14);
+      --ink-text: #e6edf7;
+      --ink-muted: #8fa1bb;
+      --radius-lg: 22px;
     }
 
     /* Token warna tema gelap - aktif saat html memiliki class theme-dark */
@@ -58,6 +65,9 @@
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.25);
       --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 14px 34px rgba(0, 0, 0, 0.35);
       --shadow-md: 0 18px 50px rgba(0, 0, 0, 0.5);
+      --ink: #0a101c;
+      --ink-2: #0e1b33;
+      --ink-border: rgba(148, 163, 184, 0.16);
       color-scheme: dark;
     }
 
@@ -106,11 +116,9 @@
 
     .sidebar {
       width: 250px;
-      background: rgba(255, 255, 255, 0.82);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-right: 1px solid var(--border);
-      padding: 18px 12px 20px;
+      background: linear-gradient(180deg, var(--ink) 0%, #0a1326 100%);
+      border-right: 1px solid var(--ink-border);
+      padding: 18px 14px 20px;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -125,7 +133,7 @@
 
     .sidebar-label {
       font-size: 12px;
-      color: var(--slate-400);
+      color: var(--ink-muted);
       letter-spacing: 0.14em;
       text-transform: uppercase;
       font-weight: 700;
@@ -147,9 +155,10 @@
       gap: 12px;
       border: 0;
       background: transparent;
-      color: var(--slate-600);
+      color: #b9c6d9;
       border-radius: 12px;
       padding: 10px 12px;
+      position: relative;
       font-size: 15px;
       font-weight: 500;
       cursor: pointer;
@@ -158,14 +167,30 @@
     }
 
     .nav-item:hover {
-      background: rgba(15, 23, 42, 0.04);
-      color: var(--dark);
+      background: rgba(148, 163, 184, 0.09);
+      color: #f1f5f9;
     }
 
     .nav-item.active {
-      background: var(--primary-light);
-      color: var(--primary);
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.22), rgba(16, 185, 129, 0.04));
+      color: #ffffff;
       font-weight: 700;
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -14px;
+      top: 22%;
+      bottom: 22%;
+      width: 4px;
+      border-radius: 0 4px 4px 0;
+      background: var(--accent);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+    }
+
+    .nav-item.active .nav-icon {
+      color: #34d399;
     }
 
     .nav-icon {
@@ -466,6 +491,355 @@
       margin-top: 2px;
     }
 
+    /* ============================================================ */
+    /* HERO COMMAND CENTER (identitas baru) */
+    /* ============================================================ */
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 55%, #123055 130%);
+      border: 1px solid var(--ink-border);
+      color: var(--ink-text);
+      padding: 26px 28px 24px;
+      margin-top: 16px;
+      box-shadow: 0 18px 44px rgba(8, 15, 35, 0.35);
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -80px;
+      width: 340px;
+      height: 340px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -140px;
+      left: 30%;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(45, 212, 191, 0.12) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .hero-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #7dd3c8;
+      margin-bottom: 10px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      width: 26px;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #34d399, transparent);
+    }
+
+    .hero-value {
+      font-size: clamp(34px, 5.4vw, 54px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.02;
+      color: #ffffff;
+      text-shadow: 0 0 40px rgba(52, 211, 153, 0.25);
+    }
+
+    .hero-sub {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .hero-sub b {
+      color: #d1fae5;
+      font-weight: 700;
+    }
+
+    /* Preset periode cepat (pill di hero) */
+    .hero-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .chip {
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      background: rgba(148, 163, 184, 0.08);
+      color: #cbd5e1;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .chip:hover {
+      border-color: rgba(52, 211, 153, 0.55);
+      color: #ffffff;
+      background: rgba(16, 185, 129, 0.14);
+    }
+
+    .chip.chip-active {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: transparent;
+      color: #ffffff;
+      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+    }
+
+    /* Tanggal + aksi di bawah hero */
+    .hero-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-field {
+      flex: 0 0 auto;
+    }
+
+    .hero-field label {
+      color: var(--ink-muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .hero-field input {
+      background: rgba(10, 16, 28, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: #f1f5f9;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 13.5px;
+      width: 170px;
+    }
+
+    .hero-field input:focus {
+      border-color: #34d399;
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    /* Strip statistik menyatu di hero */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 22px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hstat {
+      background: rgba(148, 163, 184, 0.07);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      padding: 14px 16px;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .hstat-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+
+    .hstat-label i {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .hstat-icon--tx { color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
+    .hstat-icon--net { color: #fcd34d; background: rgba(251, 191, 36, 0.14); }
+    .hstat-icon--clean { color: #93c5fd; background: rgba(96, 165, 250, 0.14); }
+
+    .hstat-value {
+      margin-top: 8px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #f8fafc;
+    }
+
+    .hstat-sub {
+      margin-top: 3px;
+      font-size: 11.5px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    /* ============================================================
+       TOP PRODUK - RANKING LIST (menggantikan tabel)
+       ============================================================ */
+    .rank-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .rank-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 13px 16px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .rank-item:hover {
+      transform: translateX(4px);
+      border-color: rgba(16, 185, 129, 0.35);
+      box-shadow: var(--shadow);
+    }
+
+    .rank-num {
+      flex-shrink: 0;
+      width: 34px;
+      height: 34px;
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(15, 23, 42, 0.05);
+      color: var(--slate-600);
+    }
+
+    .rank-item.rank-1 .rank-num {
+      background: linear-gradient(135deg, #fbbf24, #d97706);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
+    }
+
+    .rank-item.rank-2 .rank-num {
+      background: linear-gradient(135deg, #cbd5e1, #64748b);
+      color: #ffffff;
+    }
+
+    .rank-item.rank-3 .rank-num {
+      background: linear-gradient(135deg, #fb923c, #c2410c);
+      color: #ffffff;
+    }
+
+    .rank-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .rank-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rank-bar {
+      margin-top: 7px;
+      height: 6px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+
+    .rank-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #10b981, #34d399);
+      width: 0;
+      transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .rank-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      text-align: right;
+    }
+
+    .rank-qty {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--slate-400);
+      white-space: nowrap;
+    }
+
+    .rank-omset {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary);
+      white-space: nowrap;
+      min-width: 96px;
+    }
+
+    .rank-empty {
+      background: var(--card-bg);
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 26px 16px;
+      text-align: center;
+      color: var(--slate-400);
+      font-size: 13px;
+    }
+
     /* FILTERS & INPUTS */
     .filter-panel,
     .filter-row {
@@ -708,14 +1082,14 @@
     }
 
     .section-title {
-      margin-top: 26px;
-      font-size: 15px;
+      margin-top: 28px;
+      font-size: 17px;
       font-weight: 800;
       color: var(--dark);
       display: flex;
       align-items: center;
       gap: 10px;
-      letter-spacing: -0.2px;
+      letter-spacing: -0.4px;
     }
 
     .section-title i {
@@ -773,16 +1147,61 @@
         radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%);
     }
 
+    /* Login memakai identitas ink: kartu gelap premium di kedua tema */
     .login-card {
-      background: var(--card-bg);
+      background: linear-gradient(160deg, var(--ink) 0%, var(--ink-2) 100%);
       padding: 36px 28px;
-      border-radius: 22px;
-      box-shadow: var(--shadow-md);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 30px 70px rgba(8, 15, 35, 0.45);
       width: 100%;
       max-width: 380px;
       text-align: center;
-      border: 1px solid var(--border);
+      border: 1px solid var(--ink-border);
+      color: var(--ink-text);
+      position: relative;
+      overflow: hidden;
       animation: fadeIn 0.4s ease-out;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: -110px;
+      right: -90px;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .login-card .login-title { color: #f8fafc; }
+    .login-card .login-sub { color: var(--ink-muted); }
+
+    .login-card input {
+      background: rgba(10, 16, 28, 0.65);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: #f1f5f9;
+    }
+
+    .login-card input::placeholder { color: #64748b; }
+
+    .login-card .input-icon { color: #64748b; }
+
+    .login-card .login-hint {
+      color: #cbd5e1;
+      background: rgba(148, 163, 184, 0.09);
+    }
+
+    .login-card .btn-secondary {
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.3);
+      background: transparent;
+    }
+
+    .login-card .btn-secondary:hover {
+      background: rgba(148, 163, 184, 0.1);
+      color: #f1f5f9;
     }
 
     @keyframes fadeIn {
@@ -914,7 +1333,7 @@
 
     .modal-content {
       background: var(--card-bg);
-      border-radius: 20px;
+      border-radius: var(--radius-lg);
       width: 95% !important;
       margin: 10px auto;
       padding: 15px;
@@ -1125,6 +1544,20 @@
       .hide-on-desktop {
         display: inline-flex;
       }
+      .hero { padding: 20px 16px 18px; }
+      .hero-top { flex-direction: column; align-items: stretch; }
+      .hero-controls { flex-direction: column; align-items: stretch; }
+      .hero-field input { width: 100%; }
+      .hero-actions { margin-left: 0; }
+      .hero-actions .btn { flex: 1; }
+      .hero-stats { grid-template-columns: 1fr; gap: 10px; }
+      .hstat-value { font-size: 19px; }
+      /* Mobile: ranking jadi grid 2 baris — nama penuh di atas, qty+omset di bawah */
+      .rank-item { display: grid; grid-template-columns: 34px 1fr; gap: 8px 12px; align-items: center; }
+      .rank-info { grid-column: 2; min-width: 0; }
+      .rank-name { white-space: normal; overflow: visible; text-overflow: clip; word-break: break-word; }
+      .rank-meta { grid-column: 2; margin-left: 0; justify-content: flex-start; gap: 10px; }
+      .rank-omset { min-width: 0; }
       .sidebar {
         position: fixed;
         left: 0;
@@ -1370,11 +1803,9 @@
     html.theme-dark .main-panel { background: transparent; }
 
     html.theme-dark .sidebar {
-      background: rgba(10, 16, 32, 0.92);
-      border-right: 1px solid rgba(148, 163, 184, 0.12);
+      background: linear-gradient(180deg, #0a101c 0%, #0b1526 100%);
+      border-right: 1px solid var(--ink-border);
       box-shadow: none;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
     }
 
     html.theme-dark .sidebar-label { color: #64748b; }
@@ -1554,12 +1985,17 @@
     }
 
     html.theme-dark .login-card {
-      background: rgba(13, 20, 38, 0.92);
-      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: linear-gradient(160deg, #0a101c 0%, #0e1b33 100%);
+      border: 1px solid var(--ink-border);
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(16, 185, 129, 0.08);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
     }
+
+    /* Komponen baru di tema gelap */
+    html.theme-dark .rank-item { border-color: rgba(148, 163, 184, 0.13); }
+    html.theme-dark .rank-name { color: #e2e8f0; }
+    html.theme-dark .rank-num { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; }
+    html.theme-dark .rank-bar { background: rgba(148, 163, 184, 0.12); }
+    html.theme-dark .rank-qty { color: #64748b; }
 
     html.theme-dark .login-title { color: #f1f5f9; }
     html.theme-dark .login-sub { color: #94a3b8; }
@@ -1740,72 +2176,58 @@
         <div id="page-dashboard" class="hidden" style="position:relative; z-index:1;">
 
       <section id="section-overview" class="content-section active">
-        <div class="filter-panel">
-          <div class="filter-panel-head">
-            <i class="fa-solid fa-calendar-days"></i>
-            <span>Filter Periode</span>
+        <div class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="hero-eyebrow">Total Omset Periode</div>
+              <div class="hero-value" id="kpiGross">Rp 0</div>
+              <div class="hero-sub" id="heroPeriodHint">Pilih periode, lalu tekan <b>Tampilkan</b></div>
+            </div>
+            <div class="hero-presets" id="heroPresets">
+              <button class="chip" type="button" data-preset="today">Hari ini</button>
+              <button class="chip" type="button" data-preset="7d">7 hari</button>
+              <button class="chip" type="button" data-preset="30d">30 hari</button>
+              <button class="chip" type="button" data-preset="month">Bulan ini</button>
+            </div>
           </div>
-          <div class="filter-panel-body">
-            <div class="filter-group">
-              <label>Periode Mulai</label>
+          <div class="hero-controls">
+            <div class="hero-field">
+              <label for="startDate">Periode Mulai</label>
               <input type="date" id="startDate" autocomplete="off">
             </div>
-            <div class="filter-group">
-              <label>Periode Selesai</label>
+            <div class="hero-field">
+              <label for="endDate">Periode Selesai</label>
               <input type="date" id="endDate" autocomplete="off">
             </div>
-            <div class="btn-bar">
+            <div class="hero-actions">
               <button class="btn-primary btn" onclick="loadReport()"><i
                   class="fa-solid fa-magnifying-glass"></i>&nbsp;Tampilkan</button>
               <button class="btn-secondary btn" onclick="resetFilters()"><i
-                  class="fa-solid fa-trash"></i>&nbsp;Reset</button>
+                  class="fa-solid fa-rotate-left"></i>&nbsp;Reset</button>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <div class="hstat">
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--tx"><i class="fa-solid fa-receipt"></i></span> Transaksi</div>
+              <div class="hstat-value" id="kpiTx">0</div>
+              <div class="hstat-sub">Jumlah baris transaksi</div>
+            </div>
+            <div class="hstat">
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--net"><i class="fa-solid fa-piggy-bank"></i></span> Laba Kotor</div>
+              <div class="hstat-value" id="kpiNet">Rp 0</div>
+              <div class="hstat-sub">Omset - HPP</div>
+            </div>
+            <div class="hstat">
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--clean"><i class="fa-solid fa-wallet"></i></span> Laba Bersih</div>
+              <div class="hstat-value" id="netTotalValue">Rp 0</div>
+              <div class="hstat-sub">Setelah biaya operasional</div>
             </div>
           </div>
         </div>
 
-        <div class="grid">
-          <div class="card kpi-card">
-            <div class="kpi-title"><span class="kpi-icon kpi-icon--tx"><i class="fa-solid fa-receipt"></i></span> Transaksi</div>
-            <div class="kpi-value" id="kpiTx">0</div>
-            <div class="kpi-sub">Jumlah baris transaksi</div>
-          </div>
-          <div class="card kpi-card">
-            <div class="kpi-title"><span class="kpi-icon kpi-icon--omset"><i class="fa-solid fa-money-bill-wave"></i></span> Omset</div>
-            <div class="kpi-value" id="kpiGross">Rp 0</div>
-            <div class="kpi-sub">Total penjualan</div>
-          </div>
-          <div class="card kpi-card">
-            <div class="kpi-title"><span class="kpi-icon kpi-icon--laba"><i class="fa-solid fa-piggy-bank"></i></span> Laba Kotor</div>
-            <div class="kpi-value" id="kpiNet">Rp 0</div>
-            <div class="kpi-sub">Omset - HPP</div>
-          </div>
-          <div class="card kpi-card">
-            <div class="kpi-title"><span class="kpi-icon kpi-icon--top"><i class="fa-solid fa-ranking-star"></i></span> Top Produk</div>
-            <div class="kpi-value" id="kpiTopProd">-</div>
-            <div class="kpi-sub" id="kpiTopQty">Qty 0</div>
-            <div class="kpi-footer">
-              <span>Laba Bersih</span>
-              <div class="kpi-footer-value" id="netTotalValue">Rp 0</div>
-            </div>
-          </div>
-        </div>
-        <div class="section-title"><i class="fa-solid fa-chart-bar"></i> Top Produk Terlaris</div>
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:42%">Produk</th>
-                <th style="width:18%">Qty</th>
-                <th style="width:20%">Metode Terbanyak</th>
-                <th style="width:20%">Omset</th>
-              </tr>
-            </thead>
-            <tbody id="topProductsBody">
-              <tr>
-                <td colspan="4" class="loading-text">Memuat...</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="section-title"><i class="fa-solid fa-ranking-star"></i> Produk Terlaris</div>
+        <div class="rank-list" id="topProductsBody">
+          <div class="rank-empty">Memuat...</div>
         </div>
       </section>
 
@@ -2720,6 +3142,37 @@
       if (autoLoad !== false) loadReport();
     }
 
+    // Preset periode cepat di hero (Hari ini / 7 hari / 30 hari / Bulan ini).
+    // Mengisi kedua input tanggal lalu langsung memuat laporan.
+    function applyPreset(preset) {
+      var fmt = function (d) {
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      };
+      var today = new Date();
+      var startD = new Date(today);
+      if (preset === '7d') startD.setDate(today.getDate() - 6);
+      if (preset === '30d') startD.setDate(today.getDate() - 29);
+      if (preset === 'month') startD = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      document.getElementById('startDate').value = fmt(startD);
+      document.getElementById('endDate').value = fmt(today);
+
+      var chips = document.querySelectorAll('#heroPresets .chip');
+      for (var i = 0; i < chips.length; i++) {
+        chips[i].classList.toggle('chip-active', chips[i].getAttribute('data-preset') === preset);
+      }
+      loadReport();
+    }
+
+    function bindHeroPresets() {
+      var presets = document.getElementById('heroPresets');
+      if (!presets) return;
+      presets.addEventListener('click', function (e) {
+        var chip = e.target && e.target.closest ? e.target.closest('.chip') : null;
+        if (chip) applyPreset(chip.getAttribute('data-preset'));
+      });
+    }
+
     function loadReport() {
       if (reportLoading) {
         showToast('Laporan sedang dimuat, tunggu sebentar...', 'error');
@@ -2824,32 +3277,50 @@
     }
 
     function renderTopProducts(topProducts) {
-      var tbody = document.getElementById('topProductsBody');
+      var box = document.getElementById('topProductsBody');
       if (!topProducts || topProducts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Tidak ada data</td></tr>';
+        box.innerHTML = '<div class="rank-empty">Tidak ada data pada periode ini</div>';
         return;
+      }
+      var maxOmset = 0;
+      for (var i = 0; i < topProducts.length; i++) {
+        maxOmset = Math.max(maxOmset, Number(topProducts[i].omset || 0));
       }
       var html = '';
       for (var i = 0; i < topProducts.length; i++) {
         var p = topProducts[i];
-        html += '<tr>' +
-          '<td>' + escapeHtml(p.nama || '-') + '</td>' +
-          '<td style="font-weight:800;">' + Number(p.qty || 0) + '</td>' +
-          '<td>' + escapeHtml(p.metodeDominan || '-') + '</td>' +
-          '<td>' + formatIDR(p.omset || 0) + '</td>' +
-          '</tr>';
+        var rankClass = i < 3 ? ' rank-' + (i + 1) : '';
+        var pct = maxOmset > 0 ? Math.round((Number(p.omset || 0) / maxOmset) * 100) : 0;
+        html += '<div class="rank-item' + rankClass + '">' +
+          '<span class="rank-num">' + (i + 1) + '</span>' +
+          '<div class="rank-info">' +
+            '<div class="rank-name">' + escapeHtml(p.nama || '-') + '</div>' +
+            '<div class="rank-bar"><div class="rank-bar-fill" style="width:0%" data-w="' + pct + '"></div></div>' +
+          '</div>' +
+          '<div class="rank-meta">' +
+            '<span class="rank-qty">' + Number(p.qty || 0) + ' terjual</span>' +
+            '<span class="rank-omset">' + formatIDR(p.omset || 0) + '</span>' +
+          '</div>' +
+        '</div>';
       }
-      tbody.innerHTML = html;
+      box.innerHTML = html;
+      // Animasikan bar dari 0 -> lebar target setelah render
+      requestAnimationFrame(function () {
+        var fills = box.querySelectorAll('.rank-bar-fill');
+        for (var f = 0; f < fills.length; f++) {
+          fills[f].style.width = fills[f].getAttribute('data-w') + '%';
+        }
+      });
     }
 
     function updateKPI(res) {
       document.getElementById('kpiTx').textContent = Number(res.totalTransaksi || 0).toLocaleString('id-ID');
       document.getElementById('kpiGross').textContent = formatIDR(res.omsetKotor || 0);
       document.getElementById('kpiNet').textContent = formatIDR(res.labaKotor || 0);
-      document.getElementById('kpiTopProd').textContent = escapeHtml(res.topProductName || '-');
-      document.getElementById('kpiTopQty').textContent = 'Qty ' + Number(res.topProductQty || 0);
       document.getElementById('netTotalValue').textContent = formatIDR(res.labaBersih || 0);
       document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
+      var hint = document.getElementById('heroPeriodHint');
+      if (hint) hint.innerHTML = 'Periode&nbsp;<b>' + escapeHtml(start || end || '...') + '</b>&nbsp;–&nbsp;<b>' + escapeHtml(end || start || '...') + '</b>';
     }
 
     // ============================================================
@@ -3356,6 +3827,7 @@
 
       runSafely('restoreSessionIfValid', restoreSessionIfValid);
       bindSessionActivity();
+      runSafely('bindHeroPresets', bindHeroPresets);
 
       runSafely('setInitialDates', function () {
         var today = getTodayISO();
@@ -3428,8 +3900,12 @@
       document.getElementById('kpiNet').textContent = 'Rp 0';
       document.getElementById('netTotalValue').textContent = 'Rp 0';
       document.getElementById('chartTotalOmset').textContent = '';
+      var hint = document.getElementById('heroPeriodHint');
+      if (hint) hint.innerHTML = 'Pilih periode, lalu tekan <b>Tampilkan</b>';
+      var chips = document.querySelectorAll('#heroPresets .chip');
+      for (var ci = 0; ci < chips.length; ci++) chips[ci].classList.remove('chip-active');
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
-      document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
+      document.getElementById('topProductsBody').innerHTML = '<div class="rank-empty">Pilih periode dan klik "Tampilkan"</div>';
       document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
     }
 
