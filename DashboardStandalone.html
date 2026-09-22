@@ -2220,6 +2220,16 @@
       sessionStorage.removeItem('dash_username');
       sessionStorage.removeItem('dash_role');
       sessionStorage.removeItem('dash_session_expiry');
+      sessionStorage.removeItem('dash_token');
+      cachedSession = null;
+    }
+
+    // Token sesi dari server — bukti sah satu-satunya untuk API backend.
+    // Role TIDAK dikirim dari client lagi; server membacanya dari token.
+    var cachedSession = null;
+    function getToken() {
+      if (!cachedSession) cachedSession = sessionStorage.getItem('dash_token') || '';
+      return cachedSession;
     }
 
     function bindSessionActivity() {
@@ -2246,8 +2256,11 @@
       var username = sessionStorage.getItem('dash_username');
       var role = sessionStorage.getItem('dash_role');
       var expiry = sessionStorage.getItem('dash_session_expiry');
+      var token = sessionStorage.getItem('dash_token');
 
-      if (!username || !role || !expiry) {
+      // Tanpa token server, sesi tidak bisa dipulihkan (frontend lama).
+      if (!username || !role || !expiry || !token) {
+        clearSessionState();
         return false;
       }
 
@@ -2285,7 +2298,7 @@
 
       google.script.run
         .withSuccessHandler(function (result) {
-          if (!result || result.status !== 'success') {
+          if (!result || result.status !== 'success' || !result.token) {
             errorBox.textContent = (result && result.message) || 'Username atau password salah.';
             errorBox.style.display = 'flex';
             button.disabled = false;
@@ -2295,6 +2308,8 @@
 
           sessionStorage.setItem('dash_username', result.username || username);
           sessionStorage.setItem('dash_role', result.role || 'KASIR');
+          sessionStorage.setItem('dash_token', result.token);
+          cachedSession = result.token;
           setSessionExpiry();
           bindSessionActivity();
           document.getElementById('loginPage').style.display = 'none';
@@ -2345,6 +2360,16 @@
 
     function logout() {
       resetSessionTimer();
+      // Cabut token di server dulu (best-effort), lalu bersihkan sesi lokal.
+      var token = getToken();
+      if (token && typeof google !== 'undefined' && google.script && google.script.run) {
+        try {
+          google.script.run
+            .withSuccessHandler(function () { })
+            .withFailureHandler(function () { })
+            .revokeSessionToken(token);
+        } catch (e) { /* logout tetap berjalan walau revoke gagal */ }
+      }
       clearSessionState();
       window.__dashSessionBound = false;
 
@@ -2370,8 +2395,15 @@
       notifyParentHeight();
     }
 
+    // Role HANYA untuk gating tampilan (tombol edit/hapus). Otorisasi asli
+    // tetap di server lewat token — role ini tidak pernah dikirim ke backend.
     function getRole() {
       return String(sessionStorage.getItem('dash_role') || '').toUpperCase();
+    }
+
+    function forceLogoutByAuth() {
+      logout();
+      showToast('Sesi tidak valid. Silakan login kembali.', 'error');
     }
 
     function isSessionValid() {
@@ -2499,6 +2531,10 @@
             return;
           }
           if (res.status === 'error') {
+            if (res.auth === false) {
+              forceLogoutByAuth();
+              return;
+            }
             showToast('Backend Error: ' + (res.message || 'Unknown error'), 'error');
             return;
           }
@@ -2650,7 +2686,7 @@
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
       document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
 
-      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
           renderReport(res);
@@ -2709,7 +2745,7 @@
 
       var tbody = document.getElementById('tabelData');
       tbody.innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
-      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
           renderReport(res);
@@ -2827,7 +2863,7 @@
       }
 
       document.getElementById('chartKategori').innerHTML = '<div class="loading-text" style="padding:60px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat grafik...</div>';
-      safeGoogleRun('getReportByDateRange', [start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
           document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
           renderChart(res.chartData || []);
@@ -2851,6 +2887,7 @@
     // ============================================================
     function aksiInputPenjualan() {
       const data = {
+        token: getToken(),
         tanggal: document.getElementById('inTanggal').value || getTodayISO(),
         namaProduk: document.getElementById('inNamaProduk').value.trim(),
         harga: Number(document.getElementById('inHarga').value) || 0,
@@ -2863,7 +2900,7 @@
       if (data.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
       if (data.jumlah <= 0) return showToast('Jumlah harus lebih dari 0!', 'error');
 
-      safeGoogleRun('addPenjualan', [data], function (res) {
+      safeGoogleRun('addPenjualan', [getToken(), data], function (res) {
         if (res && res.status === 'success') {
           showToast('Penjualan berhasil disimpan!', 'success');
           closeModal('modalPenjualan');
@@ -2899,7 +2936,7 @@
       var tbody = document.getElementById('produkTbody');
       if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td></tr>';
 
-      safeGoogleRun('getProdukList', [], function (res) {
+      safeGoogleRun('getProdukList', [getToken()], function (res) {
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
@@ -2912,7 +2949,7 @@
     }
 
     function loadProdukCRUD(isRetry) {
-      safeGoogleRun('getProdukList', [], function (res) {
+      safeGoogleRun('getProdukList', [getToken()], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
           renderProdukModal(cachedProduk);
@@ -3005,7 +3042,7 @@
 
     function aksiCreateProduk() {
       const payload = {
-        role: getRole(),
+        token: getToken(),
         idProduk: document.getElementById('prodIdInp').value.trim(),
         namaProduk: document.getElementById('prodNamaInp').value.trim(),
         stok: Number(document.getElementById('prodStokInp').value) || 0,
@@ -3014,7 +3051,7 @@
       if (!payload.idProduk || !payload.namaProduk) return showToast('ID dan Nama Produk wajib diisi!', 'error');
       if (payload.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
 
-      safeGoogleRun('createProduk', [payload], function (res) {
+      safeGoogleRun('createProduk', [getToken(), payload], function (res) {
         if (res && res.status === 'success') {
           showToast('Produk berhasil ditambahkan!', 'success');
           clearProdukForm();
@@ -3029,7 +3066,7 @@
       const idInp = document.getElementById('prodIdInp');
       const idLama = idInp.dataset.idLama || idInp.value.trim();
       const payload = {
-        role: getRole(),
+        token: getToken(),
         idProduk: idInp.value.trim(),
         namaProduk: document.getElementById('prodNamaInp').value.trim(),
         stok: Number(document.getElementById('prodStokInp').value) || 0,
@@ -3038,7 +3075,7 @@
 
       if (!idLama) return showToast('Pilih produk yang ingin di-edit terlebih dahulu!', 'error');
 
-      safeGoogleRun('updateProduk', [idLama, payload], function (res) {
+      safeGoogleRun('updateProduk', [getToken(), idLama, payload], function (res) {
         if (res && res.status === 'success') {
           showToast('Produk berhasil diperbarui!', 'success');
           clearProdukForm();
@@ -3052,7 +3089,7 @@
 
     function aksiDeleteProduk(id) {
       if (!confirm('Yakin hapus produk "' + id + '"?')) return;
-      safeGoogleRun('deleteProduk', [id, getRole()], function (res) {
+      safeGoogleRun('deleteProduk', [getToken(), id], function (res) {
         if (res && res.status === 'success') {
           showToast('Produk berhasil dihapus!', 'success');
           loadProdukCRUD();
@@ -3088,7 +3125,7 @@
 
       document.getElementById('cdTbody').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
 
-      safeGoogleRun('getCreditDebitByRange', [start, end], function (res) {
+      safeGoogleRun('getCreditDebitByRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
           cachedCD = res.data || [];
           renderCreditDebit(cachedCD);
@@ -3125,7 +3162,7 @@
 
     function aksiAddCreditDebit() {
       const data = {
-        role: getRole(),
+        token: getToken(),
         tanggal: document.getElementById('cdTanggalInp').value || getTodayISO(),
         tipe: document.getElementById('cdTipeInp').value,
         kategori: document.getElementById('cdKategoriInp').value.trim(),
@@ -3139,7 +3176,7 @@
       if (!data.deskripsi) return showToast('Deskripsi wajib diisi!', 'error');
       if (data.nominal <= 0) return showToast('Nominal harus lebih dari 0!', 'error');
 
-      safeGoogleRun('addCreditDebit', [data.tipe, data], function (res) {
+      safeGoogleRun('addCreditDebit', [getToken(), data.tipe, data], function (res) {
         if (res && res.status === 'success') {
           showToast('Catatan keuangan tersimpan!', 'success');
           clearPengeluaranForm();

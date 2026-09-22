@@ -112,17 +112,60 @@ function include(filename) {
 // ============================================================
 // AUTHENTICATION
 // ============================================================
+// ============================================================
+// SESSION TOKEN (keamanan: role tidak pernah dipercaya dari client)
+// ============================================================
+// Token disimpan di CacheService (server-side, 6 jam). Frontend TIDAK PERNAH
+// mengirim role/username untuk otorisasi — hanya token. Ini menutup celah
+// pemanggilan backend langsung dari console browser dengan role palsu.
+var SESSION_TTL_SECONDS = 21600; // 6 jam
+var ERR_UNAUTH = 'Sesi tidak valid atau telah berakhir. Silakan login kembali.';
+
+function _createSessionToken(username, role) {
+  var token = Utilities.getUuid() + '-' + Date.now();
+  CacheService.getScriptCache().put(
+    'sess_' + token,
+    JSON.stringify({ u: String(username || ''), r: String(role || 'KASIR') }),
+    SESSION_TTL_SECONDS
+  );
+  return token;
+}
+
+// Verifikasi token -> { username, role }. Melempar Error bila tidak valid.
+// Super admin ditandai flag di sheet User (kolom 4 = SUPER_ADMIN/ADMIN/YA).
+function _verifyToken(token, needSuperAdmin) {
+  var raw = CacheService.getScriptCache().get('sess_' + String(token || '').trim());
+  if (!raw) throw new Error(ERR_UNAUTH);
+  var sess;
+  try { sess = JSON.parse(raw); } catch (e) { throw new Error(ERR_UNAUTH); }
+  if (needSuperAdmin && String(sess.r || '').toUpperCase() !== 'SUPER_ADMIN') {
+    throw new Error('Akses ditolak. Hanya SUPER_ADMIN yang boleh mengubah data.');
+  }
+  return sess;
+}
+
+// Wrapper agar semua fungsi ber-token punya penanganan error yang konsisten
+function _guardToken(fn) {
+  try {
+    return fn();
+  } catch (e) {
+    var msg = String(e && e.message || e);
+    if (msg.indexOf(ERR_UNAUTH) !== -1 || msg.indexOf('Akses ditolak') !== -1) {
+      return { status: 'error', auth: false, message: msg };
+    }
+    return { status: 'error', message: msg };
+  }
+}
+
 function checkLogin(username, password){
   try {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('User');
 
     if (!sheet){
-      // Fallback
-      if (username === "admin" && password === "admin123") {
-        return { status: "success", username: "admin", role: "SUPER_ADMIN", env: ACTIVE_ENV };
-}
-      return { status: "error", message: "Users sheet not found" };
+      // Tidak ada fallback kredensial hardcoded (keamanan).
+      // Buat sheet User di spreadsheet (kolom: Username | Password | Role).
+      return { status: "error", message: "Sheet User tidak ditemukan di spreadsheet. Hubungi admin untuk setup." };
     }
 
     var values = sheet.getDataRange().getValues();
@@ -131,8 +174,12 @@ function checkLogin(username, password){
       var u = String(row[0] || '').trim();
       var p = String(row[1] || '').trim();
       var r = String(row[2] || 'KASIR').trim().toUpperCase();
+      // Flag super admin opsional di kolom ke-4 (SUPER_ADMIN/ADMIN/YA/TRUE)
+      var flag = String(row[3] || '').trim().toUpperCase();
+      if (r === 'SUPER_ADMIN' || flag === 'SUPER_ADMIN' || flag === 'ADMIN' || flag === 'YA' || flag === 'TRUE') r = 'SUPER_ADMIN';
       if (u.toLowerCase() === String(username || '').trim().toLowerCase() && p === password){
-        return { status: "success", username: u, role: r, env: ACTIVE_ENV };
+        var token = _createSessionToken(u, r);
+        return { status: "success", username: u, role: r, token: token, env: ACTIVE_ENV };
       }
     }
     return { status: "error", message: "Username atau password salah" };
@@ -141,21 +188,30 @@ function checkLogin(username, password){
   }
 }
 
-function _requireSuperAdmin(role) {
-  if (String(role || '').toUpperCase() !== 'SUPER_ADMIN') {
-    throw new Error('Akses ditolak. Hanya SUPER_ADMIN yang boleh mengubah data.');
+// Catatan: _requireSuperAdmin(role) LAMA dihapus — role dari client tidak
+// dianggap bukti. Semua otorisasi kini lewat _verifyToken(token, true).
+
+// Hapus token sesi dari cache (dipakai saat logout dari dashboard).
+function revokeSessionToken(token) {
+  try {
+    var key = 'sess_' + String(token || '').trim();
+    if (String(token || '').trim()) CacheService.getScriptCache().remove(key);
+    return { status: 'success' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
   }
 }
 
 // ============================================================
 // REPORT BY DATE RANGE
 // ============================================================
-function getReportByDateRange(startDate, endDate) {
-  try {
+function getReportByDateRange(token, startDate, endDate) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) {
-      return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, labaKotor: 0, labaBersih: 0 };
+        return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, labaKotor: 0, labaBersih: 0 };
     }
 
     var values = sheet.getDataRange().getValues();
@@ -310,18 +366,15 @@ function getReportByDateRange(startDate, endDate) {
       topProductQty: topProduct ? topProduct.qty : 0,
       chartData: [{ kategori: 'Cash', omset: chartMap['Cash'] }, { kategori: 'QRIS', omset: chartMap['QRIS'] }]
     };
-  } catch (e) {
-    Logger.log('ERROR di getReportByDateRange: ' + e.toString());
-    Logger.log('ERROR Stack: ' + e.stack);
-    return { status: 'error', message: 'Error: ' + e.toString() };
-  }
+  });
 }
 
 // ============================================================
 // ADD PENJUALAN
 // ============================================================
-function addPenjualan(data) {
-  try {
+function addPenjualan(token, data) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
     data = data || {};
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
@@ -335,7 +388,9 @@ function addPenjualan(data) {
     var harga = Number(data.harga || 0);
     var jumlah = Number(data.jumlah || 1);
     var volume = Number(data.volume || 250);
-    var metode = String(data.metode || 'Cash').trim();
+    var metodeRaw = String(data.metode || 'Cash').trim();
+    // Hanya CASH / QRIS yang diterima (mengikuti gaya POS)
+    var metode = (metodeRaw.toUpperCase().indexOf('QR') !== -1) ? 'QRIS' : 'CASH';
 
     if (!namaProduk) return { status: 'error', message: 'Nama produk wajib diisi' };
     if (harga <= 0) return { status: 'error', message: 'Harga harus lebih dari 0' };
@@ -375,17 +430,13 @@ function addPenjualan(data) {
     }
 
     return { status: 'success', message: 'Penjualan berhasil disimpan', idTx: idTx };
-  } catch (e) {
-    Logger.log('addPenjualan error: ' + e);
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
 function updateStock(namaProduk, qtySold) {
   var ss = getSpreadsheet();
   var sheet = ss.getSheetByName('Produk');
   if (!sheet || !namaProduk) return;
-
   var values = sheet.getDataRange().getValues();
   var header = [];
   for (var h = 0; h < values[0].length; h++) {
@@ -422,8 +473,9 @@ function _invalidateProdukCache() {
   __produkCache = null;
 }
 
-function getProdukList() {
-  try {
+function getProdukList(token) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
     if (__produkCache) return { status: 'success', products: __produkCache, cached: true };
 
     var ss = getSpreadsheet();
@@ -463,16 +515,13 @@ function getProdukList() {
 
     __produkCache = products;
     return { status: 'success', products: products };
-  } catch (e) {
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
-function createProduk(payload) {
-  try {
+function createProduk(token, payload) {
+  return _guardToken(function () {
+    _verifyToken(token, true);
     payload = payload || {};
-    var role = String(payload.role || '').toUpperCase();
-    _requireSuperAdmin(role);
 
     var idProduk = String(payload.idProduk || '').trim();
     var namaProduk = String(payload.namaProduk || '').trim();
@@ -499,16 +548,13 @@ function createProduk(payload) {
     sheet.appendRow([idProduk, namaProduk, stok, harga]);
     _invalidateProdukCache();
     return { status: 'success', message: 'Produk berhasil ditambahkan' };
-  } catch (e) {
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
-function updateProduk(idProduk, payload) {
-  try {
+function updateProduk(token, idProduk, payload) {
+  return _guardToken(function () {
+    _verifyToken(token, true);
     payload = payload || {};
-    var role = String(payload.role || '').toUpperCase();
-    _requireSuperAdmin(role);
 
     var id = String(idProduk || '').trim();
     if (!id) return { status: 'error', message: 'ID Produk wajib diisi' };
@@ -569,14 +615,12 @@ function updateProduk(idProduk, payload) {
     }
 
     return { status: 'error', message: 'ID Produk tidak ditemukan' };
-  } catch (e) {
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
-function deleteProduk(idProduk, role) {
-  try {
-    _requireSuperAdmin(String(role || '').toUpperCase());
+function deleteProduk(token, idProduk) {
+  return _guardToken(function () {
+    _verifyToken(token, true);
 
     var id = String(idProduk || '').trim();
     if (!id) return { status: 'error', message: 'ID Produk wajib diisi' };
@@ -596,19 +640,16 @@ function deleteProduk(idProduk, role) {
     }
 
     return { status: 'error', message: 'ID Produk tidak ditemukan' };
-  } catch (e) {
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
 // ============================================================
 // CREDIT/DEBIT
 // ============================================================
-function addCreditDebit(type, data) {
-  try {
+function addCreditDebit(token, type, data) {
+  return _guardToken(function () {
+    _verifyToken(token, true);
     data = data || {};
-    var role = String(data.role || '').toUpperCase();
-    _requireSuperAdmin(role);
 
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Credit/Debit');
@@ -640,10 +681,7 @@ function addCreditDebit(type, data) {
     sheet.appendRow([tanggal, tipeVal, kategori, deskripsi, paymentMethod, nominal]);
 
     return { status: 'success', message: 'Catatan keuangan berhasil disimpan' };
-  } catch (e) {
-    Logger.log('addCreditDebit error: ' + e);
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
 function _readCreditDebitItems(ss, startDate, endDate) {
@@ -677,15 +715,13 @@ function _readCreditDebitItems(ss, startDate, endDate) {
   return items;
 }
 
-function getCreditDebitByRange(startDate, endDate) {
-  try {
+function getCreditDebitByRange(token, startDate, endDate) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
     var ss = getSpreadsheet();
     var items = _readCreditDebitItems(ss, startDate, endDate);
     return { status: 'success', data: items };
-  } catch (e) {
-    Logger.log('ERROR getCreditDebitByRange: ' + e.toString());
-    return { status: 'error', message: e.toString() };
-  }
+  });
 }
 
 // ============================================================
