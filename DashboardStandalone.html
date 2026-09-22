@@ -2205,8 +2205,10 @@
       if (startEl) startEl.value = savedStart || today;
       if (endEl) endEl.value = savedEnd || today;
 
+      // Filter periode TIDAK dijalankan otomatis saat dashboard dibuka.
+      // Data laporan baru dimuat setelah user menekan tombol "Tampilkan".
       loadProduk();
-      loadReport();
+      showEmptyPeriodState();
       preloadCharts();
     }
 
@@ -2675,6 +2677,10 @@
 
       if (!start || !end) {
         showToast('Pilih periode tanggal terlebih dahulu!', 'error');
+        return;
+      }
+      if (start > end) {
+        showToast('Periode Mulai tidak boleh lebih besar dari Periode Selesai!', 'error');
         return;
       }
       localStorage.setItem('startDate', start);
@@ -3361,11 +3367,9 @@
       }, duration);
     }
 
-    function resetFilters() {
-      document.getElementById('startDate').value = '';
-      document.getElementById('endDate').value = '';
-      localStorage.removeItem('startDate');
-      localStorage.removeItem('endDate');
+    // Kondisi kosong: dipakai saat dashboard baru dibuka dan setelah Reset —
+    // menunggu user memilih periode lalu klik "Tampilkan".
+    function showEmptyPeriodState() {
       cachedPenjualan = [];
       document.getElementById('kpiTx').textContent = '0';
       document.getElementById('kpiGross').textContent = 'Rp 0';
@@ -3375,6 +3379,14 @@
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
       document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
       document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
+    }
+
+    function resetFilters() {
+      document.getElementById('startDate').value = '';
+      document.getElementById('endDate').value = '';
+      localStorage.removeItem('startDate');
+      localStorage.removeItem('endDate');
+      showEmptyPeriodState();
     }
 
     window.resetPengeluaranFilters = function () {

@@ -26,6 +26,51 @@ var HPP_RATES = {
   WNA: { 250: 8500, 350: 11700, 500: 17000 }
 };
 
+// ============================================================
+// TANGGAL - HELPERS (aman untuk Date sheet & teks dd/mm/yyyy)
+// ============================================================
+// Filter periode memakai key string 'yyyy-MM-dd' (bukan objek Date) agar
+// perbandingan bebas pergeseran timezone: new Date('yyyy-MM-ddT00:00:00')
+// di Apps Script dievaluasi sebagai UTC, sehingga membandingkan Date
+// membuat transaksi di tanggal batas bisa terlewat/tergandung sehari.
+function _normDateKey(value) {
+  var s = String(value || '').trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (!m) return '';
+  var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+  return y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2);
+}
+
+// Membaca sel tanggal sheet yang bisa berupa objek Date atau teks
+// ('yyyy-MM-dd' maupun 'dd/MM/yyyy' hasil setelan locale). Return '' bila
+// tidak bisa dibaca — sebelumnya new Date('dd/MM/yyyy') menghasilkan
+// Invalid Date dan barisnya diam-diam dilewati dari laporan.
+function _parseSheetDateKey(cell) {
+  if (cell instanceof Date) {
+    if (isNaN(cell.getTime())) return '';
+    return Utilities.formatDate(cell, 'Asia/Jakarta', 'yyyy-MM-dd');
+  }
+  var s = String(cell || '').trim();
+  if (!s) return '';
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) {
+    var y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      return y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2);
+    }
+    return '';
+  }
+  m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
+  if (m) {
+    var d2 = Number(m[1]), mo2 = Number(m[2]), y2 = Number(m[3]);
+    if (mo2 >= 1 && mo2 <= 12 && d2 >= 1 && d2 <= 31) {
+      return y2 + '-' + ('0' + mo2).slice(-2) + '-' + ('0' + d2).slice(-2);
+    }
+  }
+  return '';
+}
+
 function getHppRate(namaProduk, volume) {
   var nama = String(namaProduk || '').toUpperCase();
   var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
@@ -246,10 +291,8 @@ function getReportByDateRange(token, startDate, endDate) {
     if (idxMetode === -1) idxMetode = 7;
     if (idxLaba === -1) idxLaba = 9;
 
-    var start = startDate ? new Date(startDate + 'T00:00:00') : null;
-    var end = endDate ? new Date(endDate + 'T23:59:59') : null;
-
-    // Inisialisasi variabel di satu tempat
+    var startKey = _normDateKey(startDate);
+    var endKey = _normDateKey(endDate);
     var productMap = {}, chartMap = { 'Cash': 0, 'QRIS': 0 }, detailData = [];
     var txCount = 0, grossTotal = 0, totalHPP = 0;
 
@@ -268,17 +311,17 @@ function getReportByDateRange(token, startDate, endDate) {
 
       if (!idTx || !namaProduk) continue;
 
-      var rowDate = new Date(tanggalCell);
-      if (isNaN(rowDate.getTime())) continue;
-      if (start && rowDate < start) continue;
-      if (end && rowDate > end) continue;
+      var rowKey = _parseSheetDateKey(tanggalCell);
+      if (!rowKey) continue;
+      if (startKey && rowKey < startKey) continue;
+      if (endKey && rowKey > endKey) continue;
 
       txCount++;
       grossTotal += totalHarga;
       totalHPP += rowHPP > 0 ? rowHPP : getHppRate(namaProduk, row[idxVolume]) * jumlah;
 
       detailData.push({
-        tanggal: Utilities.formatDate(rowDate, 'Asia/Jakarta', 'yyyy-MM-dd'),
+        tanggal: rowKey,
         namaProduk: namaProduk,
         harga: totalHarga / jumlah, // Calculate harga satuan
         jumlah: jumlah,
@@ -689,21 +732,20 @@ function _readCreditDebitItems(ss, startDate, endDate) {
   if (!sheet) return [];
 
   var values = sheet.getDataRange().getValues();
-  var start = startDate ? new Date(startDate + 'T00:00:00') : null;
-  var end = endDate ? new Date(endDate + 'T23:59:59') : null;
+  var startKey = _normDateKey(startDate);
+  var endKey = _normDateKey(endDate);
   var items = [];
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
-    var rowDate = new Date(row[0]);
-    if (isNaN(rowDate.getTime())) continue;
-    rowDate.setHours(0, 0, 0, 0);
+    var rowKey = _parseSheetDateKey(row[0]);
+    if (!rowKey) continue;
 
-    if (start && rowDate < start) continue;
-    if (end && rowDate > end) continue;
+    if (startKey && rowKey < startKey) continue;
+    if (endKey && rowKey > endKey) continue;
 
     items.push({
-      tanggal: Utilities.formatDate(rowDate, 'Asia/Jakarta', 'yyyy-MM-dd'),
+      tanggal: rowKey,
       tipe: String(row[1] || ''),
       kategori: String(row[2] || ''),
       deskripsi: String(row[3] || ''),
