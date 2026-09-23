@@ -275,7 +275,7 @@ function getReportByDateRange(token, startDate, endDate) {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) {
-        return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, prevOmsetKotor: 0, prevRange: null, labaKotor: 0, labaBersih: 0 };
+        return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, prevOmsetKotor: 0, prevLabaBersih: 0, prevRange: null, labaKotor: 0, labaBersih: 0 };
     }
 
     var values = sheet.getDataRange().getValues();
@@ -315,7 +315,7 @@ function getReportByDateRange(token, startDate, endDate) {
 
     // Periode pembanding untuk badge delta hero: durasi sama, tepat
     // sebelum periode terpilih (mis. 1–22 Sep -> 10–31 Agu).
-    var prevStartKey = '', prevEndKey = '', prevGrossTotal = 0;
+    var prevStartKey = '', prevEndKey = '', prevGrossTotal = 0, prevTotalHPP = 0;
     if (startKey && endKey && startKey <= endKey) {
       var durDays = _diffDaysKey(startKey, endKey) + 1;
       prevStartKey = _shiftDateKey(startKey, -durDays);
@@ -347,6 +347,7 @@ function getReportByDateRange(token, startDate, endDate) {
         // tetap dihitung omsetnya untuk badge naik/turun di hero.
         if (prevStartKey && rowKey >= prevStartKey && rowKey <= prevEndKey) {
           prevGrossTotal += totalHarga;
+          prevTotalHPP += rowHPP > 0 ? rowHPP : getHppRate(namaProduk, row[idxVolume]) * jumlah;
         }
         continue;
       }
@@ -404,18 +405,28 @@ function getReportByDateRange(token, startDate, endDate) {
       return b.omset - a.omset;
     });
 
-    // Hitung Credit (Pengeluaran) dan Debit (Pemasukan Tambahan)
+    // Hitung Credit (Pengeluaran) dan Debit (Pemasukan Tambahan).
+    // Dibaca sekali pada rentang gabungan (periode pembanding + periode
+    // terpilih) lalu dipartisi per baris, sehingga laba bersih periode
+    // pembanding untuk badge delta bisa dihitung tanpa baca sheet ekstra.
     var totalExpenses = 0;
     var totalIncomeOther = 0;
+    var prevExpenses = 0, prevIncomeOther = 0;
     try {
-      var cdItems = _readCreditDebitItems(ss, startDate, endDate);
+      var cdBounds = [prevStartKey, startKey].filter(Boolean).sort();
+      var cdItems = _readCreditDebitItems(ss, cdBounds[0] || '', endKey || '');
       for (var c = 0; c < cdItems.length; c++) {
         var it = cdItems[c];
         var tipeUpper = String(it.tipe || '').toUpperCase();
+        var nominal = Number(it.nominal || 0);
+        var inCur = (!startKey || it.tanggal >= startKey) && (!endKey || it.tanggal <= endKey);
+        var inPrev = !!prevStartKey && it.tanggal >= prevStartKey && it.tanggal <= prevEndKey;
         if (tipeUpper === 'CREDIT') {
-          totalExpenses += Number(it.nominal || 0);
+          if (inCur) totalExpenses += nominal;
+          if (inPrev) prevExpenses += nominal;
         } else if (tipeUpper === 'DEBIT') {
-          totalIncomeOther += Number(it.nominal || 0);
+          if (inCur) totalIncomeOther += nominal;
+          if (inPrev) prevIncomeOther += nominal;
         }
       }
     } catch (e) {
@@ -428,6 +439,15 @@ function getReportByDateRange(token, startDate, endDate) {
       biayaOperasional = Math.max(grossProfit, 0) * BIAYA_OPERASIONAL_PERSEN / 100;
     }
     var netTotal = grossProfit + totalIncomeOther - biayaOperasional;
+
+    // Laba bersih periode pembanding (kebijakan biaya operasional sama
+    // dengan periode terpilih: expenses aktual, atau persen bila kosong)
+    var prevGrossProfit = prevGrossTotal - prevTotalHPP;
+    var prevBiayaOperasional = prevExpenses;
+    if (prevBiayaOperasional <= 0 && BIAYA_OPERASIONAL_PERSEN > 0) {
+      prevBiayaOperasional = Math.max(prevGrossProfit, 0) * BIAYA_OPERASIONAL_PERSEN / 100;
+    }
+    var prevNetTotal = prevGrossProfit + prevIncomeOther - prevBiayaOperasional;
     var topProduct = topProducts[0] || null;
 
     return {
@@ -436,6 +456,7 @@ function getReportByDateRange(token, startDate, endDate) {
       totalTransaksi: txCount,
       omsetKotor: grossTotal,
       prevOmsetKotor: prevGrossTotal,
+      prevLabaBersih: prevNetTotal,
       prevRange: (prevStartKey && prevEndKey) ? { start: prevStartKey, end: prevEndKey } : null,
       totalHPP: totalHPP,
       totalBiayaOperasional: biayaOperasional,
