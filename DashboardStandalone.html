@@ -720,6 +720,116 @@
     }
 
     /* ============================================================
+       HERO - TREN OMSET HARIAN (sparkline)
+       ============================================================ */
+    .hero-trend {
+      margin-top: 14px;
+      background: rgba(148, 163, 184, 0.07);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      border-radius: 16px;
+      padding: 14px 16px 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-trend-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .hero-trend-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+
+    .hero-trend-title i { color: #6ee7b7; }
+
+    .hero-trend-legend {
+      font-size: 12px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .hero-trend-legend b { color: #f8fafc; font-weight: 700; }
+
+    .hero-trend-chart { position: relative; }
+
+    .hero-trend-chart svg {
+      display: block;
+      width: 100%;
+      height: 120px;
+    }
+
+    .trend-empty {
+      padding: 46px 0;
+      text-align: center;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .trend-x {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 4px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--ink-muted);
+    }
+
+    .trend-dot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #34d399;
+      border: 2px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.25);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+
+    .trend-tip {
+      position: absolute;
+      transform: translate(-50%, calc(-100% - 16px));
+      background: #0b1220;
+      color: #f8fafc;
+      border: 1px solid rgba(52, 211, 153, 0.4);
+      border-radius: 10px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.45);
+    }
+
+    .trend-tip small {
+      display: block;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 0.03em;
+    }
+
+    /* ============================================================
        TOP PRODUK - RANKING LIST (menggantikan tabel)
        ============================================================ */
     .rank-list {
@@ -1583,6 +1693,8 @@
       .hero-actions { margin-left: 0; }
       .hero-actions .btn { flex: 1; }
       .hero-stats { grid-template-columns: 1fr; gap: 10px; }
+      .hero-trend { padding: 12px 12px 8px; }
+      .hero-trend-chart svg { height: 84px; }
       .hstat-value { font-size: 19px; }
       /* Mobile: ranking jadi grid 2 baris — nama penuh di atas, qty+omset di bawah */
       .rank-item { display: grid; grid-template-columns: 34px 1fr; gap: 8px 12px; align-items: center; }
@@ -2237,6 +2349,16 @@
               <div class="hstat-label"><span class="hstat-icon hstat-icon--clean"><i class="fa-solid fa-wallet"></i></span> Laba Bersih</div>
               <div class="hstat-value" id="netTotalValue">Rp 0</div>
               <div class="hstat-sub">Setelah biaya operasional</div>
+            </div>
+          </div>
+
+          <div class="hero-trend">
+            <div class="hero-trend-head">
+              <div class="hero-trend-title"><i class="fa-solid fa-chart-line"></i> Tren Omset Harian</div>
+              <div class="hero-trend-legend">Puncak <b id="trendPeak">-</b>&nbsp;&nbsp;·&nbsp;&nbsp;Rata-rata <b id="trendAvg">-</b></div>
+            </div>
+            <div class="hero-trend-chart" id="heroTrendChart">
+              <div class="trend-empty">Pilih periode dan klik "Tampilkan"</div>
             </div>
           </div>
         </div>
@@ -3229,6 +3351,7 @@
           renderReport(res);
           renderTopProducts(res.topProducts || []);
           renderChart(res.chartData || []);
+          renderDailyTrend(res);
           updateKPI(res);
         } else {
           showToast(res.message || 'Gagal memuat laporan', 'error');
@@ -3343,8 +3466,106 @@
       document.getElementById('kpiNet').textContent = formatIDR(res.labaKotor || 0);
       document.getElementById('netTotalValue').textContent = formatIDR(res.labaBersih || 0);
       document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
+      var start = document.getElementById('startDate').value;
+      var end = document.getElementById('endDate').value;
       var hint = document.getElementById('heroPeriodHint');
       if (hint) hint.innerHTML = 'Periode&nbsp;<b>' + escapeHtml(start || end || '...') + '</b>&nbsp;–&nbsp;<b>' + escapeHtml(end || start || '...') + '</b>';
+    }
+
+    // ============================================================
+    // HERO - TREN OMSET HARIAN (sparkline SVG)
+    // ============================================================
+    function renderDailyTrend(res) {
+      var box = document.getElementById('heroTrendChart');
+      if (!box) return;
+      var data = res.data || [];
+
+      // Agregasi omset per tanggal (key yyyy-MM-dd dari server)
+      var byDate = {};
+      for (var i = 0; i < data.length; i++) {
+        var key = String(data[i].tanggal || '');
+        if (!key) continue;
+        byDate[key] = (byDate[key] || 0) + Number(data[i].total || 0);
+      }
+      var dates = Object.keys(byDate).sort();
+      if (dates.length === 0) {
+        box.innerHTML = '<div class="trend-empty">Tidak ada data omset pada periode ini</div>';
+        document.getElementById('trendPeak').textContent = '-';
+        document.getElementById('trendAvg').textContent = '-';
+        return;
+      }
+
+      var points = dates.map(function (d) { return { date: d, value: byDate[d] }; });
+      var W = 720, H = 150, PADX = 6, PADY = 18;
+      var maxV = 0;
+      for (var v = 0; v < points.length; v++) maxV = Math.max(maxV, points[v].value);
+      var n = points.length;
+      var xAt = function (idx) { return n === 1 ? W / 2 : PADX + idx * (W - PADX * 2) / (n - 1); };
+      var yAt = function (val) { return H - PADY - (maxV > 0 ? (val / maxV) * (H - PADY * 2) : 0); };
+
+      var line = '';
+      for (var p2 = 0; p2 < n; p2++) {
+        line += (p2 === 0 ? 'M' : 'L') + xAt(p2).toFixed(1) + ' ' + yAt(points[p2].value).toFixed(1) + ' ';
+      }
+      var area;
+      if (n === 1) {
+        var y1 = yAt(points[0].value).toFixed(1);
+        line = 'M' + (W / 2 - 16).toFixed(1) + ' ' + y1 + ' L' + (W / 2 + 16).toFixed(1) + ' ' + y1 + ' ';
+        area = line + 'L' + (W / 2 + 16).toFixed(1) + ' ' + (H - 2) + ' L' + (W / 2 - 16).toFixed(1) + ' ' + (H - 2) + ' Z';
+      } else {
+        area = line + 'L' + xAt(n - 1).toFixed(1) + ' ' + (H - 2) + ' L' + xAt(0).toFixed(1) + ' ' + (H - 2) + ' Z';
+      }
+
+      var peak = points.reduce(function (a, b) { return b.value >= a.value ? b : a; });
+      var sum = 0;
+      for (var s = 0; s < n; s++) sum += points[s].value;
+      document.getElementById('trendPeak').textContent = formatIDR(peak.value);
+      document.getElementById('trendAvg').textContent = formatIDR(Math.round(sum / n));
+
+      box.innerHTML =
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+          '<defs>' +
+            '<linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">' +
+              '<stop offset="0%" stop-color="#34d399" stop-opacity="0.4"/>' +
+              '<stop offset="100%" stop-color="#34d399" stop-opacity="0.02"/>' +
+            '</linearGradient>' +
+          '</defs>' +
+          '<path d="' + area + '" fill="url(#trendFill)"/>' +
+          '<path d="' + line + '" fill="none" stroke="#34d399" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '</svg>' +
+        '<div class="trend-dot"></div><div class="trend-tip"></div>' +
+        (n >= 2 ? '<div class="trend-x"><span>' + shortDateLabel(points[0].date) + '</span><span>' + shortDateLabel(points[n - 1].date) + '</span></div>' : '');
+
+      var svg = box.querySelector('svg');
+      var dot = box.querySelector('.trend-dot');
+      var tip = box.querySelector('.trend-tip');
+      svg.addEventListener('mousemove', function (e) {
+        var rect = svg.getBoundingClientRect();
+        var frac = (e.clientX - rect.left) / Math.max(rect.width, 1);
+        var idx = Math.max(0, Math.min(n - 1, Math.round(frac * (n - 1))));
+        var pt = points[idx];
+        var px = xAt(idx) / W * rect.width;
+        var py = yAt(pt.value) / H * rect.height;
+        dot.style.left = px + 'px';
+        dot.style.top = py + 'px';
+        dot.style.opacity = '1';
+        tip.innerHTML = '<small>' + escapeHtml(pt.date) + '</small>' + formatIDR(pt.value);
+        tip.style.left = Math.min(Math.max(px, 76), rect.width - 76) + 'px';
+        tip.style.top = py + 'px';
+        tip.style.opacity = '1';
+      });
+      svg.addEventListener('mouseleave', function () {
+        dot.style.opacity = '0';
+        tip.style.opacity = '0';
+      });
+    }
+
+    function shortDateLabel(key) {
+      // yyyy-MM-dd -> "d MMM"
+      var mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      var parts = String(key).split('-');
+      if (parts.length !== 3) return key;
+      return Number(parts[2]) + ' ' + (mNames[Number(parts[1]) - 1] || parts[1]);
     }
 
     // ============================================================
@@ -3931,6 +4152,12 @@
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
       document.getElementById('topProductsBody').innerHTML = '<div class="rank-empty">Pilih periode dan klik "Tampilkan"</div>';
       document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
+      var trendBox = document.getElementById('heroTrendChart');
+      if (trendBox) trendBox.innerHTML = '<div class="trend-empty">Pilih periode dan klik "Tampilkan"</div>';
+      var trendPeak = document.getElementById('trendPeak');
+      if (trendPeak) trendPeak.textContent = '-';
+      var trendAvg = document.getElementById('trendAvg');
+      if (trendAvg) trendAvg.textContent = '-';
     }
 
     function resetFilters() {
