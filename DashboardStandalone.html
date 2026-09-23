@@ -581,6 +581,52 @@
       font-weight: 700;
     }
 
+    /* Badge delta omset vs periode sebelumnya */
+    .hero-delta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-delta[hidden] { display: none; }
+
+    .hero-delta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .hero-delta-badge.delta-up {
+      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.18);
+      border: 1px solid rgba(52, 211, 153, 0.45);
+    }
+
+    .hero-delta-badge.delta-down {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(248, 113, 113, 0.4);
+    }
+
+    .hero-delta-badge.delta-flat {
+      color: #cbd5e1;
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .hero-delta-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--ink-muted);
+    }
+
     /* Preset periode cepat (pill di hero) */
     .hero-presets {
       display: flex;
@@ -753,6 +799,39 @@
     }
 
     .hero-trend-title i { color: #6ee7b7; }
+
+    /* Toggle pilah metode (Semua / Cash / QRIS) */
+    .hero-trend-toggle {
+      display: inline-flex;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 999px;
+      padding: 3px;
+    }
+
+    .tchip {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .tchip i { font-size: 10px; margin-right: 3px; }
+
+    .tchip:hover { color: #e2e8f0; }
+
+    .tchip-active {
+      background: rgba(16, 185, 129, 0.22);
+      color: #6ee7b7;
+      box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4);
+    }
 
     .hero-trend-legend {
       font-size: 12px;
@@ -2309,6 +2388,10 @@
             <div>
               <div class="hero-eyebrow">Total Omset Periode</div>
               <div class="hero-value" id="kpiGross">Rp 0</div>
+              <div class="hero-delta" id="heroDelta" hidden>
+                <span class="hero-delta-badge" id="heroDeltaBadge">–</span>
+                <span class="hero-delta-label" id="heroDeltaLabel">vs periode sebelumnya</span>
+              </div>
               <div class="hero-sub" id="heroPeriodHint">Pilih periode, lalu tekan <b>Tampilkan</b></div>
             </div>
             <div class="hero-presets" id="heroPresets">
@@ -2355,6 +2438,11 @@
           <div class="hero-trend">
             <div class="hero-trend-head">
               <div class="hero-trend-title"><i class="fa-solid fa-chart-line"></i> Tren Omset Harian</div>
+              <div class="hero-trend-toggle" id="trendToggle" role="group" aria-label="Pilah omset per metode pembayaran">
+                <button class="tchip tchip-active" type="button" data-mode="all">Semua</button>
+                <button class="tchip" type="button" data-mode="cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</button>
+                <button class="tchip" type="button" data-mode="qris"><i class="fa-solid fa-qrcode"></i> QRIS</button>
+              </div>
               <div class="hero-trend-legend">Puncak <b id="trendPeak">-</b>&nbsp;&nbsp;·&nbsp;&nbsp;Rata-rata <b id="trendAvg">-</b></div>
             </div>
             <div class="hero-trend-chart" id="heroTrendChart">
@@ -2713,6 +2801,8 @@
     var chartsReady = false;
     var reportLoading = false;
     var lastChartData = [];
+    var trendRows = [];    // data transaksi laporan terakhir (untuk sparkline hero)
+    var trendMode = 'all'; // 'all' | 'cash' | 'qris'
 
     // ============================================================
     // LOADING STATE
@@ -3319,6 +3409,24 @@
       });
     }
 
+    function bindTrendToggle() {
+      var el = document.getElementById('trendToggle');
+      if (!el) return;
+      el.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.tchip') : null;
+        if (!btn) return;
+        var mode = btn.getAttribute('data-mode');
+        if (!mode || mode === trendMode) return;
+        trendMode = mode;
+        var chips = el.querySelectorAll('.tchip');
+        for (var i = 0; i < chips.length; i++) {
+          chips[i].classList.toggle('tchip-active', chips[i] === btn);
+        }
+        // Gambar ulang dari data yang sudah ada — tanpa panggilan API
+        drawTrendChart();
+      });
+    }
+
     function loadReport() {
       if (reportLoading) {
         showToast('Laporan sedang dimuat, tunggu sebentar...', 'error');
@@ -3351,6 +3459,7 @@
           renderReport(res);
           renderTopProducts(res.topProducts || []);
           renderChart(res.chartData || []);
+          renderHeroDelta(res);
           renderDailyTrend(res);
           updateKPI(res);
         } else {
@@ -3460,6 +3569,50 @@
       });
     }
 
+    // Badge delta omset vs periode sebelumnya (durasi sama, tepat sebelum)
+    function renderHeroDelta(res) {
+      var wrap = document.getElementById('heroDelta');
+      var badge = document.getElementById('heroDeltaBadge');
+      var label = document.getElementById('heroDeltaLabel');
+      if (!wrap || !badge || !label) return;
+      var prev = Number(res.prevOmsetKotor || 0);
+      var cur = Number(res.omsetKotor || 0);
+      if (!res.prevRange || (prev === 0 && cur === 0)) {
+        wrap.hidden = true;
+        return;
+      }
+      var pct = prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+      var cls, txt;
+      if (pct === null) {
+        cls = 'delta-up';
+        txt = '<i class="fa-solid fa-arrow-trend-up"></i> Baru';
+      } else if (pct > 0) {
+        cls = 'delta-up';
+        txt = '<i class="fa-solid fa-arrow-trend-up"></i> +' + pct + '%';
+      } else if (pct < 0) {
+        cls = 'delta-down';
+        txt = '<i class="fa-solid fa-arrow-trend-down"></i> ' + pct + '%';
+      } else {
+        cls = 'delta-flat';
+        txt = '<i class="fa-solid fa-equals"></i> 0%';
+      }
+      badge.className = 'hero-delta-badge ' + cls;
+      badge.innerHTML = txt;
+      label.textContent = 'vs ' + shortRangeLabel(res.prevRange);
+      wrap.hidden = false;
+    }
+
+    function shortRangeLabel(range) {
+      var mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      function lbl(key) {
+        var p = String(key || '').split('-');
+        if (p.length !== 3) return key || '';
+        return Number(p[2]) + ' ' + (mNames[Number(p[1]) - 1] || p[1]);
+      }
+      if (!range || !range.start || !range.end) return 'periode sebelumnya';
+      return lbl(range.start) + ' – ' + lbl(range.end);
+    }
+
     function updateKPI(res) {
       document.getElementById('kpiTx').textContent = Number(res.totalTransaksi || 0).toLocaleString('id-ID');
       document.getElementById('kpiGross').textContent = formatIDR(res.omsetKotor || 0);
@@ -3476,26 +3629,49 @@
     // HERO - TREN OMSET HARIAN (sparkline SVG)
     // ============================================================
     function renderDailyTrend(res) {
+      if (res && res.data) trendRows = res.data;
+      drawTrendChart();
+    }
+
+    function drawTrendChart() {
       var box = document.getElementById('heroTrendChart');
       if (!box) return;
-      var data = res.data || [];
+      var data = trendRows || [];
+      var mode = trendMode || 'all';
 
-      // Agregasi omset per tanggal (key yyyy-MM-dd dari server)
+      // Agregasi omset per tanggal (key yyyy-MM-dd dari server),
+      // dipilah metode pembayaran bila toggle Cash/QRIS aktif
       var byDate = {};
       for (var i = 0; i < data.length; i++) {
-        var key = String(data[i].tanggal || '');
+        var row = data[i];
+        if (mode !== 'all') {
+          var m = String(row.metode || '').toUpperCase();
+          var isQr = m.indexOf('QR') !== -1;
+          if (mode === 'qris' && !isQr) continue;
+          if (mode === 'cash' && isQr) continue;
+        }
+        var key = String(row.tanggal || '');
         if (!key) continue;
-        byDate[key] = (byDate[key] || 0) + Number(data[i].total || 0);
+        byDate[key] = (byDate[key] || 0) + Number(row.total || 0);
       }
       var dates = Object.keys(byDate).sort();
       if (dates.length === 0) {
-        box.innerHTML = '<div class="trend-empty">Tidak ada data omset pada periode ini</div>';
+        var emptyMsg = mode === 'cash' ? 'Tidak ada transaksi Cash pada periode ini'
+          : mode === 'qris' ? 'Tidak ada transaksi QRIS pada periode ini'
+          : 'Tidak ada data omset pada periode ini';
+        box.innerHTML = '<div class="trend-empty">' + emptyMsg + '</div>';
         document.getElementById('trendPeak').textContent = '-';
         document.getElementById('trendAvg').textContent = '-';
         return;
       }
 
       var points = dates.map(function (d) { return { date: d, value: byDate[d] }; });
+      // Warna sparkline mengikuti metode terpilih
+      var CP = {
+        all:  { line: '#34d399', glow: 'rgba(52, 211, 153, 0.25)' },
+        cash: { line: '#60a5fa', glow: 'rgba(96, 165, 250, 0.25)' },
+        qris: { line: '#fbbf24', glow: 'rgba(251, 191, 36, 0.25)' }
+      }[mode] || { line: '#34d399', glow: 'rgba(52, 211, 153, 0.25)' };
       var W = 720, H = 150, PADX = 6, PADY = 18;
       var maxV = 0;
       for (var v = 0; v < points.length; v++) maxV = Math.max(maxV, points[v].value);
@@ -3526,12 +3702,12 @@
         '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
           '<defs>' +
             '<linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">' +
-              '<stop offset="0%" stop-color="#34d399" stop-opacity="0.4"/>' +
-              '<stop offset="100%" stop-color="#34d399" stop-opacity="0.02"/>' +
+              '<stop offset="0%" stop-color="' + CP.line + '" stop-opacity="0.4"/>' +
+              '<stop offset="100%" stop-color="' + CP.line + '" stop-opacity="0.02"/>' +
             '</linearGradient>' +
           '</defs>' +
           '<path d="' + area + '" fill="url(#trendFill)"/>' +
-          '<path d="' + line + '" fill="none" stroke="#34d399" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>' +
+          '<path d="' + line + '" fill="none" stroke="' + CP.line + '" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>' +
         '</svg>' +
         '<div class="trend-dot"></div><div class="trend-tip"></div>' +
         (n >= 2 ? '<div class="trend-x"><span>' + shortDateLabel(points[0].date) + '</span><span>' + shortDateLabel(points[n - 1].date) + '</span></div>' : '');
@@ -3546,6 +3722,8 @@
         var pt = points[idx];
         var px = xAt(idx) / W * rect.width;
         var py = yAt(pt.value) / H * rect.height;
+        dot.style.background = CP.line;
+        dot.style.boxShadow = '0 0 0 4px ' + CP.glow;
         dot.style.left = px + 'px';
         dot.style.top = py + 'px';
         dot.style.opacity = '1';
@@ -4073,6 +4251,7 @@
       runSafely('restoreSessionIfValid', restoreSessionIfValid);
       bindSessionActivity();
       runSafely('bindHeroPresets', bindHeroPresets);
+    runSafely('bindTrendToggle', bindTrendToggle);
 
       runSafely('setInitialDates', function () {
         var today = getTodayISO();
@@ -4147,11 +4326,17 @@
       document.getElementById('chartTotalOmset').textContent = '';
       var hint = document.getElementById('heroPeriodHint');
       if (hint) hint.innerHTML = 'Pilih periode, lalu tekan <b>Tampilkan</b>';
+      var heroDelta = document.getElementById('heroDelta');
+      if (heroDelta) heroDelta.hidden = true;
       var chips = document.querySelectorAll('#heroPresets .chip');
       for (var ci = 0; ci < chips.length; ci++) chips[ci].classList.remove('chip-active');
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
       document.getElementById('topProductsBody').innerHTML = '<div class="rank-empty">Pilih periode dan klik "Tampilkan"</div>';
       document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
+      trendRows = [];
+      trendMode = 'all';
+      var tChips = document.querySelectorAll('#trendToggle .tchip');
+      for (var ti = 0; ti < tChips.length; ti++) tChips[ti].classList.toggle('tchip-active', tChips[ti].getAttribute('data-mode') === 'all');
       var trendBox = document.getElementById('heroTrendChart');
       if (trendBox) trendBox.innerHTML = '<div class="trend-empty">Pilih periode dan klik "Tampilkan"</div>';
       var trendPeak = document.getElementById('trendPeak');

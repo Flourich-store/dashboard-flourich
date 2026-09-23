@@ -71,6 +71,25 @@ function _parseSheetDateKey(cell) {
   return '';
 }
 
+// Menggeser key tanggal 'yyyy-MM-dd' sebanyak days (bisa negatif).
+// Aritmetika via Date.UTC supaya bebas timezone (Aritmetika Date lokal
+// di Apps Script bisa bergeser sehari).''
+function _shiftDateKey(key, days) {
+  var m = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  var t = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  t.setUTCDate(t.getUTCDate() + Number(days || 0));
+  return t.getUTCFullYear() + '-' + ('0' + (t.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + t.getUTCDate()).slice(-2);
+}
+
+// Selisih hari antara dua key 'yyyy-MM-dd' (b - a).
+function _diffDaysKey(a, b) {
+  var ma = String(a || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  var mb = String(b || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!ma || !mb) return 0;
+  return Math.round((Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3])) - Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]))) / 86400000);
+}
+
 function getHppRate(namaProduk, volume) {
   var nama = String(namaProduk || '').toUpperCase();
   var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
@@ -256,7 +275,7 @@ function getReportByDateRange(token, startDate, endDate) {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) {
-        return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, labaKotor: 0, labaBersih: 0 };
+        return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, prevOmsetKotor: 0, prevRange: null, labaKotor: 0, labaBersih: 0 };
     }
 
     var values = sheet.getDataRange().getValues();
@@ -293,6 +312,16 @@ function getReportByDateRange(token, startDate, endDate) {
 
     var startKey = _normDateKey(startDate);
     var endKey = _normDateKey(endDate);
+
+    // Periode pembanding untuk badge delta hero: durasi sama, tepat
+    // sebelum periode terpilih (mis. 1–22 Sep -> 10–31 Agu).
+    var prevStartKey = '', prevEndKey = '', prevGrossTotal = 0;
+    if (startKey && endKey && startKey <= endKey) {
+      var durDays = _diffDaysKey(startKey, endKey) + 1;
+      prevStartKey = _shiftDateKey(startKey, -durDays);
+      prevEndKey = _shiftDateKey(endKey, -durDays);
+    }
+
     var productMap = {}, chartMap = { 'Cash': 0, 'QRIS': 0 }, detailData = [];
     var txCount = 0, grossTotal = 0, totalHPP = 0;
 
@@ -313,7 +342,14 @@ function getReportByDateRange(token, startDate, endDate) {
 
       var rowKey = _parseSheetDateKey(tanggalCell);
       if (!rowKey) continue;
-      if (startKey && rowKey < startKey) continue;
+      if (startKey && rowKey < startKey) {
+        // Baris sebelum periode terpilih tapi masuk periode pembanding
+        // tetap dihitung omsetnya untuk badge naik/turun di hero.
+        if (prevStartKey && rowKey >= prevStartKey && rowKey <= prevEndKey) {
+          prevGrossTotal += totalHarga;
+        }
+        continue;
+      }
       if (endKey && rowKey > endKey) continue;
 
       txCount++;
@@ -399,6 +435,8 @@ function getReportByDateRange(token, startDate, endDate) {
       data: detailData,
       totalTransaksi: txCount,
       omsetKotor: grossTotal,
+      prevOmsetKotor: prevGrossTotal,
+      prevRange: (prevStartKey && prevEndKey) ? { start: prevStartKey, end: prevEndKey } : null,
       totalHPP: totalHPP,
       totalBiayaOperasional: biayaOperasional,
       totalPemasukanLain: totalIncomeOther,
