@@ -566,26 +566,33 @@ function updateStock(namaProduk, qtySold) {
 // ============================================================
 // PRODUK CRUD
 // ============================================================
-// Cache daftar produk dalam satu eksekusi script: getProdukList bisa
-// dipanggil beberapa kali per sesi (load awal + buka modal), dan setiap
-// pemanggilan tadinya membaca ulang seluruh sheet dari Sheets API.
+// Cache daftar produk dengan TTL pendek: getProdukList bisa dipanggil
+// beberapa kali per sesi (load awal + buka modal), dan setiap pemanggilan
+// membaca ulang seluruh sheet dari Sheets API. TTL 30 detik menjaga data
+// tetap "real" — perubahan stok dari POS/sheet maksimal basi 30 detik,
+// dan tetap dibuang seketika setiap CRUD produk lewat dashboard.
 var __produkCache = null;
+var __produkCacheAt = 0;
+var PRODUK_CACHE_TTL_MS = 30000;
 
 function _invalidateProdukCache() {
   __produkCache = null;
+  __produkCacheAt = 0;
 }
 
 function getProdukList(token) {
   return _guardToken(function () {
     _verifyToken(token, false);
-    if (__produkCache) return { status: 'success', products: __produkCache, cached: true };
+    if (__produkCache && (Date.now() - __produkCacheAt) < PRODUK_CACHE_TTL_MS) {
+      return { status: 'success', products: __produkCache, cached: true };
+    }
 
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Produk');
     if (!sheet) return { status: 'error', message: "Sheet Produk tidak ditemukan" };
 
     var values = sheet.getDataRange().getValues();
-    if (!values || values.length <= 1) { __produkCache = []; return { status: 'success', products: [] }; }
+    if (!values || values.length <= 1) { __produkCache = []; __produkCacheAt = Date.now(); return { status: 'success', products: [] }; }
 
     var header = [];
     for (var h = 0; h < values[0].length; h++) {
@@ -616,6 +623,7 @@ function getProdukList(token) {
     }
 
     __produkCache = products;
+    __produkCacheAt = Date.now();
     return { status: 'success', products: products };
   });
 }

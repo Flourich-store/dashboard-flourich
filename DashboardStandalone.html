@@ -28,6 +28,7 @@
       --slate-700: #334155;
       --slate-600: #475569;
       --slate-400: #94a3b8;
+  --text-subtle: #64748b; /* teks sekunder di latar terang (AA 4.76:1) */
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --border: #e2e8f0;
@@ -58,6 +59,7 @@
       --slate-700: #cbd5e1;
       --slate-600: #94a3b8;
       --slate-400: #64748b;
+  --text-subtle: #94a3b8; /* teks sekunder di latar gelap (AA 6.78:1) */
       --bg: #070b16;
       --card-bg: #0f1a2e;
       --border: rgba(148, 163, 184, 0.16);
@@ -706,6 +708,27 @@
       margin-left: auto;
     }
 
+    /* Tombol aksi di hero selalu di atas panel gelap (kedua tema), jadi
+       warnanya tidak boleh mewarisi btn-secondary light-mode (abu redup
+       + border pudar yang nyaris tak terlihat). Kontras tinggi + ikon
+       emerald agar Export CSV & Reset jelas terbaca. */
+    .hero-actions .btn-secondary,
+    html.theme-dark .hero-actions .btn-secondary {
+      background: rgba(148, 163, 184, 0.16);
+      color: #f1f5f9;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      font-weight: 700;
+    }
+
+    .hero-actions .btn-secondary i { color: #6ee7b7; }
+
+    .hero-actions .btn-secondary:hover,
+    html.theme-dark .hero-actions .btn-secondary:hover {
+      background: rgba(148, 163, 184, 0.28);
+      border-color: rgba(52, 211, 153, 0.6);
+      color: #ffffff;
+    }
+
     /* Strip statistik menyatu di hero */
     .hero-stats {
       display: grid;
@@ -934,8 +957,8 @@
     .stsum--out .stsum-dot { background: #ef4444; }
     .stsum--low .stsum-dot { background: #f59e0b; }
 
-    .stsum--out .stsum-num { color: #dc2626; }
-    .stsum--low .stsum-num { color: #d97706; }
+    .stsum--out .stsum-num { color: #b91c1c; }
+    .stsum--low .stsum-num { color: #92400e; }
 
     .stock-badge {
       display: inline-flex;
@@ -949,19 +972,19 @@
     }
 
     .stock-ok {
-      color: #059669;
+      color: #047857; /* AA 4.80:1 di atas tint */
       background: rgba(16, 185, 129, 0.14);
       border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
     .stock-low {
-      color: #d97706;
+      color: #92400e; /* AA 6.25:1 di atas tint */
       background: rgba(251, 191, 36, 0.16);
       border: 1px solid rgba(245, 158, 11, 0.4);
     }
 
     .stock-out {
-      color: #dc2626;
+      color: #b91c1c; /* AA 5.40:1 di atas tint */
       background: rgba(239, 68, 68, 0.14);
       border: 1px solid rgba(239, 68, 68, 0.4);
     }
@@ -1031,7 +1054,7 @@
     .tchip {
       border: none;
       background: transparent;
-      color: #94a3b8;
+      color: #cbd5e1; /* AA 11.8:1 di atas toggle gelap */
       font-family: inherit;
       font-size: 11.5px;
       font-weight: 700;
@@ -1043,7 +1066,7 @@
 
     .tchip i { font-size: 10px; margin-right: 3px; }
 
-    .tchip:hover { color: #e2e8f0; }
+    .tchip:hover { color: #f1f5f9; }
 
     .tchip-active {
       background: rgba(16, 185, 129, 0.22);
@@ -1243,7 +1266,7 @@
       border-radius: 16px;
       padding: 26px 16px;
       text-align: center;
-      color: var(--slate-400);
+      color: var(--text-subtle);
       font-size: 13px;
     }
 
@@ -1360,14 +1383,14 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%); /* teks putih AA 6.47:1 */
       color: white;
       padding: 12px 18px;
       box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
     }
 
     .btn-primary:hover {
-      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+      background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
       box-shadow: 0 6px 16px rgba(5, 150, 105, 0.3);
     }
 
@@ -1386,7 +1409,7 @@
     }
 
     .btn-danger {
-      background: #ef4444;
+      background: #b91c1c; /* kontras teks putih AA 6.47:1 (#ef4444 hanya 3.76) */
       color: white;
       padding: 6px 12px;
       border-radius: 6px;
@@ -1398,12 +1421,12 @@
     }
 
     .btn-danger:hover {
-      background: #dc2626;
+      background: #991b1b;
     }
 
     .btn-edit {
       cursor: pointer;
-      background: #3b82f6;
+      background: #2563eb; /* kontras teks putih AA 5.17:1 (#3b82f6 hanya 3.68) */
       color: white;
       padding: 6px 12px;
       border-radius: 6px;
@@ -1513,7 +1536,7 @@
     }
 
     .muted {
-      color: var(--slate-400);
+      color: var(--text-subtle);
       font-size: 12px;
     }
 
@@ -1851,7 +1874,7 @@
     }
 
     .empty-text {
-      color: var(--slate-400);
+      color: var(--text-subtle);
       text-align: center;
       padding: 20px 12px;
       font-size: 13px;
@@ -2369,7 +2392,7 @@
 
     /* --- Buttons (dark) --- */
     html.theme-dark .btn-primary {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%); /* teks putih AA; glow tetap emerald */
       box-shadow: 0 8px 22px rgba(16, 185, 129, 0.3);
     }
 
@@ -2415,8 +2438,8 @@
       box-shadow: var(--shadow-sm);
     }
 
-    html.theme-dark .muted { color: #64748b; }
-    html.theme-dark .empty-text { color: #64748b; }
+    html.theme-dark .muted { color: #94a3b8; }
+    html.theme-dark .empty-text { color: #94a3b8; }
     html.theme-dark .loading-text { color: #94a3b8; }
 
     /* --- Login (dark) --- */
