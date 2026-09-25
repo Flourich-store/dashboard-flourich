@@ -1124,6 +1124,46 @@
       margin-top: 14px;
     }
 
+    /* Baris aksi CRUD bahan (edit/hapus kecil, kanan atas kartu) */
+    .bahan-manage {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 6px;
+      z-index: 1;
+    }
+
+    .bahan-mini {
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 11px;
+      transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+
+    .bahan-mini:active { transform: scale(0.92); }
+
+    .bahan-mini--edit { color: #2563eb; }
+
+    .bahan-mini--edit:hover { border-color: #2563eb; }
+
+    .bahan-mini--del { color: #b91c1c; }
+
+    .bahan-mini--del:hover { border-color: #b91c1c; }
+
+    html.theme-dark .bahan-mini { background: rgba(148, 163, 184, 0.08); border-color: rgba(148, 163, 184, 0.18); }
+
+    html.theme-dark .bahan-mini--edit { color: #60a5fa; }
+
+    html.theme-dark .bahan-mini--del { color: #f87171; }
+
     .bahan-btn {
       flex: 1;
       display: flex;
@@ -3199,6 +3239,9 @@
 
       <section id="section-bahan" class="content-section hidden">
         <div class="section-title"><i class="fa-solid fa-flask"></i> Stok Bahan Baku</div>
+        <div class="btn-bar" style="margin-top:10px;">
+          <button class="btn-primary btn" type="button" onclick="openBahanBaruModal()"><i class="fa-solid fa-plus"></i>&nbsp;Kelola / Tambah Bahan</button>
+        </div>
         <div class="bahan-grid" id="bahanGrid">
           <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat stok bahan...</div>
         </div>
@@ -3313,6 +3356,31 @@
       <div class="card" id="adjPreview" style="margin-top:12px; display:none;"></div>
       <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
         <button class="btn-primary btn" id="adjSimpanBtn" onclick="simpanAdjustStok()"><i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Penyesuaian</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah/Edit Bahan Baku -->
+  <div id="modalBahanBaru" class="modal" aria-hidden="true">
+    <div class="modal-content modal-content--narrow">
+      <div class="modal-header">
+        <h2 style="color:var(--green);font-size:16px;"><i class="fa-solid fa-flask"></i> <span id="bahanBaruTitle">Tambah Bahan</span></h2>
+        <button class="modal-close" type="button" onclick="closeModal('modalBahanBaru')">&times;</button>
+      </div>
+      <div class="filter-group" style="margin-top:4px;">
+        <label>Nama Bahan</label>
+        <input type="text" id="bbNama" maxlength="40" placeholder="cth: Gelas Plastik, Sedotan, Cup 250ml">
+      </div>
+      <div class="filter-group" style="margin-top:10px;">
+        <label>Satuan</label>
+        <input type="text" id="bbSatuan" maxlength="12" placeholder="cth: pcs, gros, liter, kg" value="pcs">
+      </div>
+      <div class="bahan-note" style="margin-top:12px;">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="bahanBaruHint">Bahan baru mulai dengan sisa stok 0 — atur lewat tombol <b>Tambah</b> di kartunya.</span>
+      </div>
+      <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
+        <button class="btn-primary btn" id="bbSimpanBtn" onclick="simpanBahanBaku()"><i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Bahan</button>
       </div>
     </div>
   </div>
@@ -5151,19 +5219,45 @@
         grid.innerHTML = '<div class="empty-text">Tidak ada data stok bahan</div>';
         return;
       }
-      grid.innerHTML = cachedStokBahan.map(function (s) {
-        var meta = BAHAN_META[s.bahan] || { icon: 'fa-box', color: '#10b981' };
+      grid.innerHTML = cachedStokBahan.map(function (s, idx) {
+        var meta = BAHAN_META[s.bahan] || { icon: 'fa-box', color: '#64748b' };
         var sisa = Number(s.sisa || 0);
+        var satuan = escapeHtml(s.satuan || 'pcs');
+        var canModify = getRole() === 'SUPER_ADMIN';
+        var manage = canModify
+          ? '<div class="bahan-manage">' +
+            '<button class="bahan-mini bahan-mini--edit" type="button" title="Edit bahan" data-idx="' + idx + '"><i class="fa-solid fa-pen"></i></button>' +
+            '<button class="bahan-mini bahan-mini--del" type="button" title="Hapus bahan" data-idx="' + idx + '"><i class="fa-solid fa-trash-can"></i></button>' +
+            '</div>'
+          : '';
         return '<div class="bahan-card" style="--bahan-accent:' + meta.color + '29; --bahan-accent-border:' + meta.color + '66; --bahan-accent-solid:' + meta.color + '">' +
+          manage +
           '<div class="bahan-head"><span class="bahan-ico" style="background:' + meta.color + '"><i class="fa-solid ' + meta.icon + '"></i></span> ' + escapeHtml(s.bahan) + '</div>' +
-          '<div class="bahan-num">' + sisa.toLocaleString('id-ID') + '<span class="bahan-unit">pcs</span></div>' +
+          '<div class="bahan-num">' + sisa.toLocaleString('id-ID') + '<span class="bahan-unit">' + satuan + '</span></div>' +
           '<div class="bahan-upd">' + (s.diupdate ? 'Diperbarui ' + escapeHtml(s.diupdate) : 'Belum pernah diatur') + '</div>' +
           '<div class="bahan-actions">' +
-          '<button class="bahan-btn bahan-btn--plus" type="button" onclick="bukaAturStok(\'' + escapeHtml(s.bahan) + '\', \'tambah\')"><i class="fa-solid fa-plus"></i> Tambah</button>' +
-          '<button class="bahan-btn bahan-btn--minus" type="button" onclick="bukaAturStok(\'' + escapeHtml(s.bahan) + '\', \'kurangi\')"><i class="fa-solid fa-minus"></i> Kurangi</button>' +
+          '<button class="bahan-btn bahan-btn--plus" type="button" onclick="bukaAturStok(\'' + escapeJs(s.bahan) + '\', \'tambah\')"><i class="fa-solid fa-plus"></i> Tambah</button>' +
+          '<button class="bahan-btn bahan-btn--minus" type="button" onclick="bukaAturStok(\'' + escapeJs(s.bahan) + '\', \'kurangi\')"><i class="fa-solid fa-minus"></i> Kurangi</button>' +
           '</div>' +
           '</div>';
       }).join('');
+
+      // Binding tombol edit/hapus bahan (delegasi via data-idx, aman utk nama dengan kutip)
+      var gridEl = document.getElementById('bahanGrid');
+      if (gridEl) {
+        gridEl.querySelectorAll('.bahan-mini--edit').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var item = cachedStokBahan[Number(btn.getAttribute('data-idx'))];
+            if (item) openBahanEditModal(item.bahan, item.satuan);
+          });
+        });
+        gridEl.querySelectorAll('.bahan-mini--del').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var item = cachedStokBahan[Number(btn.getAttribute('data-idx'))];
+            if (item) aksiHapusBahan(item.bahan);
+          });
+        });
+      }
     }
 
     // Buka modal Atur Stok; pradipilih bahan & aksi (dari tombol kartu).
@@ -5248,6 +5342,78 @@
         fetchLastBahanLog();
       }, function () {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Penyesuaian'; }
+      });
+    }
+
+    // ============================================================
+    // CRUD BAHAN — tambah / edit / hapus daftar bahan baku
+    // ============================================================
+    function openBahanBaruModal() {
+      var t = document.getElementById('bahanBaruTitle');
+      if (t) t.textContent = 'Tambah Bahan';
+      var nama = document.getElementById('bbNama');
+      var satuan = document.getElementById('bbSatuan');
+      if (nama) { nama.value = ''; nama.disabled = false; }
+      if (satuan) satuan.value = 'pcs';
+      var btn = document.getElementById('bbSimpanBtn');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Bahan'; }
+      var hint = document.getElementById('bahanBaruHint');
+      if (hint) hint.innerHTML = 'Bahan baru mulai dengan sisa stok 0 &mdash; atur lewat tombol <b>Tambah</b> di kartunya.';
+      delete document.getElementById('modalBahanBaru').dataset.editLama;
+      openModal('modalBahanBaru');
+    }
+
+    function openBahanEditModal(nama, satuan) {
+      var t = document.getElementById('bahanBaruTitle');
+      if (t) t.textContent = 'Edit Bahan';
+      var namaEl = document.getElementById('bbNama');
+      var satuanEl = document.getElementById('bbSatuan');
+      if (namaEl) namaEl.value = nama || '';
+      if (satuanEl) satuanEl.value = satuan || 'pcs';
+      var hint = document.getElementById('bahanBaruHint');
+      if (hint) hint.innerHTML = 'Mengubah nama/satuan <b>tidak mengubah sisa stok</b>. Riwayat lama tetap tersimpan dengan nama lama.';
+      var modal = document.getElementById('modalBahanBaru');
+      if (modal) modal.dataset.editLama = nama || '';
+      openModal('modalBahanBaru');
+    }
+
+    function simpanBahanBaku() {
+      var modal = document.getElementById('modalBahanBaru');
+      var namaEl = document.getElementById('bbNama');
+      var satuanEl = document.getElementById('bbSatuan');
+      var btn = document.getElementById('bbSimpanBtn');
+      if (!modal || !namaEl) return;
+      var nama = String(namaEl.value || '').trim();
+      var satuan = String(satuanEl && satuanEl.value || '').trim();
+      if (!nama) { showToast('Nama bahan wajib diisi.', 'error'); return; }
+      var editLama = modal.dataset.editLama || '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Menyimpan...'; }
+      var selesai = function () {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Bahan'; }
+      };
+      if (editLama) {
+        safeGoogleRun('updateBahanBaku', [getToken(), editLama, { nama: nama, satuan: satuan }], function (res) {
+          selesai();
+          showToast(res.message || 'Bahan berhasil diperbarui', 'success');
+          closeModal('modalBahanBaru');
+          loadStokBahan();
+        }, selesai);
+      } else {
+        safeGoogleRun('createBahanBaku', [getToken(), { nama: nama, satuan: satuan }], function (res) {
+          selesai();
+          showToast(res.message || 'Bahan berhasil ditambahkan', 'success');
+          closeModal('modalBahanBaru');
+          loadStokBahan();
+        }, selesai);
+      }
+    }
+
+    function aksiHapusBahan(nama) {
+      if (!confirm('Yakin hapus bahan "' + nama + '" dari daftar? Riwayat penyesuaiannya tetap tersimpan.')) return;
+      safeGoogleRun('deleteBahanBaku', [getToken(), nama], function (res) {
+        showToast(res.message || 'Bahan berhasil dihapus', 'success');
+        loadStokBahan();
+        fetchLastBahanLog();
       });
     }
 

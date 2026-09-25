@@ -759,18 +759,40 @@ function deleteProduk(token, idProduk) {
 // (koreksi rusak/hilang). Sengaja TIDAK terhubung ke transaksi kasir —
 // penjualan hanya mengurangi stok Produk jadi, bukan bahan baku ini.
 // ============================================================
-var BAHAN_NAMES = ['Botol', 'Stiker', 'Sirop'];
 var STOK_BAHAN_SHEET = 'Stok Bahan';
 var STOK_BAHAN_LOG_SHEET = 'Riwayat Stok Bahan';
+var BAHAN_DEFAULT_SATUAN = 'pcs';
+// Bahan awal hanya di-seed saat sheet masih kosong; setelah itu daftar
+// sepenuhnya dikelola lewat CRUD (tambah/ubah/hapus bahan).
+var BAHAN_DEFAULTS = ['Botol', 'Stiker', 'Sirop'];
 
 // Pastikan sheet stok & log ada dengan header yang benar. Aman dipanggil
-// berulang; sheet yang sudah ada tidak disentuh.
+// berulang; sheet yang sudah ada tidak disentuh. Layout lama (tanpa kolom
+// Satuan) dimigrasikan sekali on-the-fly.
 function _ensureStokBahanSheets(ss) {
   var stokSheet = ss.getSheetByName(STOK_BAHAN_SHEET);
   if (!stokSheet) {
     stokSheet = ss.insertSheet(STOK_BAHAN_SHEET);
-    stokSheet.getRange(1, 1, 1, 3).setValues([['Bahan', 'Sisa Stok', 'Diupdate']]);
-    stokSheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+    var seed = [['Bahan', 'Satuan', 'Sisa Stok', 'Diupdate']];
+    for (var s = 0; s < BAHAN_DEFAULTS.length; s++) seed.push([BAHAN_DEFAULTS[s], BAHAN_DEFAULT_SATUAN, 0, '']);
+    stokSheet.getRange(1, 1, seed.length, 4).setValues(seed);
+    stokSheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+  } else {
+    // Migrasi layout lama (Bahan | Sisa Stok | Diupdate) -> + kolom Satuan
+    var head = stokSheet.getRange(1, 1, 1, Math.max(3, stokSheet.getLastColumn() || 3)).getValues()[0];
+    if (String(head[0]).trim() === 'Bahan' && String(head[1]).trim() === 'Sisa Stok') {
+      var old = stokSheet.getDataRange().getValues();
+      var rows = [['Bahan', 'Satuan', 'Sisa Stok', 'Diupdate']];
+      for (var r = 1; r < old.length; r++) {
+        var nm = String(old[r][0] || '').trim();
+        if (!nm) continue;
+        rows.push([nm, BAHAN_DEFAULT_SATUAN, Number(old[r][1] || 0), String(old[r][2] || '')]);
+      }
+      if (rows.length === 1) {
+        for (var d = 0; d < BAHAN_DEFAULTS.length; d++) rows.push([BAHAN_DEFAULTS[d], BAHAN_DEFAULT_SATUAN, 0, '']);
+      }
+      stokSheet.getRange(1, 1, rows.length, 4).setValues(rows);
+    }
   }
   var logSheet = ss.getSheetByName(STOK_BAHAN_LOG_SHEET);
   if (!logSheet) {
@@ -781,7 +803,7 @@ function _ensureStokBahanSheets(ss) {
   return { stokSheet: stokSheet, logSheet: logSheet };
 }
 
-// Baca sisa stok bahan baku -> { status, stok: [{bahan, sisa, diupdate}] }
+// Daftar bahan DINAMIS dari sheet -> { status, stok: [{bahan, satuan, sisa, diupdate}] }
 function getStokBahan(token) {
   return _guardToken(function () {
     _verifyToken(token, false);
@@ -789,24 +811,16 @@ function getStokBahan(token) {
     var sheets = _ensureStokBahanSheets(ss);
     var values = sheets.stokSheet.getDataRange().getValues();
 
-    var map = {};
-    for (var i = 1; i < values.length; i++) {
-      var nama = String(values[i][0] || '').trim().toLowerCase();
-      if (!nama) continue;
-      map[nama] = { sisa: Number(values[i][1] || 0), diupdate: String(values[i][2] || '') };
-    }
-
     var stok = [];
-    for (var b = 0; b < BAHAN_NAMES.length; b++) {
-      var nm = BAHAN_NAMES[b];
-      var found = map[nm.toLowerCase()];
-      // Baris bahan yang belum ada di sheet dibuat otomatis dengan stok 0
-      if (!found) {
-        var rowIdx = sheets.stokSheet.getLastRow() + 1;
-        sheets.stokSheet.getRange(rowIdx, 1, 1, 3).setValues([[nm, 0, '']]);
-        found = { sisa: 0, diupdate: '' };
-      }
-      stok.push({ bahan: nm, sisa: found.sisa, diupdate: found.diupdate });
+    for (var i = 1; i < values.length; i++) {
+      var nama = String(values[i][0] || '').trim();
+      if (!nama) continue;
+      stok.push({
+        bahan: nama,
+        satuan: String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN,
+        sisa: Number(values[i][2] || 0),
+        diupdate: String(values[i][3] || '')
+      });
     }
 
     return { status: 'success', stok: stok };
@@ -815,7 +829,7 @@ function getStokBahan(token) {
 
 // Penyesuaian stok manual.
 // token   : sesi login (hanya SUPER_ADMIN, konsisten dengan CRUD produk)
-// bahan   : 'Botol' | 'Stiker' | 'Sirop'
+// bahan   : nama bahan apa pun yang terdaftar di sheet (dinamis)
 // aksi    : 'tambah' (restock/belanja) | 'kurangi' (rusak/hilang/koreksi)
 // jumlah  : angka > 0
 // catatan : opsional, disimpan di riwayat untuk audit
@@ -827,11 +841,6 @@ function adjustStokBahan(token, bahan, aksi, jumlah, catatan) {
     catatan = String(catatan || '').trim().slice(0, 200);
     jumlah = Number(jumlah);
 
-    var match = null;
-    for (var b = 0; b < BAHAN_NAMES.length; b++) {
-      if (BAHAN_NAMES[b].toLowerCase() === bahan.toLowerCase()) match = BAHAN_NAMES[b];
-    }
-    if (!match) return { status: 'error', message: 'Bahan tidak dikenal. Pilih: ' + BAHAN_NAMES.join(', ') };
     if (aksi !== 'tambah' && aksi !== 'kurangi') return { status: 'error', message: 'Aksi harus tambah atau kurangi' };
     if (isNaN(jumlah) || jumlah <= 0) return { status: 'error', message: 'Jumlah harus angka lebih dari 0' };
 
@@ -839,38 +848,135 @@ function adjustStokBahan(token, bahan, aksi, jumlah, catatan) {
     var sheets = _ensureStokBahanSheets(ss);
     var values = sheets.stokSheet.getDataRange().getValues();
 
-    var targetRow = -1, sisa = 0;
+    var targetRow = -1, sisa = 0, satuan = BAHAN_DEFAULT_SATUAN, matchName = '';
+    var daftar = [];
     for (var i = 1; i < values.length; i++) {
-      if (String(values[i][0] || '').trim().toLowerCase() === match.toLowerCase()) {
+      var nm = String(values[i][0] || '').trim();
+      if (!nm) continue;
+      daftar.push(nm);
+      if (nm.toLowerCase() === bahan.toLowerCase()) {
         targetRow = i + 1;
-        sisa = Number(values[i][1] || 0);
-        break;
+        matchName = nm;
+        satuan = String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN;
+        sisa = Number(values[i][2] || 0);
       }
     }
     if (targetRow === -1) {
-      targetRow = sheets.stokSheet.getLastRow() + 1;
-      sisa = 0;
+      return { status: 'error', message: 'Bahan "' + bahan + '" tidak ditemukan. Pilih: ' + (daftar.join(', ') || '-') };
     }
 
     var delta = aksi === 'tambah' ? jumlah : -jumlah;
     var sisaBaru = sisa + delta;
     // Stok tidak pernah minus: pengurangan melebihi sisa ditolak
     if (sisaBaru < 0) {
-      return { status: 'error', message: 'Pengurangan melebihi sisa stok (' + sisa + ' ' + match + '). Maksimal kurang ' + sisa + '.' };
+      return { status: 'error', message: 'Pengurangan melebihi sisa stok (' + sisa + ' ' + satuan + '). Maksimal kurang ' + sisa + '.' };
     }
 
     var now = new Date();
     var stamp = Utilities.formatDate(now, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm');
-    sheets.stokSheet.getRange(targetRow, 1, 1, 3).setValues([[match, sisaBaru, stamp]]);
+    sheets.stokSheet.getRange(targetRow, 1, 1, 4).setValues([[matchName, satuan, sisaBaru, stamp]]);
 
     // Riwayat untuk audit: kapan, apa, berapa, sisa akhir, catatan + user
-    sheets.logSheet.appendRow([now, aksi === 'tambah' ? 'TAMBAH' : 'KURANGI', match, jumlah, sisaBaru, (catatan ? catatan + ' — ' : '') + String(sess.u || '')]);
+    sheets.logSheet.appendRow([now, aksi === 'tambah' ? 'TAMBAH' : 'KURANGI', matchName, jumlah, sisaBaru, (catatan ? catatan + ' — ' : '') + String(sess.u || '')]);
 
     return {
       status: 'success',
-      message: 'Stok ' + match + (aksi === 'tambah' ? ' berhasil ditambah ' : ' berhasil dikurangi ') + jumlah + '. Sisa: ' + sisaBaru + '.',
-      bahan: match, aksi: aksi, jumlah: jumlah, sisa: sisaBaru
+      message: 'Stok ' + matchName + (aksi === 'tambah' ? ' berhasil ditambah ' : ' berhasil dikurangi ') + jumlah + ' ' + satuan + '. Sisa: ' + sisaBaru + ' ' + satuan + '.',
+      bahan: matchName, satuan: satuan, aksi: aksi, jumlah: jumlah, sisa: sisaBaru
     };
+  });
+}
+
+// ============================================================
+// CRUD BAHAN (tambah / ubah / hapus daftar bahan baku)
+// Semua hanya SUPER_ADMIN, konsisten dengan CRUD produk.
+// ============================================================
+function createBahanBaku(token, payload) {
+  return _guardToken(function () {
+    var sess = _verifyToken(token, true);
+    payload = payload || {};
+    var nama = String(payload.nama || '').trim();
+    var satuan = String(payload.satuan || '').trim().toLowerCase() || BAHAN_DEFAULT_SATUAN;
+    if (!nama) return { status: 'error', message: 'Nama bahan wajib diisi' };
+    if (nama.length > 40) return { status: 'error', message: 'Nama bahan maksimal 40 karakter' };
+    if (satuan.length > 12) return { status: 'error', message: 'Satuan maksimal 12 karakter' };
+
+    var ss = getSpreadsheet();
+    var sheets = _ensureStokBahanSheets(ss);
+    var values = sheets.stokSheet.getDataRange().getValues();
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][0] || '').trim().toLowerCase() === nama.toLowerCase()) {
+        return { status: 'error', message: 'Bahan "' + nama + '" sudah terdaftar' };
+      }
+    }
+
+    var now = new Date();
+    sheets.stokSheet.appendRow([nama, satuan, 0, '']);
+    sheets.logSheet.appendRow([now, 'BAHAN BARU', nama, 0, 0, 'Bahan ditambahkan ke daftar — ' + String(sess.u || '')]);
+    return { status: 'success', message: 'Bahan "' + nama + '" berhasil ditambahkan. Atur sisa stoknya lewat tombol Tambah.', bahan: nama, satuan: satuan };
+  });
+}
+
+function updateBahanBaku(token, namaLama, payload) {
+  return _guardToken(function () {
+    var sess = _verifyToken(token, true);
+    payload = payload || {};
+    namaLama = String(namaLama || '').trim();
+    var namaBaru = String(payload.nama || '').trim();
+    var satuan = String(payload.satuan || '').trim().toLowerCase() || BAHAN_DEFAULT_SATUAN;
+    if (!namaLama) return { status: 'error', message: 'Nama bahan lama tidak boleh kosong' };
+    if (!namaBaru) return { status: 'error', message: 'Nama bahan wajib diisi' };
+    if (namaBaru.length > 40) return { status: 'error', message: 'Nama bahan maksimal 40 karakter' };
+    if (satuan.length > 12) return { status: 'error', message: 'Satuan maksimal 12 karakter' };
+
+    var ss = getSpreadsheet();
+    var sheets = _ensureStokBahanSheets(ss);
+    var values = sheets.stokSheet.getDataRange().getValues();
+
+    var targetRow = -1, sisa = 0;
+    for (var i = 1; i < values.length; i++) {
+      var nm = String(values[i][0] || '').trim();
+      if (!nm) continue;
+      if (nm.toLowerCase() === namaLama.toLowerCase()) {
+        targetRow = i + 1;
+        sisa = Number(values[i][2] || 0);
+      } else if (nm.toLowerCase() === namaBaru.toLowerCase()) {
+        return { status: 'error', message: 'Nama "' + namaBaru + '" sudah dipakai bahan lain' };
+      }
+    }
+    if (targetRow === -1) return { status: 'error', message: 'Bahan "' + namaLama + '" tidak ditemukan' };
+
+    // Rename/satuan BUKAN perubahan stok: sisa & kolom Diupdate dipertahankan
+    sheets.stokSheet.getRange(targetRow, 1, 1, 2).setValues([[namaBaru, satuan]]);
+    sheets.logSheet.appendRow([new Date(), 'UBAH BAHAN', namaBaru, 0, sisa, 'Diubah dari "' + namaLama + '" (satuan: ' + satuan + ') — ' + String(sess.u || '')]);
+    return { status: 'success', message: 'Bahan "' + namaLama + '" berhasil diperbarui menjadi "' + namaBaru + '"', bahan: namaBaru, satuan: satuan };
+  });
+}
+
+function deleteBahanBaku(token, nama) {
+  return _guardToken(function () {
+    var sess = _verifyToken(token, true);
+    nama = String(nama || '').trim();
+    if (!nama) return { status: 'error', message: 'Nama bahan wajib diisi' };
+
+    var ss = getSpreadsheet();
+    var sheets = _ensureStokBahanSheets(ss);
+    var values = sheets.stokSheet.getDataRange().getValues();
+
+    var targetRow = -1, sisa = 0, satuan = BAHAN_DEFAULT_SATUAN;
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][0] || '').trim().toLowerCase() === nama.toLowerCase()) {
+        targetRow = i + 1;
+        satuan = String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN;
+        sisa = Number(values[i][2] || 0);
+        break;
+      }
+    }
+    if (targetRow === -1) return { status: 'error', message: 'Bahan "' + nama + '" tidak ditemukan' };
+
+    sheets.stokSheet.deleteRow(targetRow);
+    sheets.logSheet.appendRow([new Date(), 'HAPUS BAHAN', nama, 0, sisa, 'Bahan dihapus dari daftar (sisa terakhir ' + sisa + ' ' + satuan + ') — ' + String(sess.u || '')]);
+    return { status: 'success', message: 'Bahan "' + nama + '" berhasil dihapus. Riwayat penyesuaian tetap tersimpan.', bahan: nama };
   });
 }
 
