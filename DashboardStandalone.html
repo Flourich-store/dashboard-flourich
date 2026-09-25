@@ -94,6 +94,7 @@
     /* Komponen yang selalu berada di panel gelap (meski tema light):
        ring emerald terang agar kontras tetap tinggi */
     .nav-item:focus-visible,
+    .bnav-item:focus-visible,
     .sidebar-collapse-btn:focus-visible,
     .mobile-menu-btn:focus-visible,
     .hero-presets .chip:focus-visible,
@@ -151,6 +152,11 @@
     }
 
     .hide-on-desktop {
+      display: none;
+    }
+
+    /* Bottom navigation (mobile) — disembunyikan di desktop, tampil <=768px */
+    .bottom-nav {
       display: none;
     }
 
@@ -2226,9 +2232,89 @@
     }
 
     @media (max-width: 768px) {
-      .hide-on-desktop {
-        display: inline-flex;
+      /* Sidebar samping digantikan bottom navigation di mobile */
+      .hide-on-desktop { display: none !important; }
+      .sidebar { display: none !important; }
+      .sidebar-overlay { display: none !important; }
+
+      /* Ruang untuk bottom nav agar konten terbawah tidak tertutup */
+      .main-panel { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+      .toast { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+
+      /* Bottom nav melayang ala aplikasi seluler: ink gelap + backdrop blur,
+         konsisten dengan identitas sidebar di kedua tema */
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        display: flex;
+        gap: 2px;
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+        background: rgba(10, 16, 32, 0.88);
+        backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%);
+        border-top: 1px solid rgba(148, 163, 184, 0.14);
+        box-shadow: 0 -8px 30px rgba(2, 6, 23, 0.35);
+        animation: bnav-in 0.35s ease;
       }
+
+      @keyframes bnav-in {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bottom-nav { animation: none; }
+      }
+
+      .bnav-item {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        padding: 7px 2px 6px;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: #8fa1b8;
+        transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+      }
+
+      .bnav-item i {
+        font-size: 17px;
+        line-height: 1;
+      }
+
+      .bnav-item:active { transform: scale(0.94); }
+
+      .bnav-item.active {
+        color: #34d399;
+        background: linear-gradient(180deg, rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.05));
+      }
+
+      .bnav-item.active::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 22px;
+        height: 3px;
+        border-radius: 0 0 4px 4px;
+        background: var(--accent, #10b981);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+      }
+
       .hero { padding: 20px 16px 18px; }
       .hero-top { flex-direction: column; align-items: stretch; }
       .hero-controls { flex-direction: column; align-items: stretch; }
@@ -2246,40 +2332,6 @@
       .rank-name { white-space: normal; overflow: visible; text-overflow: clip; word-break: break-word; }
       .rank-meta { grid-column: 2; margin-left: 0; justify-content: flex-start; gap: 10px; }
       .rank-omset { min-width: 0; }
-      .sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        transform: translateX(-100%);
-      }
-      .sidebar.open {
-        transform: translateX(0);
-      }
-      .sidebar-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(2px);
-        -webkit-backdrop-filter: blur(2px);
-        z-index: 9998;
-        display: none;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      }
-      .sidebar-overlay.show {
-        display: block;
-        opacity: 1;
-      }
-      .mobile-menu-btn {
-        background: transparent;
-        border: none;
-        font-size: 22px;
-        color: var(--dark);
-        cursor: pointer;
-        padding: 4px;
-        align-items: center;
-        justify-content: center;
-      }
       .kpi-title { font-size: 12px; }
       .kpi-value { font-size: 18px; }
       .kpi-sub { font-size: 11px; white-space: normal; word-wrap: break-word; line-height: 1.2; }
@@ -2866,6 +2918,16 @@
         <button class="nav-item" type="button" data-target="section-bahan"><span class="nav-icon"><i class="fa-solid fa-flask"></i></span><span>Stok Bahan</span></button>
       </nav>
     </aside>
+
+    <!-- Bottom Navigation (mobile <=768px) -->
+    <nav id="bottomNav" class="bottom-nav" aria-label="Navigasi utama">
+      <button class="bnav-item active" type="button" data-target="section-overview"><i class="fa-solid fa-chart-column"></i><span>Overview</span></button>
+      <button class="bnav-item" type="button" data-target="section-chart"><i class="fa-solid fa-chart-pie"></i><span>Grafik</span></button>
+      <button class="bnav-item" type="button" data-target="section-pencatatan-keuangan"><i class="fa-solid fa-book-open"></i><span>Keuangan</span></button>
+      <button class="bnav-item" type="button" data-target="section-penjualan"><i class="fa-solid fa-table"></i><span>Penjualan</span></button>
+      <button class="bnav-item" type="button" data-target="section-produk"><i class="fa-solid fa-box"></i><span>Produk</span></button>
+      <button class="bnav-item" type="button" data-target="section-bahan"><i class="fa-solid fa-flask"></i><span>Bahan</span></button>
+    </nav>
 
     <div class="main-panel">
       <header class="app-header" id="mainHeader" style="display: flex;">
@@ -5189,6 +5251,11 @@
         navItems.forEach(function (item) {
           item.classList.toggle('active', item.getAttribute('data-target') === targetId);
         });
+        // Sinkronkan juga bottom nav (mobile) dari satu sumber agar state
+        // tetap konsisten saat viewport berganti desktop <-> mobile
+        document.querySelectorAll('.bnav-item').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-target') === targetId);
+        });
 
         sections.forEach(function (section) {
           var isActive = section.id === targetId;
@@ -5222,11 +5289,35 @@
       activateSection('section-overview');
     }
 
+    // Bottom nav (mobile): klik didelegasikan ke nav-item sidebar agar semua
+    // logika existing (aktif section, redraw grafik, tutup drawer) tetap jalan
+    function bindBottomNav() {
+      var items = document.querySelectorAll('.bnav-item');
+      if (!items.length) return;
+      items.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var targetId = btn.getAttribute('data-target');
+          if (!targetId) return;
+          // Delegasikan ke nav-item sidebar: activateSection mengaktifkan
+          // section DAN menyinkronkan state aktif kedua navigasi
+          var navItem = document.querySelector('.nav-item[data-target="' + targetId + '"]');
+          if (navItem) navItem.click();
+        });
+      });
+      // Fallback: bila animasi masuk tidak berjalan (webview di-throttle /
+      // prefers-reduced-motion), pastikan nav tetap di posisi akhir yang benar.
+      setTimeout(function () {
+        var nav = document.getElementById('bottomNav');
+        if (nav) nav.style.animation = 'none';
+      }, 600);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       runSafely('preloadCharts', preloadCharts);
       runSafely('initPenjualanCalc', initPenjualanCalc);
       runSafely('bindStockFilter', bindStockFilter);
       runSafely('bindSidebarNavigation', bindSidebarNavigation);
+      runSafely('bindBottomNav', bindBottomNav);
       runSafely('restoreSidebarCollapse', restoreSidebarCollapse);
 
       runSafely('restoreSessionIfValid', restoreSessionIfValid);
