@@ -754,6 +754,148 @@ function deleteProduk(token, idProduk) {
 }
 
 // ============================================================
+// STOK BAHAN BAKU (Botol / Stiker / Sirop)
+// Manajemen stok manual: penambahan (restock/belanja) dan pengurangan
+// (koreksi rusak/hilang). Sengaja TIDAK terhubung ke transaksi kasir —
+// penjualan hanya mengurangi stok Produk jadi, bukan bahan baku ini.
+// ============================================================
+var BAHAN_NAMES = ['Botol', 'Stiker', 'Sirop'];
+var STOK_BAHAN_SHEET = 'Stok Bahan';
+var STOK_BAHAN_LOG_SHEET = 'Riwayat Stok Bahan';
+
+// Pastikan sheet stok & log ada dengan header yang benar. Aman dipanggil
+// berulang; sheet yang sudah ada tidak disentuh.
+function _ensureStokBahanSheets(ss) {
+  var stokSheet = ss.getSheetByName(STOK_BAHAN_SHEET);
+  if (!stokSheet) {
+    stokSheet = ss.insertSheet(STOK_BAHAN_SHEET);
+    stokSheet.getRange(1, 1, 1, 3).setValues([['Bahan', 'Sisa Stok', 'Diupdate']]);
+    stokSheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  }
+  var logSheet = ss.getSheetByName(STOK_BAHAN_LOG_SHEET);
+  if (!logSheet) {
+    logSheet = ss.insertSheet(STOK_BAHAN_LOG_SHEET);
+    logSheet.getRange(1, 1, 1, 6).setValues([['Timestamp', 'Jenis', 'Bahan', 'Perubahan', 'Sisa', 'Catatan']]);
+    logSheet.getRange(1, 1, 1, 6).setFontWeight('bold');
+  }
+  return { stokSheet: stokSheet, logSheet: logSheet };
+}
+
+// Baca sisa stok bahan baku -> { status, stok: [{bahan, sisa, diupdate}] }
+function getStokBahan(token) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
+    var ss = getSpreadsheet();
+    var sheets = _ensureStokBahanSheets(ss);
+    var values = sheets.stokSheet.getDataRange().getValues();
+
+    var map = {};
+    for (var i = 1; i < values.length; i++) {
+      var nama = String(values[i][0] || '').trim().toLowerCase();
+      if (!nama) continue;
+      map[nama] = { sisa: Number(values[i][1] || 0), diupdate: String(values[i][2] || '') };
+    }
+
+    var stok = [];
+    for (var b = 0; b < BAHAN_NAMES.length; b++) {
+      var nm = BAHAN_NAMES[b];
+      var found = map[nm.toLowerCase()];
+      // Baris bahan yang belum ada di sheet dibuat otomatis dengan stok 0
+      if (!found) {
+        var rowIdx = sheets.stokSheet.getLastRow() + 1;
+        sheets.stokSheet.getRange(rowIdx, 1, 1, 3).setValues([[nm, 0, '']]);
+        found = { sisa: 0, diupdate: '' };
+      }
+      stok.push({ bahan: nm, sisa: found.sisa, diupdate: found.diupdate });
+    }
+
+    return { status: 'success', stok: stok };
+  });
+}
+
+// Penyesuaian stok manual.
+// token   : sesi login (hanya SUPER_ADMIN, konsisten dengan CRUD produk)
+// bahan   : 'Botol' | 'Stiker' | 'Sirop'
+// aksi    : 'tambah' (restock/belanja) | 'kurangi' (rusak/hilang/koreksi)
+// jumlah  : angka > 0
+// catatan : opsional, disimpan di riwayat untuk audit
+function adjustStokBahan(token, bahan, aksi, jumlah, catatan) {
+  return _guardToken(function () {
+    var sess = _verifyToken(token, true);
+    bahan = String(bahan || '').trim();
+    aksi = String(aksi || '').trim().toLowerCase();
+    catatan = String(catatan || '').trim().slice(0, 200);
+    jumlah = Number(jumlah);
+
+    var match = null;
+    for (var b = 0; b < BAHAN_NAMES.length; b++) {
+      if (BAHAN_NAMES[b].toLowerCase() === bahan.toLowerCase()) match = BAHAN_NAMES[b];
+    }
+    if (!match) return { status: 'error', message: 'Bahan tidak dikenal. Pilih: ' + BAHAN_NAMES.join(', ') };
+    if (aksi !== 'tambah' && aksi !== 'kurangi') return { status: 'error', message: 'Aksi harus tambah atau kurangi' };
+    if (isNaN(jumlah) || jumlah <= 0) return { status: 'error', message: 'Jumlah harus angka lebih dari 0' };
+
+    var ss = getSpreadsheet();
+    var sheets = _ensureStokBahanSheets(ss);
+    var values = sheets.stokSheet.getDataRange().getValues();
+
+    var targetRow = -1, sisa = 0;
+    for (var i = 1; i < values.length; i++) {
+      if (String(values[i][0] || '').trim().toLowerCase() === match.toLowerCase()) {
+        targetRow = i + 1;
+        sisa = Number(values[i][1] || 0);
+        break;
+      }
+    }
+    if (targetRow === -1) {
+      targetRow = sheets.stokSheet.getLastRow() + 1;
+      sisa = 0;
+    }
+
+    var delta = aksi === 'tambah' ? jumlah : -jumlah;
+    var sisaBaru = sisa + delta;
+    // Stok tidak pernah minus: pengurangan melebihi sisa ditolak
+    if (sisaBaru < 0) {
+      return { status: 'error', message: 'Pengurangan melebihi sisa stok (' + sisa + ' ' + match + '). Maksimal kurang ' + sisa + '.' };
+    }
+
+    var now = new Date();
+    var stamp = Utilities.formatDate(now, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm');
+    sheets.stokSheet.getRange(targetRow, 1, 1, 3).setValues([[match, sisaBaru, stamp]]);
+
+    // Riwayat untuk audit: kapan, apa, berapa, sisa akhir, catatan + user
+    sheets.logSheet.appendRow([now, aksi === 'tambah' ? 'TAMBAH' : 'KURANGI', match, jumlah, sisaBaru, (catatan ? catatan + ' — ' : '') + String(sess.u || '')]);
+
+    return {
+      status: 'success',
+      message: 'Stok ' + match + (aksi === 'tambah' ? ' berhasil ditambah ' : ' berhasil dikurangi ') + jumlah + '. Sisa: ' + sisaBaru + '.',
+      bahan: match, aksi: aksi, jumlah: jumlah, sisa: sisaBaru
+    };
+  });
+}
+
+// Baris log terakhir (untuk baris "riwayat penyesuaian terakhir" di dashboard)
+function getLastStokBahanLog(token) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
+    var ss = getSpreadsheet();
+    var logSheet = ss.getSheetByName(STOK_BAHAN_LOG_SHEET);
+    if (!logSheet) return { status: 'success', last: '' };
+    var lastRow = logSheet.getLastRow();
+    if (lastRow < 2) return { status: 'success', last: '' };
+    var row = logSheet.getRange(lastRow, 1, 1, 6).getValues()[0];
+    var stamp = row[0] instanceof Date
+      ? Utilities.formatDate(row[0], 'Asia/Jakarta', 'dd MMM HH:mm')
+      : String(row[0] || '');
+    var last = (String(row[1] || '') + ' ' + String(row[3] || '') + ' ' + String(row[2] || '') +
+      ' → sisa ' + String(row[4] || '') +
+      (String(row[5] || '') ? ' — ' + String(row[5]) : '') +
+      ' • ' + stamp);
+    return { status: 'success', last: last };
+  });
+}
+
+// ============================================================
 // CREDIT/DEBIT
 // ============================================================
 function addCreditDebit(token, type, data) {

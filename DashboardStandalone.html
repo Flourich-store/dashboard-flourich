@@ -1022,6 +1022,207 @@
       cursor: pointer;
     }
 
+    /* ============================================================
+       STOK BAHAN BAKU (Botol / Stiker / Sirop)
+       ============================================================ */
+    .bahan-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .bahan-card {
+      position: relative;
+      overflow: hidden;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 18px 16px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .bahan-card::after {
+      content: '';
+      position: absolute;
+      top: -34px;
+      right: -34px;
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--bahan-accent, rgba(16, 185, 129, 0.16)) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .bahan-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--bahan-accent-border, rgba(16, 185, 129, 0.4));
+    }
+
+    .bahan-head {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-subtle);
+    }
+
+    .bahan-ico {
+      width: 30px;
+      height: 30px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      font-size: 13px;
+      color: #ffffff;
+      background: var(--bahan-accent-solid, #10b981);
+    }
+
+    .bahan-num {
+      margin-top: 10px;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+      color: var(--dark);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .bahan-unit {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-subtle);
+      margin-left: 4px;
+    }
+
+    .bahan-upd {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-subtle);
+    }
+
+    .bahan-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .bahan-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: filter 0.15s ease, transform 0.15s ease;
+    }
+
+    .bahan-btn:active { transform: scale(0.97); }
+
+    .bahan-btn--plus {
+      background: rgba(16, 185, 129, 0.12);
+      color: #047857;
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .bahan-btn--minus {
+      background: rgba(239, 68, 68, 0.10);
+      color: #b91c1c;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .bahan-btn:hover { filter: brightness(1.06); }
+
+    html.theme-dark .bahan-btn--plus { color: #34d399; }
+    html.theme-dark .bahan-btn--minus { color: #f87171; }
+
+    .bahan-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      font-size: 12px;
+      color: var(--text-subtle);
+    }
+
+    .bahan-foot i { color: var(--primary); }
+
+    .bahan-note {
+      margin-top: 12px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px dashed rgba(16, 185, 129, 0.35);
+      font-size: 12px;
+      color: var(--text-subtle);
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .bahan-note i { color: #047857; margin-top: 1px; }
+
+    html.theme-dark .bahan-note i { color: #34d399; }
+
+    .modal-content--narrow { max-width: 430px; }
+
+    .rb-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rb {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px 10px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-subtle);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .rb.rb-plus.active {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: #10b981;
+      color: #047857;
+    }
+
+    .rb.rb-minus.active {
+      background: rgba(239, 68, 68, 0.10);
+      border-color: #ef4444;
+      color: #b91c1c;
+    }
+
+    html.theme-dark .rb.rb-plus.active { color: #34d399; }
+    html.theme-dark .rb.rb-minus.active { color: #f87171; }
+
     .stock-filter:focus-visible {
       outline: 3px solid var(--focus);
       outline-offset: 2px;
@@ -2488,6 +2689,10 @@
     html.theme-dark .stsum--out .stsum-num { color: #fca5a5; }
     html.theme-dark .stsum--low .stsum-num { color: #fbbf24; }
 
+    html.theme-dark .bahan-num { color: #e2e8f0; }
+    html.theme-dark .bahan-upd { color: #94a3b8; }
+    html.theme-dark .bahan-foot { color: #94a3b8; }
+
     html.theme-dark .stock-ok {
       color: #6ee7b7;
       background: rgba(16, 185, 129, 0.12);
@@ -2658,6 +2863,7 @@
         <button class="nav-item" type="button" data-target="section-pencatatan-keuangan"><span class="nav-icon"><i class="fa-solid fa-book-open"></i></span><span>Pencatatan & Keuangan</span></button>
         <button class="nav-item" type="button" data-target="section-penjualan"><span class="nav-icon"><i class="fa-solid fa-table"></i></span><span>Penjualan</span></button>
         <button class="nav-item" type="button" data-target="section-produk"><span class="nav-icon"><i class="fa-solid fa-box"></i></span><span>Produk</span></button>
+        <button class="nav-item" type="button" data-target="section-bahan"><span class="nav-icon"><i class="fa-solid fa-flask"></i></span><span>Stok Bahan</span></button>
       </nav>
     </aside>
 
@@ -2924,6 +3130,21 @@
           </table>
         </div>
       </section>
+
+      <section id="section-bahan" class="content-section hidden">
+        <div class="section-title"><i class="fa-solid fa-flask"></i> Stok Bahan Baku</div>
+        <div class="bahan-grid" id="bahanGrid">
+          <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat stok bahan...</div>
+        </div>
+        <div class="bahan-note">
+          <i class="fa-solid fa-circle-info"></i>
+          <span>Stok bahan baku diatur <b>manual</b>: tambah saat restock/belanja, kurangi untuk koreksi rusak/hilang. Transaksi kasir tidak mengurangi stok bahan ini — hanya stok produk jadi.</span>
+        </div>
+        <div class="bahan-foot" style="margin-top:14px;">
+          <span><i class="fa-solid fa-clock-rotate-left"></i> Riwayat penyesuaian terakhir:</span>
+          <span id="bahanLastLog">—</span>
+        </div>
+      </section>
         </div>
       </div>
     </div>
@@ -2983,6 +3204,49 @@
       </div>
       <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
         <button class="btn-primary btn" onclick="aksiInputPenjualan()"><i class="fa-solid fa-plus"></i>&nbsp;Simpan Penjualan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Kelola Stok Bahan -->
+  <div id="modalBahan" class="modal" aria-hidden="true">
+    <div class="modal-content modal-content--narrow">
+      <div class="modal-header">
+        <h2 style="color:var(--green);font-size:16px;"><i class="fa-solid fa-flask"></i> Atur Stok Bahan</h2>
+        <button class="modal-close" type="button" onclick="closeModal('modalBahan')">&times;</button>
+      </div>
+      <div class="filter-group" style="margin-top:4px;">
+        <label>Bahan</label>
+        <select id="adjBahan">
+          <option value="Botol">Botol</option>
+          <option value="Stiker">Stiker</option>
+          <option value="Sirop">Sirop</option>
+        </select>
+      </div>
+      <div class="filter-group" style="margin-top:10px;">
+        <label>Aksi</label>
+        <div class="rb-row">
+          <button type="button" class="rb rb-plus active" id="rbTambah" onclick="setAdjAksi('tambah')"><i class="fa-solid fa-plus"></i> Tambah Stok</button>
+          <button type="button" class="rb rb-minus" id="rbKurangi" onclick="setAdjAksi('kurangi')"><i class="fa-solid fa-minus"></i> Kurangi Stok</button>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label id="adjJumlahLabel">Jumlah Tambah</label>
+          <input type="number" id="adjJumlah" placeholder="0" min="1" step="1">
+        </div>
+        <div class="filter-group">
+          <label>Sisa Saat Ini</label>
+          <input type="text" id="adjSisa" value="—" disabled>
+        </div>
+      </div>
+      <div class="filter-group">
+        <label>Catatan (opsional)</label>
+        <input type="text" id="adjCatatan" maxlength="200" placeholder="cth: belanja botol 2 gros / rusak jatuh 3 pcs">
+      </div>
+      <div class="card" id="adjPreview" style="margin-top:12px; display:none;"></div>
+      <div class="btn-bar" style="grid-template-columns: 1fr; margin-top:15px;">
+        <button class="btn-primary btn" id="adjSimpanBtn" onclick="simpanAdjustStok()"><i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Penyesuaian</button>
       </div>
     </div>
   </div>
@@ -3186,6 +3450,9 @@
       } else if (modalId === 'modalPenjualan') {
         var dateEl = document.getElementById('inTanggal');
         if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
+      } else if (modalId === 'modalBahan') {
+        setAdjAksi('tambah');
+        syncAdjSisa();
       }
     }
 
@@ -3244,6 +3511,9 @@
       // Filter periode TIDAK dijalankan otomatis saat dashboard dibuka.
       // Data laporan baru dimuat setelah user menekan tombol "Tampilkan".
       loadProduk();
+      loadStokBahan();
+      fetchLastBahanLog();
+      bindStokBahanEvents();
       showEmptyPeriodState();
       preloadCharts();
     }
@@ -4760,6 +5030,152 @@
         sidebar.classList.add('open');
         overlay.classList.add('show');
       }
+    }
+
+    // ============================================================
+    // STOK BAHAN BAKU (Botol / Stiker / Sirop) — manajemen manual
+    // ============================================================
+    var cachedStokBahan = [];
+    var BAHAN_META = {
+      'Botol': { icon: 'fa-wine-bottle', color: '#10b981' },
+      'Stiker': { icon: 'fa-tags', color: '#3b82f6' },
+      'Sirop': { icon: 'fa-fill-drip', color: '#f59e0b' }
+    };
+    var adjAksi = 'tambah';
+
+    function loadStokBahan() {
+      var grid = document.getElementById('bahanGrid');
+      safeGoogleRun('getStokBahan', [getToken()], function (res) {
+        cachedStokBahan = (res && res.stok) ? res.stok : [];
+        renderStokBahan();
+      }, function () {
+        if (grid && grid.innerHTML.indexOf('fa-spin') !== -1) {
+          grid.innerHTML = '<div class="empty-text">Gagal memuat stok bahan. Periksa koneksi atau Spreadsheet.</div>';
+        }
+      });
+    }
+
+    function renderStokBahan() {
+      var grid = document.getElementById('bahanGrid');
+      if (!grid) return;
+      if (!cachedStokBahan || cachedStokBahan.length === 0) {
+        grid.innerHTML = '<div class="empty-text">Tidak ada data stok bahan</div>';
+        return;
+      }
+      grid.innerHTML = cachedStokBahan.map(function (s) {
+        var meta = BAHAN_META[s.bahan] || { icon: 'fa-box', color: '#10b981' };
+        var sisa = Number(s.sisa || 0);
+        return '<div class="bahan-card" style="--bahan-accent:' + meta.color + '29; --bahan-accent-border:' + meta.color + '66; --bahan-accent-solid:' + meta.color + '">' +
+          '<div class="bahan-head"><span class="bahan-ico" style="background:' + meta.color + '"><i class="fa-solid ' + meta.icon + '"></i></span> ' + escapeHtml(s.bahan) + '</div>' +
+          '<div class="bahan-num">' + sisa.toLocaleString('id-ID') + '<span class="bahan-unit">pcs</span></div>' +
+          '<div class="bahan-upd">' + (s.diupdate ? 'Diperbarui ' + escapeHtml(s.diupdate) : 'Belum pernah diatur') + '</div>' +
+          '<div class="bahan-actions">' +
+          '<button class="bahan-btn bahan-btn--plus" type="button" onclick="bukaAturStok(\'' + escapeHtml(s.bahan) + '\', \'tambah\')"><i class="fa-solid fa-plus"></i> Tambah</button>' +
+          '<button class="bahan-btn bahan-btn--minus" type="button" onclick="bukaAturStok(\'' + escapeHtml(s.bahan) + '\', \'kurangi\')"><i class="fa-solid fa-minus"></i> Kurangi</button>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    }
+
+    // Buka modal Atur Stok; pradipilih bahan & aksi (dari tombol kartu).
+    // Urutan penting: openModal dulu (branch-nya default ke 'tambah'),
+    // lalu setAdjAksi menimpa dengan aksi yang diminta kartu.
+    function bukaAturStok(bahan, aksi) {
+      var sel = document.getElementById('adjBahan');
+      if (sel && bahan) sel.value = bahan;
+      openModal('modalBahan');
+      setAdjAksi(aksi || 'tambah');
+      var jumlahEl = document.getElementById('adjJumlah');
+      if (jumlahEl) jumlahEl.value = '';
+      var catatanEl = document.getElementById('adjCatatan');
+      if (catatanEl) catatanEl.value = '';
+      hideAdjPreview();
+    }
+
+    function setAdjAksi(mode) {
+      adjAksi = (mode === 'kurangi') ? 'kurangi' : 'tambah';
+      var plus = document.getElementById('rbTambah');
+      var minus = document.getElementById('rbKurangi');
+      if (plus) plus.classList.toggle('active', adjAksi === 'tambah');
+      if (minus) minus.classList.toggle('active', adjAksi === 'kurangi');
+      var lbl = document.getElementById('adjJumlahLabel');
+      if (lbl) lbl.textContent = adjAksi === 'tambah' ? 'Jumlah Tambah' : 'Jumlah Kurangi';
+      updateAdjPreview();
+    }
+
+    function syncAdjSisa() {
+      var sel = document.getElementById('adjBahan');
+      var sisaEl = document.getElementById('adjSisa');
+      if (!sel || !sisaEl) return;
+      var row = cachedStokBahan.find(function (s) { return s.bahan === sel.value; });
+      sisaEl.value = row ? (Number(row.sisa || 0).toLocaleString('id-ID') + ' pcs') : '—';
+      updateAdjPreview();
+    }
+
+    function updateAdjPreview() {
+      var jumlahEl = document.getElementById('adjJumlah');
+      var prev = document.getElementById('adjPreview');
+      if (!jumlahEl || !prev) return;
+      var n = Number(jumlahEl.value);
+      if (!jumlahEl.value || isNaN(n) || n <= 0) { hideAdjPreview(); return; }
+      var row = cachedStokBahan.find(function (s) { return s.bahan === (document.getElementById('adjBahan') || {}).value; });
+      var sisa = row ? Number(row.sisa || 0) : 0;
+      var hasil = adjAksi === 'tambah' ? sisa + n : sisa - n;
+      var bad = hasil < 0;
+      prev.style.display = 'block';
+      prev.style.background = bad ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+      prev.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+        '<span style="font-size:12px; font-weight:700; color:var(--text-subtle);">' + (adjAksi === 'tambah' ? 'Sisa setelah ditambah:' : 'Sisa setelah dikurangi:') + '</span>' +
+        '<span style="font-size:18px; font-weight:900; color:' + (bad ? '#b91c1c' : '#047857') + ';">' + hasil.toLocaleString('id-ID') + ' pcs' + (bad ? ' ⚠ melebihi stok' : '') + '</span>' +
+        '</div>';
+    }
+
+    function hideAdjPreview() {
+      var prev = document.getElementById('adjPreview');
+      if (prev) { prev.style.display = 'none'; prev.innerHTML = ''; }
+    }
+
+    function simpanAdjustStok() {
+      var sel = document.getElementById('adjBahan');
+      var jumlahEl = document.getElementById('adjJumlah');
+      var catatanEl = document.getElementById('adjCatatan');
+      var btn = document.getElementById('adjSimpanBtn');
+      if (!sel || !jumlahEl) return;
+      var n = Number(jumlahEl.value);
+      if (!jumlahEl.value || isNaN(n) || n <= 0) {
+        showToast('Isi jumlah yang valid (lebih dari 0).', 'error');
+        return;
+      }
+      if (!Number.isInteger(n)) {
+        showToast('Jumlah harus bilangan bulat.', 'error');
+        return;
+      }
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Menyimpan...'; }
+      safeGoogleRun('adjustStokBahan', [getToken(), sel.value, adjAksi, n, catatanEl ? catatanEl.value : ''], function (res) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Penyesuaian'; }
+        showToast(res.message || 'Stok bahan berhasil diperbarui', 'success');
+        closeModal('modalBahan');
+        loadStokBahan();
+        fetchLastBahanLog();
+      }, function () {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>&nbsp;Simpan Penyesuaian'; }
+      });
+    }
+
+    // Riwayat terakhir: ambil dari log sheet via backend ringan
+    function fetchLastBahanLog() {
+      safeGoogleRun('getLastStokBahanLog', [getToken()], function (res) {
+        var el = document.getElementById('bahanLastLog');
+        if (el) el.textContent = (res && res.last) ? res.last : 'Belum ada penyesuaian';
+      }, function () { });
+    }
+
+    // Binding event modal bahan (dipanggil sekali saat init dashboard)
+    function bindStokBahanEvents() {
+      var sel = document.getElementById('adjBahan');
+      if (sel) sel.addEventListener('change', syncAdjSisa);
+      var jumlahEl = document.getElementById('adjJumlah');
+      if (jumlahEl) jumlahEl.addEventListener('input', updateAdjPreview);
     }
 
     // ============================================================
