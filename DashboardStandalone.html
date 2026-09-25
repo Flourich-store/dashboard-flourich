@@ -126,10 +126,14 @@
       min-height: 100dvh;
     }
 
+    /* Scroll-lock modal: posisi scroll disimpan di --modal-scroll-lock
+       (diatur JS saat modal dibuka) agar halaman TIDAK melompat ke atas —
+       inilah yang dulu membuat sidebar/header terasa bergeser saat scroll. */
     body.modal-open {
       overflow: hidden;
       position: fixed;
       width: 100%;
+      top: var(--modal-scroll-lock, 0px);
     }
 
     .app-shell {
@@ -3499,6 +3503,15 @@
       if (!modalId) return;
       const el = document.getElementById(modalId);
       if (!el) return;
+      // Simpan posisi scroll sebelum body dikunci (position:fixed), supaya
+      // saat modal ditutup halaman kembali persis ke posisi semula.
+      // Hanya saat body BELUM terkunci (modal pertama) — modal bertumpuk
+      // tidak boleh menimpa posisi tersimpan dengan 0.
+      if (!document.body.classList.contains('modal-open')) {
+        var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        document.body.dataset.scrollY = String(scrollY);
+        document.body.style.setProperty('--modal-scroll-lock', (-scrollY) + 'px');
+      }
       el.style.display = 'flex';
       el.classList.add('show');
       el.setAttribute('aria-hidden', 'false');
@@ -3539,7 +3552,16 @@
       el.style.display = 'none';
       el.setAttribute('aria-hidden', 'true');
       var anyOpen = document.querySelector('.modal.show');
-      if (!anyOpen) document.body.classList.remove('modal-open');
+      if (!anyOpen) {
+        // Buka kunci body dulu, baru pulihkan posisi scroll (scrollTo tidak
+        // berefek selama body masih position:fixed) — keduanya dalam satu
+        // task sehingga tidak ada kedip/lompatan yang terlihat.
+        var y = Number(document.body.dataset.scrollY || 0);
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('--modal-scroll-lock');
+        delete document.body.dataset.scrollY;
+        window.scrollTo(0, y);
+      }
     }
 
     function togglePassword() {
@@ -5096,6 +5118,11 @@
 
     // ============================================================
     // STOK BAHAN BAKU (Botol / Stiker / Sirop) — manajemen manual
+    // SATU-SATUNYA jalur perubahan stok bahan adalah tombol "Simpan
+    // Penyesuaian" di modal Atur Stok (simpanAdjustStok -> adjustStokBahan),
+    // murni dari input pengguna. Tidak ada skrip otomatis: transaksi kasir
+    // (addPenjualan) hanya memicu updateStock untuk stok PRODUK JADI di
+    // sheet Produk, dan tidak pernah menyentuh sheet Stok Bahan.
     // ============================================================
     var cachedStokBahan = [];
     var BAHAN_META = {
@@ -5432,26 +5459,6 @@
     window.resetPengeluaranFilters = function () {
       clearPengeluaranForm();
     };
-  </script>
-
-  <script>
-    // Penanda versi build - diisi otomatis oleh deploy.mjs lewat atribut data-build pada <html>.
-    // Tanpa script deploy (misal preview lokal), badge menampilkan 'dev'.
-    (function () {
-      try {
-        var build = document.documentElement.getAttribute('data-build') || 'dev';
-        var el = document.createElement('div');
-        el.id = 'buildBadge';
-        el.textContent = 'build: ' + build;
-        el.style.cssText =
-          'position:fixed;left:8px;bottom:6px;z-index:99990;' +
-          'font:10px/1.4 Consolas,monospace;color:#64748b;' +
-          'background:rgba(7,11,22,.65);border:1px solid rgba(148,163,184,.15);' +
-          'padding:2px 8px;border-radius:8px;' +
-          'pointer-events:none;letter-spacing:.3px;';
-        document.body.appendChild(el);
-      } catch (e) { /* abaikan */ }
-    })();
   </script>
 
   <script>
