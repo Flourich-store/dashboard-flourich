@@ -3326,11 +3326,11 @@
       </div>
       <div class="filter-group" style="margin-top:4px;">
         <label>Bahan</label>
-        <select id="adjBahan">
-          <option value="Botol">Botol</option>
-          <option value="Stiker">Stiker</option>
-          <option value="Sirop">Sirop</option>
-        </select>
+        <!-- Opsi diisi dinamis dari sheet via syncAdjBahanOptions() agar
+             selalu mengikuti daftar bahan terkini (hasil CRUD), bukan
+             hardcoded Botol/Stiker/Sirop yang bikin select kosong saat
+             bahan sudah di-rename/tambah. -->
+        <select id="adjBahan"></select>
       </div>
       <div class="filter-group" style="margin-top:10px;">
         <label>Aksi</label>
@@ -5215,6 +5215,9 @@
     function renderStokBahan() {
       var grid = document.getElementById('bahanGrid');
       if (!grid) return;
+      // Dropdown modal Atur Stok ikut menyertai setiap render agar
+      // selalu sinkron dengan daftar bahan (termasuk hasil CRUD).
+      syncAdjBahanOptions();
       if (!cachedStokBahan || cachedStokBahan.length === 0) {
         grid.innerHTML = '<div class="empty-text">Tidak ada data stok bahan</div>';
         return;
@@ -5265,6 +5268,10 @@
     // lalu setAdjAksi menimpa dengan aksi yang diminta kartu.
     function bukaAturStok(bahan, aksi) {
       var sel = document.getElementById('adjBahan');
+      // Pastikan opsi dropdown terisi dari daftar bahan terbaru SEBELUM
+      // pradipilih — tanpa ini sel.value tidak cocok opsi manapun dan
+      // jadi string kosong ("Bahan \"\" tidak ditemukan" di backend).
+      syncAdjBahanOptions();
       if (sel && bahan) sel.value = bahan;
       openModal('modalBahan');
       setAdjAksi(aksi || 'tambah');
@@ -5286,12 +5293,29 @@
       updateAdjPreview();
     }
 
+    // Bangun ulang opsi dropdown #adjBahan dari daftar bahan dinamis.
+    // Dipanggil tiap render stok & tiap buka modal Atur Stok; nilai yang
+    // sedang terpilih dipertahankan bila masih ada di daftar.
+    function syncAdjBahanOptions() {
+      var sel = document.getElementById('adjBahan');
+      if (!sel) return;
+      var prev = sel.value;
+      sel.innerHTML = (!cachedStokBahan || cachedStokBahan.length === 0)
+        ? '<option value="">&mdash; Belum ada bahan &mdash;</option>'
+        : cachedStokBahan.map(function (s) {
+          return '<option value="' + escapeHtml(s.bahan) + '">' + escapeHtml(s.bahan) + '</option>';
+        }).join('');
+      if (prev && cachedStokBahan.some(function (s) { return s.bahan === prev; })) {
+        sel.value = prev;
+      }
+    }
+
     function syncAdjSisa() {
       var sel = document.getElementById('adjBahan');
       var sisaEl = document.getElementById('adjSisa');
       if (!sel || !sisaEl) return;
       var row = cachedStokBahan.find(function (s) { return s.bahan === sel.value; });
-      sisaEl.value = row ? (Number(row.sisa || 0).toLocaleString('id-ID') + ' pcs') : '—';
+      sisaEl.value = row ? (Number(row.sisa || 0).toLocaleString('id-ID') + ' ' + (row.satuan || 'pcs')) : '—';
       updateAdjPreview();
     }
 
@@ -5303,13 +5327,14 @@
       if (!jumlahEl.value || isNaN(n) || n <= 0) { hideAdjPreview(); return; }
       var row = cachedStokBahan.find(function (s) { return s.bahan === (document.getElementById('adjBahan') || {}).value; });
       var sisa = row ? Number(row.sisa || 0) : 0;
+      var satuanTxt = (row && row.satuan) ? escapeHtml(row.satuan) : 'pcs';
       var hasil = adjAksi === 'tambah' ? sisa + n : sisa - n;
       var bad = hasil < 0;
       prev.style.display = 'block';
       prev.style.background = bad ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)';
       prev.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-size:12px; font-weight:700; color:var(--text-subtle);">' + (adjAksi === 'tambah' ? 'Sisa setelah ditambah:' : 'Sisa setelah dikurangi:') + '</span>' +
-        '<span style="font-size:18px; font-weight:900; color:' + (bad ? '#b91c1c' : '#047857') + ';">' + hasil.toLocaleString('id-ID') + ' pcs' + (bad ? ' ⚠ melebihi stok' : '') + '</span>' +
+        '<span style="font-size:18px; font-weight:900; color:' + (bad ? '#b91c1c' : '#047857') + ';">' + hasil.toLocaleString('id-ID') + ' ' + satuanTxt + (bad ? ' ⚠ melebihi stok' : '') + '</span>' +
         '</div>';
     }
 
@@ -5331,6 +5356,13 @@
       }
       if (!Number.isInteger(n)) {
         showToast('Jumlah harus bilangan bulat.', 'error');
+        return;
+      }
+      // Cegah kirim nama bahan kosong/aneh ke backend bila dropdown
+      // belum terisi (mis. data belum termuat).
+      var bahanVal = sel.value;
+      if (!bahanVal || !cachedStokBahan.some(function (s) { return s.bahan === bahanVal; })) {
+        showToast('Pilih bahan terlebih dahulu.', 'error');
         return;
       }
       if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>&nbsp;Menyimpan...'; }
