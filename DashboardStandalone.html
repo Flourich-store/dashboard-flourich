@@ -303,6 +303,14 @@
 
     .content-section.active {
       display: block;
+      /* Animasi restart otomatis tiap display none->block, jadi pindah menu
+         terasa halus tanpa perlu JS tambahan */
+      animation: sectionIn 0.28s ease;
+    }
+
+    @keyframes sectionIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .app-header {
@@ -1868,8 +1876,41 @@
       color: var(--ink-text);
       position: relative;
       overflow: hidden;
-      animation: fadeIn 0.4s ease-out;
+      animation: loginCardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    /* Isi kartu masuk berjenjang (stagger): logo -> judul -> form -> tombol */
+    .login-card > * {
+      animation: loginItemIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    .login-card > *:nth-child(1) { animation-delay: 0.08s; }
+    .login-card > *:nth-child(2) { animation-delay: 0.14s; }
+    .login-card > *:nth-child(3) { animation-delay: 0.18s; }
+    .login-card > *:nth-child(4) { animation-delay: 0.22s; }
+    .login-card > *:nth-child(5) { animation-delay: 0.26s; }
+    .login-card > *:nth-child(6) { animation-delay: 0.30s; }
+    .login-card > *:nth-child(7) { animation-delay: 0.34s; }
+
+    @keyframes loginCardIn {
+      from { opacity: 0; transform: translateY(22px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes loginItemIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Perpindahan login <-> dashboard: fade + geser halus (dipanggil JS) */
+    @keyframes paneOut {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+    @keyframes paneIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pane-out { animation: paneOut 0.2s ease forwards; }
+    .pane-in { animation: paneIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
     .login-card::before {
       content: '';
@@ -2037,6 +2078,33 @@
       opacity: 1;
       visibility: visible;
       pointer-events: auto;
+    }
+
+    /* Animasi masuk modal: transition opacity tidak pernah jalan karena
+       display none->flex dipasang seketika; animation restart tiap kali
+       .show dipasang sehingga selalu terlihat. Di mobile (bottom-sheet)
+       dipakai sheetIn: slide dari bawah ala aplikasi seluler. */
+    .modal.show .modal-content {
+      animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(18px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Keluar: closeModal memasang .closing dulu, display:none baru dipasang
+       setelah animasi selesai (lihat JS) supaya animasi keluar terlihat */
+    .modal.closing {
+      opacity: 0;
+    }
+
+    .modal.closing .modal-content {
+      animation: modalOut 0.17s ease forwards;
+    }
+
+    @keyframes modalOut {
+      to { opacity: 0; transform: translateY(14px) scale(0.98); }
     }
 
     .modal-content {
@@ -2318,6 +2386,12 @@
         .bottom-nav { animation: none; }
       }
 
+      /* Hormati preferensi pengguna yang mematikan animasi (juga global di bawah) */
+      @media (prefers-reduced-motion: reduce) {
+        .modal.show .modal-content,
+        .content-section.active { animation: none; }
+      }
+
       .bnav-item {
         position: relative;
         flex: 1;
@@ -2370,7 +2444,16 @@
       .hero-field input { width: 100%; }
       .hero-actions { margin-left: 0; }
       .hero-actions .btn { flex: 1; }
-      .hero-stats { grid-template-columns: 1fr; gap: 10px; }
+      /* 5 kartu KPI: 2 kolom agar hero tidak terlalu panjang saat discroll;
+         kartu terakhir (Laba Bersih) span penuh sebagai penutup hierarki */
+      .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .hero-stats .hstat:last-child { grid-column: 1 / -1; }
+      /* Modal bottom-sheet: slide dari bawah ala aplikasi seluler */
+      .modal.show .modal-content { animation: sheetIn 0.34s cubic-bezier(0.16, 1, 0.3, 1); }
+      @keyframes sheetIn {
+        from { opacity: 0.4; transform: translateY(55%); }
+        to { opacity: 1; transform: translateY(0); }
+      }
       .hero-trend { padding: 12px 12px 8px; }
       .hero-trend-chart svg { height: 84px; }
       .ins-grid { grid-template-columns: 1fr; }
@@ -2559,6 +2642,8 @@
     @media (prefers-reduced-motion: reduce) {
       .theme-toggle { transition: none; }
       html.theme-fading body { opacity: 1; }
+      .login-card, .login-card > * { animation: none !important; }
+      .pane-in, .pane-out { animation: none !important; }
     }
 
     html.theme-dark body {
@@ -2572,6 +2657,14 @@
     }
 
     html.theme-dark ::selection { background: rgba(16, 185, 129, 0.35); }
+
+    /* iOS Safari: background-attachment fixed tidak didukung baik — repaint
+       saat scroll dan saat transisi tema terasa patah-patah. Pakai scroll
+       biasa di layar sentuh; efek visualnya hampir sama. */
+    @media (max-width: 768px) {
+      body,
+      html.theme-dark body { background-attachment: scroll; }
+    }
 
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -3591,6 +3684,7 @@
         document.body.style.setProperty('--modal-scroll-lock', (-scrollY) + 'px');
       }
       el.style.display = 'flex';
+      el.classList.remove('closing'); // batalkan animasi keluar bila dibuka ulang
       el.classList.add('show');
       el.setAttribute('aria-hidden', 'false');
       document.body.classList.add('modal-open');
@@ -3623,23 +3717,39 @@
       openModal('modalProduk');
     }
 
+    // Timer per-modal untuk animasi keluar (dibersihkan bila modal dibuka ulang)
+    var __modalCloseTimers = {};
+
     function closeModal(modalId) {
       var el = document.getElementById(modalId);
-      if (!el) return;
-      el.classList.remove('show');
-      el.style.display = 'none';
-      el.setAttribute('aria-hidden', 'true');
-      var anyOpen = document.querySelector('.modal.show');
-      if (!anyOpen) {
-        // Buka kunci body dulu, baru pulihkan posisi scroll (scrollTo tidak
-        // berefek selama body masih position:fixed) — keduanya dalam satu
-        // task sehingga tidak ada kedip/lompatan yang terlihat.
-        var y = Number(document.body.dataset.scrollY || 0);
-        document.body.classList.remove('modal-open');
-        document.body.style.removeProperty('--modal-scroll-lock');
-        delete document.body.dataset.scrollY;
-        window.scrollTo(0, y);
-      }
+      if (!el || !el.classList.contains('show')) return;
+      // Mainkan animasi keluar dulu; display:none baru setelah selesai
+      // supaya transisi terlihat (sebelumnya modal menghilang sekilas).
+      el.classList.add('closing');
+      var finish = function () {
+        if (!el.classList.contains('closing')) return; // dibuka ulang saat animasi keluar
+        el.classList.remove('show', 'closing');
+        el.style.display = 'none';
+        el.setAttribute('aria-hidden', 'true');
+        var anyOpen = document.querySelector('.modal.show');
+        if (!anyOpen) {
+          // Buka kunci body dulu, baru pulihkan posisi scroll (scrollTo tidak
+          // berefek selama body masih position:fixed) — keduanya dalam satu
+          // task sehingga tidak ada kedip/lompatan yang terlihat.
+          var y = Number(document.body.dataset.scrollY || 0);
+          document.body.classList.remove('modal-open');
+          document.body.style.removeProperty('--modal-scroll-lock');
+          delete document.body.dataset.scrollY;
+          window.scrollTo(0, y);
+        }
+      };
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) { finish(); return; }
+      if (__modalCloseTimers[modalId]) clearTimeout(__modalCloseTimers[modalId]);
+      __modalCloseTimers[modalId] = setTimeout(function () {
+        delete __modalCloseTimers[modalId];
+        finish();
+      }, 170);
     }
 
     function togglePassword() {
@@ -3782,8 +3892,7 @@
           cachedSession = result.token;
           setSessionExpiry();
           bindSessionActivity();
-          document.getElementById('loginPage').style.display = 'none';
-          showDashboard();
+          transitionToDashboard();
           startSessionTimer(SESSION_TIMEOUT_MS);
           initDashboardData();
         })
@@ -3794,6 +3903,20 @@
           button.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
         })
         .checkLogin(username, password);
+    }
+
+    // Transisi halus login -> dashboard: login fade-out, lalu dashboard fade-in.
+    // Fallback instan bila user memilih reduce motion.
+    function transitionToDashboard() {
+      var loginPage = document.getElementById('loginPage');
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var tampil = function () { showDashboard(); var shell = document.getElementById('appShell'); if (shell && !reduceMotion) shell.classList.add('pane-in'); };
+      if (reduceMotion || !loginPage) { tampil(); return; }
+      loginPage.classList.add('pane-out');
+      setTimeout(function () {
+        loginPage.classList.remove('pane-out');
+        tampil();
+      }, 200);
     }
 
     function showDashboard() {
@@ -3843,26 +3966,39 @@
       clearSessionState();
       window.__dashSessionBound = false;
 
-      var appShell = document.getElementById('appShell');
-      if (appShell) appShell.style.display = 'none';
-
-      var pDash = document.getElementById('page-dashboard');
-      if (pDash) pDash.classList.add('hidden');
-
-      var mHeader = document.getElementById('mainHeader');
-      if (mHeader) mHeader.style.display = 'none';
-
-      var loginPage = document.getElementById('loginPage');
-      var loginButton = document.getElementById('btnLogin');
-      if (loginButton) {
-        loginButton.disabled = false;
-        loginButton.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
-      }
-      if (loginPage) loginPage.style.display = 'flex';
-      var landingButton = document.getElementById('loginLandingButton');
-      if (landingButton) landingButton.style.display = 'inline-flex';
-      notifyParentState('logged-out');
-      notifyParentHeight();
+      // Transisi keluar: dashboard fade-out dulu (200ms), baru login tampil.
+      var appShellEl = document.getElementById('appShell');
+      var pDashEl = document.getElementById('page-dashboard');
+      var mHeaderEl = document.getElementById('mainHeader');
+      var tampilLogin = function () {
+        if (appShellEl) appShellEl.style.display = 'none';
+        if (pDashEl) pDashEl.classList.add('hidden');
+        if (mHeaderEl) mHeaderEl.style.display = 'none';
+        var loginPage = document.getElementById('loginPage');
+        var loginButton = document.getElementById('btnLogin');
+        if (loginButton) {
+          loginButton.disabled = false;
+          loginButton.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
+        }
+        if (loginPage) {
+          loginPage.style.display = 'flex';
+          // Restart animasi stagger kartu login tiap kali kembali ke login
+          loginPage.classList.remove('pane-in');
+          void loginPage.offsetWidth;
+          loginPage.classList.add('pane-in');
+        }
+        var landingButton = document.getElementById('loginLandingButton');
+        if (landingButton) landingButton.style.display = 'inline-flex';
+        notifyParentState('logged-out');
+        notifyParentHeight();
+      };
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion || !appShellEl) { tampilLogin(); return; }
+      appShellEl.classList.add('pane-out');
+      setTimeout(function () {
+        appShellEl.classList.remove('pane-out');
+        tampilLogin();
+      }, 200);
     }
 
     // Role HANYA untuk gating tampilan (tombol edit/hapus). Otorisasi asli
