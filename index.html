@@ -6,83 +6,134 @@
   <meta name="description" content="Flourich Dashboard dan landing page toko">
   <title>Flourich Dashboard</title>
   <style>
+    :root {
+      --bg-main: #f8fafc;
+      --bg-surface: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #059669;
+      --primary-light: #ecfdf5;
+      --bottom-bar-bg: rgba(255, 255, 255, 0.94);
+    }
+
+    html.theme-dark,
+    html.dark-mode,
+    :root.dark-mode,
+    body.dark-mode {
+      --bg-main: #070b16;
+      --bg-surface: #0f1a2e;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border-color: rgba(148, 163, 184, 0.16);
+      --primary: #10b981;
+      --primary-light: rgba(16, 185, 129, 0.14);
+      --bottom-bar-bg: rgba(10, 16, 32, 0.92);
+    }
+
     * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
-    body {
-      background: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      padding-bottom: 80px; /* Main content container padding-bottom */
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
-    body.is-dashboard { overflow-x: hidden; overflow-y: auto; }
-    .spa-view { display: none; min-height: 100vh; padding-bottom: 80px; }
+
+    .spa-view { display: none; min-height: 100vh; background-color: var(--bg-main); }
     .spa-view.active { display: block; animation: spa-enter .24s ease-out; }
-    #landing-view { min-height: 100vh; }
-    #landing-frame { width: 100%; height: 100vh; min-height: 760px; border: 0; display: block; overflow: hidden; }
-    #dashboard-view { min-height: 100vh; position: relative; }
-    .dashboard-shell { min-height: 100vh; padding: 0 0 80px 0; background: #f1f5f9; }
-    #dashboard-frame { width: 100%; height: 100vh; display: block; border: 0; border-radius: 0; background: #fff; }
+    #landing-view { min-height: 100vh; background-color: var(--bg-main); }
+    #landing-frame { width: 100%; height: 100vh; min-height: 760px; border: 0; display: block; overflow: hidden; background-color: var(--bg-main); }
+    #dashboard-view { min-height: 100vh; position: relative; background-color: var(--bg-main); }
+    .dashboard-shell { min-height: 100vh; padding: 0; background-color: var(--bg-main); }
+    #dashboard-frame { width: 100%; height: 100vh; display: block; border: 0; border-radius: 0; background-color: var(--bg-main); }
 
-    /* BILAH MENU NAVIGASI BAWAH (BOTTOM BAR FIXED) */
-    .mobile-nav-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border-top: 1px solid #e2e8f0;
-      box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.08);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 8px 16px;
+    /* ============================================================ */
+    /* DESKTOP (min-width: 769px):                                 */
+    /* Sembunyikan secara total menu navigasi bawah (Bottom Bar)    */
+    /* Hapus padding-bottom di main/body, biarkan navigasi Sidebar */
+    /* ============================================================ */
+    @media (min-width: 769px) {
+      .mobile-nav-bar {
+        display: none !important;
+      }
+      body, .spa-view, .dashboard-shell, main {
+        padding-bottom: 0 !important;
+      }
     }
 
-    .mobile-nav-inner {
-      display: flex;
-      align-items: center;
-      justify-content: space-around;
-      width: 100%;
-      max-width: 480px;
-      gap: 10px;
-    }
+    /* ============================================================ */
+    /* MOBILE (max-width: 768px):                                  */
+    /* Tampilkan Bottom Bar & padding-bottom hanya di mobile       */
+    /* ============================================================ */
+    @media (max-width: 768px) {
+      body, .spa-view, .dashboard-shell {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+      }
 
-    .mobile-nav-item {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex: 1;
-      padding: 10px 16px;
-      border: 1px solid transparent;
-      border-radius: 12px;
-      background: transparent;
-      color: #64748b;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 700;
-      transition: all 0.2s ease;
-      text-decoration: none;
-    }
+      .mobile-nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+        background: var(--bottom-bar-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border-color);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+        transition: background-color 0.3s ease, border-color 0.3s ease;
+      }
 
-    .mobile-nav-item:hover {
-      color: #059669;
-      background: #ecfdf5;
-    }
+      .mobile-nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        width: 100%;
+        max-width: 480px;
+        gap: 10px;
+      }
 
-    .mobile-nav-item.active {
-      color: #059669;
-      background: #ecfdf5;
-      border-color: #a7f3d0;
-    }
+      .mobile-nav-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex: 1;
+        padding: 10px 16px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        transition: all 0.2s ease;
+        text-decoration: none;
+      }
 
-    .mobile-nav-item svg {
-      width: 18px;
-      height: 18px;
-      flex-shrink: 0;
+      .mobile-nav-item:hover {
+        color: var(--primary);
+        background: var(--primary-light);
+      }
+
+      .mobile-nav-item.active {
+        color: var(--primary);
+        background: var(--primary-light);
+        border-color: var(--primary);
+      }
+
+      .mobile-nav-item svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+      }
     }
 
     @keyframes spa-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -99,7 +150,7 @@
     </main>
   </section>
 
-  <!-- BILAH MENU NAVIGASI BAWAH (BOTTOM BAR) -->
+  <!-- BILAH MENU NAVIGASI BAWAH (BOTTOM BAR UNTUK MOBILE SAJA) -->
   <nav class="mobile-nav-bar" id="mobileNavBar">
     <div class="mobile-nav-inner">
       <button class="mobile-nav-item active" id="navItemLanding" type="button" onclick="switchView('landing')">
@@ -123,7 +174,6 @@
       document.getElementById('dashboard-view').classList.toggle('active', showDashboard);
       document.body.classList.toggle('is-dashboard', showDashboard);
       
-      // Update status tombol navigasi (selalu tampil 100% tanpa hidden logic)
       var btnLanding = document.getElementById('navItemLanding');
       var btnDashboard = document.getElementById('navItemDashboard');
       if (btnLanding) btnLanding.classList.toggle('active', !showDashboard);
@@ -144,6 +194,12 @@
     }
 
     window.addEventListener('message', function (event) {
+      if (event.data && event.data.type === 'flourich-theme') {
+        var isDark = !!event.data.isDark;
+        document.documentElement.classList.toggle('theme-dark', isDark);
+        document.documentElement.classList.toggle('dark-mode', isDark);
+        document.body.classList.toggle('dark-mode', isDark);
+      }
       var landingFrame = document.getElementById('landing-frame');
       if (event.source === landingFrame.contentWindow && event.data && event.data.type === 'landing-height') {
         landingFrame.style.height = Math.max(window.innerHeight, Number(event.data.height) || 0) + 'px';
