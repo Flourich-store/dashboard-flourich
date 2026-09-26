@@ -2421,6 +2421,17 @@
       html, body {
         overflow-x: hidden !important;
         max-width: 100vw !important;
+        min-height: 100dvh !important;
+        background-color: var(--bg-main) !important;
+        overscroll-behavior-y: none !important;
+        overscroll-behavior: none !important;
+      }
+
+      .app-shell,
+      .main-panel,
+      .container {
+        min-height: 100dvh !important;
+        background-color: var(--bg-main) !important;
       }
 
       ::-webkit-scrollbar {

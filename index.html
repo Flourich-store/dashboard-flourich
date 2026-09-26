@@ -43,6 +43,22 @@
     }
 
     @media (max-width: 768px) {
+      html, body {
+        min-height: 100dvh !important;
+        background-color: var(--bg-main) !important;
+        overscroll-behavior-y: none !important;
+        overscroll-behavior: none !important;
+      }
+
+      .spa-view,
+      #landing-view,
+      #dashboard-view,
+      .dashboard-shell,
+      #dashboard-frame {
+        min-height: 100dvh !important;
+        background-color: var(--bg-main) !important;
+      }
+
       ::-webkit-scrollbar {
         width: 0px !important;
         height: 0px !important;
