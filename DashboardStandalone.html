@@ -683,28 +683,48 @@
       letter-spacing: 0.01em;
     }
 
+    /* Badge delta: base = varian gelap-di-atas-tint (tema light),
+       varian terang = varian di-atas-tint (tema dark) seperti .badge-*. */
     .hero-delta-badge.delta-up {
-      color: #6ee7b7;
-      background: rgba(16, 185, 129, 0.18);
-      border: 1px solid rgba(52, 211, 153, 0.45);
+      color: #047857; /* AA 4.65:1 di atas tint light */
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
     .hero-delta-badge.delta-down {
-      color: #fca5a5;
+      color: #b91c1c; /* AA 4.57:1 di atas tint light */
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(248, 113, 113, 0.4);
     }
 
     .hero-delta-badge.delta-flat {
-      color: #cbd5e1;
+      color: #475569; /* AA 6.3:1 di atas tint light */
       background: rgba(148, 163, 184, 0.15);
       border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    html.theme-dark .hero-delta-badge.delta-up {
+      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.18);
+      border-color: rgba(52, 211, 153, 0.45);
+    }
+
+    html.theme-dark .hero-delta-badge.delta-down {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+
+    html.theme-dark .hero-delta-badge.delta-flat {
+      color: #cbd5e1;
+      background: rgba(148, 163, 184, 0.15);
+      border-color: rgba(148, 163, 184, 0.35);
     }
 
     .hero-delta-label {
       font-size: 11.5px;
       font-weight: 600;
-      color: var(--ink-muted);
+      color: var(--text-secondary); /* theme-aware: jangan --ink-muted (hanya utk panel ink) */
     }
 
     /* Preset periode cepat (pill di hero) */
@@ -862,6 +882,14 @@
     .hstat-icon--net { color: #d97706; background: rgba(251, 191, 36, 0.14); }
     .hstat-icon--clean { color: #2563eb; background: rgba(96, 165, 250, 0.14); }
 
+    /* Varian tema gelap: varian terang agar ikon tetap kontras di kartu gelap
+       (sejajar dengan .ins-gold/.ins-blue/.ins-green/.ins-red/.ins-purple) */
+    html.theme-dark .hstat-icon--tx { color: #6ee7b7; }
+    html.theme-dark .hstat-icon--hpp { color: #fca5a5; }
+    html.theme-dark .hstat-icon--exp { color: #fdba74; }
+    html.theme-dark .hstat-icon--net { color: #fbbf24; }
+    html.theme-dark .hstat-icon--clean { color: #93c5fd; }
+
     .hstat-value {
       margin-top: 8px;
       font-size: 22px;
@@ -897,21 +925,39 @@
     .hstat-delta i { font-size: 9px; }
 
     .hstat-delta.delta-up {
-      color: #6ee7b7;
-      background: rgba(16, 185, 129, 0.18);
-      border: 1px solid rgba(52, 211, 153, 0.45);
+      color: #047857;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
     .hstat-delta.delta-down {
-      color: #fca5a5;
+      color: #b91c1c;
       background: rgba(239, 68, 68, 0.15);
       border: 1px solid rgba(248, 113, 113, 0.4);
     }
 
     .hstat-delta.delta-flat {
-      color: #cbd5e1;
+      color: #475569;
       background: rgba(148, 163, 184, 0.15);
       border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    html.theme-dark .hstat-delta.delta-up {
+      color: #6ee7b7;
+      background: rgba(16, 185, 129, 0.18);
+      border-color: rgba(52, 211, 153, 0.45);
+    }
+
+    html.theme-dark .hstat-delta.delta-down {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+
+    html.theme-dark .hstat-delta.delta-flat {
+      color: #cbd5e1;
+      background: rgba(148, 163, 184, 0.15);
+      border-color: rgba(148, 163, 184, 0.35);
     }
 
     /* ============================================================
@@ -966,7 +1012,7 @@
       font-weight: 800;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: var(--ink-muted);
+      color: var(--text-secondary); /* theme-aware (bukan --ink-muted) */
     }
 
     .ins-value {
@@ -1081,6 +1127,13 @@
       background: rgba(239, 68, 68, 0.14);
       border: 1px solid rgba(239, 68, 68, 0.4);
     }
+
+    /* Preview selisih stok (modal atur stok) — dulu inline hex tetap,
+       #047857 nyaris tak terbaca di kartu gelap. */
+    .stk-ok { color: #047857; }
+    .stk-bad { color: #b91c1c; }
+    html.theme-dark .stk-ok { color: #6ee7b7; }
+    html.theme-dark .stk-bad { color: #fca5a5; }
 
     .stock-filter {
       font-family: inherit;
@@ -1482,7 +1535,7 @@
       display: block;
       font-size: 10.5px;
       font-weight: 600;
-      color: #94a3b8;
+      color: var(--text-secondary); /* #94a3b8 hanya kontras 2.4:1 di latar terang */
       letter-spacing: 0.03em;
     }
 
@@ -1898,6 +1951,13 @@
     html.theme-dark .badge-cash { background: rgba(148, 163, 184, 0.12); color: #cbd5e1; }
     html.theme-dark .badge-credit { background: rgba(248, 113, 113, 0.14); color: #fca5a5; }
     html.theme-dark .badge-debit { background: rgba(52, 211, 153, 0.14); color: #6ee7b7; }
+
+    /* Nominal CREDIT/DEBIT (tabel Catatan Keuangan) — dulu inline hex tetap:
+       #10b981 hanya 2.5:1 di latar putih & #ef4444/4.5:1 di latar gelap. */
+    .nominal-credit { color: #b91c1c; }
+    .nominal-debit { color: #047857; }
+    html.theme-dark .nominal-credit { color: #fca5a5; }
+    html.theme-dark .nominal-debit { color: #6ee7b7; }
 
     .hidden {
       display: none !important;
@@ -4523,7 +4583,7 @@
           '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
           '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
           '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
-          '<td><b style="color:var(--dark);">' + formatIDR(row.total || 0) + '</b></td>' +
+          '<td><b style="color:var(--text-primary);">' + formatIDR(row.total || 0) + '</b></td>' +
           '<td>' + mBadge + '</td>' +
           '</tr>';
       }
@@ -5395,14 +5455,14 @@
       tbody.innerHTML = data.map(function (row) {
         var isCredit = String(row.tipe || '').toUpperCase() === 'CREDIT';
         var badgeClass = isCredit ? 'badge badge-credit' : 'badge badge-debit';
-        var nominalColor = isCredit ? 'color:#ef4444;' : 'color:#10b981;';
+        var nominalClass = isCredit ? 'nominal-credit' : 'nominal-debit';
         return '<tr>' +
           '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
           '<td><span class="' + badgeClass + '">' + escapeHtml(row.tipe || 'DEBIT') + '</span></td>' +
           '<td>' + escapeHtml(row.kategori || '-') + '</td>' +
           '<td>' + escapeHtml(row.deskripsi || '-') + '</td>' +
           '<td>' + escapeHtml(row.metodePembayaran || '-') + '</td>' +
-          '<td style="font-weight:800;' + nominalColor + '">' + formatIDR(row.nominal || 0) + '</td>' +
+          '<td class="' + nominalClass + '" style="font-weight:800;">' + formatIDR(row.nominal || 0) + '</td>' +
           '</tr>';
       }).join('');
     }
@@ -5643,7 +5703,7 @@
       prev.style.background = bad ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)';
       prev.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center;">' +
         '<span style="font-size:12px; font-weight:700; color:var(--text-subtle);">' + (adjAksi === 'tambah' ? 'Sisa setelah ditambah:' : 'Sisa setelah dikurangi:') + '</span>' +
-        '<span style="font-size:18px; font-weight:900; color:' + (bad ? '#b91c1c' : '#047857') + ';">' + hasil.toLocaleString('id-ID') + ' ' + satuanTxt + (bad ? ' ⚠ melebihi stok' : '') + '</span>' +
+        '<span class="' + (bad ? 'stk-bad' : 'stk-ok') + '" style="font-size:18px; font-weight:900;">' + hasil.toLocaleString('id-ID') + ' ' + satuanTxt + (bad ? ' ⚠ melebihi stok' : '') + '</span>' +
         '</div>';
     }
 
