@@ -2418,6 +2418,17 @@
     }
 
     @media (max-width: 768px) {
+      html, body {
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+      }
+
+      ::-webkit-scrollbar {
+        width: 0px !important;
+        height: 0px !important;
+        display: none !important;
+      }
+
       /* Sidebar samping digantikan bottom navigation di mobile */
       .hide-on-desktop { display: none !important; }
       .sidebar { display: none !important; }
@@ -2577,12 +2588,10 @@
         gap: 10px;
         border-radius: 0 0 16px 16px;
         border: 1px solid var(--border-color) !important;
-        border-bottom: 1px solid var(--border-color) !important;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12) !important;
-        margin-left: -16px;
-        margin-right: -16px;
-        margin-top: -20px;
-        margin-bottom: 16px;
+        border-bottom: 2px solid var(--border-color) !important;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25) !important;
+        margin: 0 0 16px 0 !important;
+        width: 100% !important;
       }
       .brand-wrapper {
         justify-content: space-between;
