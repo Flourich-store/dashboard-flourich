@@ -28,9 +28,9 @@
       --slate-700: #334155;
       --slate-600: #475569;
       --slate-400: #94a3b8;
-  --text-subtle: #64748b; /* teks sekunder di latar terang (AA 4.76:1) */
-  --focus: #047857;              /* ring fokus keyboard di latar terang */
-  --focus-glow: rgba(4, 120, 87, 0.3);
+      --text-subtle: #64748b; /* teks sekunder di latar terang (AA 4.76:1) */
+      --focus: #047857;              /* ring fokus keyboard di latar terang */
+      --focus-glow: rgba(4, 120, 87, 0.3);
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --border: #e2e8f0;
@@ -46,10 +46,36 @@
       --ink-text: #e6edf7;
       --ink-muted: #8fa1bb;
       --radius-lg: 22px;
+
+      /* === Variabel UI dinamis (Light Mode) === */
+      --bg-main: #f8fafc;
+      --bg-surface: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --header-bg: rgba(255, 255, 255, 0.78);
+      --header-blur: blur(12px);
+      --logout-bg: #fff1f2;
+      --logout-color: #e11d48;
+      --logout-border: #fecdd3;
+      --logout-hover-bg: #ffe4e6;
+      --loading-overlay-bg: rgba(248, 250, 252, 0.75);
+      --th-bg: rgba(15, 23, 42, 0.025);
+      --tr-hover-bg: rgba(5, 150, 105, 0.035);
+      --total-card-bg: #f0fdf4;
+      --ins-desc-color: #64748b;
+      --stsum-label-color: #64748b;
+      --modal-close-bg: rgba(15, 23, 42, 0.05);
+      --modal-close-hover-bg: rgba(15, 23, 42, 0.1);
+      --rank-num-bg: rgba(15, 23, 42, 0.05);
+      --rank-bar-bg: rgba(15, 23, 42, 0.06);
     }
 
-    /* Token warna tema gelap - aktif saat html memiliki class theme-dark */
-    html.theme-dark {
+    /* Token warna tema gelap - aktif saat html/root memiliki class theme-dark atau dark-mode */
+    html.theme-dark,
+    html.dark-mode,
+    :root.dark-mode,
+    body.dark-mode {
       --primary: #10b981;
       --primary-hover: #34d399;
       --primary-light: rgba(16, 185, 129, 0.14);
@@ -61,9 +87,9 @@
       --slate-700: #cbd5e1;
       --slate-600: #94a3b8;
       --slate-400: #64748b;
-  --text-subtle: #94a3b8; /* teks sekunder di latar gelap (AA 6.78:1) */
-  --focus: #34d399;              /* ring fokus keyboard di latar gelap */
-  --focus-glow: rgba(52, 211, 153, 0.3);
+      --text-subtle: #94a3b8; /* teks sekunder di latar gelap (AA 6.78:1) */
+      --focus: #34d399;              /* ring fokus keyboard di latar gelap */
+      --focus-glow: rgba(52, 211, 153, 0.3);
       --bg: #070b16;
       --card-bg: #0f1a2e;
       --border: rgba(148, 163, 184, 0.16);
@@ -75,6 +101,29 @@
       --ink-2: #0e1b33;
       --ink-border: rgba(148, 163, 184, 0.16);
       color-scheme: dark;
+
+      /* === Variabel UI dinamis (Dark Mode) === */
+      --bg-main: #070b16;
+      --bg-surface: #0f1a2e;
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --border-color: rgba(148, 163, 184, 0.16);
+      --header-bg: rgba(10, 16, 32, 0.75);
+      --header-blur: blur(14px);
+      --logout-bg: rgba(244, 63, 94, 0.12);
+      --logout-color: #fb7185;
+      --logout-border: rgba(244, 63, 94, 0.28);
+      --logout-hover-bg: rgba(244, 63, 94, 0.22);
+      --loading-overlay-bg: rgba(7, 11, 22, 0.72);
+      --th-bg: rgba(148, 163, 184, 0.07);
+      --tr-hover-bg: rgba(148, 163, 184, 0.05);
+      --total-card-bg: rgba(16, 185, 129, 0.10);
+      --ins-desc-color: #94a3b8;
+      --stsum-label-color: #94a3b8;
+      --modal-close-bg: rgba(148, 163, 184, 0.1);
+      --modal-close-hover-bg: rgba(148, 163, 184, 0.2);
+      --rank-num-bg: rgba(148, 163, 184, 0.1);
+      --rank-bar-bg: rgba(148, 163, 184, 0.12);
     }
 
     * {
@@ -113,12 +162,12 @@
 
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bg);
+      background-color: var(--bg-main);
       background-image:
         radial-gradient(1100px 500px at 90% -10%, rgba(16, 185, 129, 0.055), transparent 55%),
         radial-gradient(900px 450px at -10% 110%, rgba(45, 212, 191, 0.045), transparent 50%);
       background-attachment: fixed;
-      color: var(--dark);
+      color: var(--text-primary);
       -webkit-tap-highlight-color: transparent;
       width: 100%;
       /* overflow-x: hidden SESENGAJA dihapus: sebelumnya menyembunyikan
@@ -128,6 +177,7 @@
          terlihat dan terukur, bukan ditutup-tutupi. */
       min-height: 100vh;
       min-height: 100dvh;
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
     /* Scroll-lock modal: posisi scroll disimpan di --modal-scroll-lock
@@ -321,15 +371,16 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background-color: rgba(255, 255, 255, 0.78);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      background-color: var(--header-bg);
+      backdrop-filter: var(--header-blur);
+      -webkit-backdrop-filter: var(--header-blur);
       padding: 12px 18px;
       border-radius: var(--radius);
       box-shadow: var(--shadow-sm);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-color);
       margin-bottom: 20px;
       gap: 15px;
+      transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     .brand-wrapper, .header-info {
@@ -379,19 +430,19 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      background-color: #fff1f2;
-      color: #e11d48;
-      border: 1px solid #fecdd3;
+      background-color: var(--logout-bg);
+      color: var(--logout-color);
+      border: 1px solid var(--logout-border);
       padding: 6px 14px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
     }
 
     .btn-logout:hover {
-      background-color: #ffe4e6;
+      background-color: var(--logout-hover-bg);
     }
 
     /* CONTAINER & GRID */
@@ -423,12 +474,12 @@
 
     /* CARD DESIGN */
     .card {
-      background: var(--card-bg);
+      background: var(--bg-surface);
       padding: 20px;
       border-radius: var(--radius);
       box-shadow: var(--shadow-sm);
-      border: 1px solid var(--border);
-      transition: transform 0.22s ease, box-shadow 0.22s ease;
+      border: 1px solid var(--border-color);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
     }
 
     .kpi-card {
@@ -541,38 +592,19 @@
     /* ============================================================ */
     .hero {
       position: relative;
-      overflow: hidden;
       border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 55%, #123055 130%);
-      border: 1px solid var(--ink-border);
-      color: var(--ink-text);
-      padding: 26px 28px 24px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 4px 0 0 0;
       margin-top: 16px;
-      box-shadow: 0 18px 44px rgba(8, 15, 35, 0.35);
+      box-shadow: none;
+      transition: color 0.3s ease;
     }
 
-    .hero::before {
-      content: '';
-      position: absolute;
-      top: -120px;
-      right: -80px;
-      width: 340px;
-      height: 340px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 65%);
-      pointer-events: none;
-    }
-
+    .hero::before,
     .hero::after {
-      content: '';
-      position: absolute;
-      bottom: -140px;
-      left: 30%;
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(45, 212, 191, 0.12) 0%, transparent 65%);
-      pointer-events: none;
+      display: none;
     }
 
     .hero-top {
@@ -593,7 +625,7 @@
       font-weight: 800;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: #7dd3c8;
+      color: var(--primary);
       margin-bottom: 10px;
     }
 
@@ -602,7 +634,7 @@
       width: 26px;
       height: 2px;
       border-radius: 2px;
-      background: linear-gradient(90deg, #34d399, transparent);
+      background: linear-gradient(90deg, var(--primary), transparent);
     }
 
     .hero-value {
@@ -610,19 +642,19 @@
       font-weight: 800;
       letter-spacing: -1.5px;
       line-height: 1.02;
-      color: #ffffff;
-      text-shadow: 0 0 40px rgba(52, 211, 153, 0.25);
+      color: var(--text-primary);
+      text-shadow: none;
     }
 
     .hero-sub {
       margin-top: 8px;
       font-size: 13px;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
     .hero-sub b {
-      color: #d1fae5;
+      color: var(--primary);
       font-weight: 700;
     }
 
@@ -723,7 +755,7 @@
     }
 
     .hero-field label {
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-size: 11px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -731,13 +763,14 @@
     }
 
     .hero-field input {
-      background: rgba(10, 16, 28, 0.65);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      color: #f1f5f9;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
       border-radius: 12px;
       padding: 10px 12px;
       font-size: 13.5px;
       width: 170px;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
     }
 
     .hero-field input:focus {
@@ -786,12 +819,17 @@
     }
 
     .hstat {
-      background: rgba(148, 163, 184, 0.07);
-      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 14px 16px;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    .hstat:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
     }
 
     .hstat-label {
@@ -802,9 +840,7 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--ink-muted);
-      /* Label boleh patah baris di kartu sempit — jangan pernah dipotong
-         ellipsis; min-width:0 mencegah flex item memaksa kartu melebar */
+      color: var(--text-secondary);
       min-width: 0;
       white-space: normal;
       word-break: break-word;
@@ -822,25 +858,27 @@
       flex: none;
     }
 
-    .hstat-icon--tx { color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
-    .hstat-icon--hpp { color: #fda4af; background: rgba(244, 63, 94, 0.14); }
-    .hstat-icon--exp { color: #fdba74; background: rgba(249, 115, 22, 0.14); }
-    .hstat-icon--net { color: #fcd34d; background: rgba(251, 191, 36, 0.14); }
-    .hstat-icon--clean { color: #93c5fd; background: rgba(96, 165, 250, 0.14); }
+    .hstat-icon--tx { color: #059669; background: rgba(16, 185, 129, 0.16); }
+    .hstat-icon--hpp { color: #e11d48; background: rgba(244, 63, 94, 0.14); }
+    .hstat-icon--exp { color: #ea580c; background: rgba(249, 115, 22, 0.14); }
+    .hstat-icon--net { color: #d97706; background: rgba(251, 191, 36, 0.14); }
+    .hstat-icon--clean { color: #2563eb; background: rgba(96, 165, 250, 0.14); }
 
     .hstat-value {
       margin-top: 8px;
       font-size: 22px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      color: #f8fafc;
+      color: var(--text-primary);
+      transition: color 0.3s ease;
     }
 
     .hstat-sub {
       margin-top: 3px;
       font-size: 11.5px;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-weight: 500;
+      transition: color 0.3s ease;
     }
 
     /* Badge delta kecil di kartu statistik hero (Laba Bersih) */
@@ -945,7 +983,7 @@
       margin-top: 3px;
       font-size: 12px;
       font-weight: 500;
-      color: #64748b;
+      color: var(--ins-desc-color);
       line-height: 1.45;
     }
 
@@ -955,7 +993,7 @@
       text-align: center;
       font-size: 12.5px;
       font-weight: 600;
-      color: #64748b;
+      color: var(--ins-desc-color);
       background: var(--card-bg);
       border: 1px dashed var(--border);
       border-radius: 16px;
@@ -994,7 +1032,7 @@
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: #64748b;
+      color: var(--stsum-label-color);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -1310,12 +1348,14 @@
        ============================================================ */
     .hero-trend {
       margin-top: 14px;
-      background: rgba(148, 163, 184, 0.07);
-      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
       border-radius: 16px;
       padding: 14px 16px 10px;
+      box-shadow: var(--shadow-sm);
       position: relative;
       z-index: 1;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
     }
 
     .hero-trend-head {
@@ -1335,17 +1375,17 @@
       font-weight: 700;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--ink-muted);
+      color: var(--text-primary);
     }
 
-    .hero-trend-title i { color: #6ee7b7; }
+    .hero-trend-title i { color: var(--primary); }
 
     /* Toggle pilah metode (Semua / Cash / QRIS) */
     .hero-trend-toggle {
       display: inline-flex;
       gap: 4px;
-      background: rgba(15, 23, 42, 0.45);
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: var(--modal-close-bg);
+      border: 1px solid var(--border-color);
       border-radius: 999px;
       padding: 3px;
     }
@@ -1353,7 +1393,7 @@
     .tchip {
       border: none;
       background: transparent;
-      color: #cbd5e1; /* AA 11.8:1 di atas toggle gelap */
+      color: var(--text-secondary);
       font-family: inherit;
       font-size: 11.5px;
       font-weight: 700;
@@ -1365,21 +1405,21 @@
 
     .tchip i { font-size: 10px; margin-right: 3px; }
 
-    .tchip:hover { color: #f1f5f9; }
+    .tchip:hover { color: var(--text-primary); }
 
     .tchip-active {
-      background: rgba(16, 185, 129, 0.22);
-      color: #6ee7b7;
-      box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4);
+      background: var(--primary-light);
+      color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
     }
 
     .hero-trend-legend {
       font-size: 12px;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
-    .hero-trend-legend b { color: #f8fafc; font-weight: 700; }
+    .hero-trend-legend b { color: var(--text-primary); font-weight: 700; }
 
     .hero-trend-chart { position: relative; }
 
@@ -1393,7 +1433,7 @@
       padding: 46px 0;
       text-align: center;
       font-size: 12.5px;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-weight: 500;
     }
 
@@ -1405,7 +1445,7 @@
       font-size: 10.5px;
       font-weight: 600;
       letter-spacing: 0.03em;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
     }
 
     .trend-dot {
@@ -1413,9 +1453,9 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: #34d399;
-      border: 2px solid rgba(255, 255, 255, 0.85);
-      box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.25);
+      background: var(--primary);
+      border: 2px solid var(--bg-surface);
+      box-shadow: 0 0 0 4px var(--primary-light);
       transform: translate(-50%, -50%);
       pointer-events: none;
       opacity: 0;
@@ -1425,9 +1465,9 @@
     .trend-tip {
       position: absolute;
       transform: translate(-50%, calc(-100% - 16px));
-      background: #0b1220;
-      color: #f8fafc;
-      border: 1px solid rgba(52, 211, 153, 0.4);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
       border-radius: 10px;
       padding: 7px 11px;
       font-size: 12px;
@@ -1437,7 +1477,7 @@
       opacity: 0;
       transition: opacity 0.12s ease;
       z-index: 5;
-      box-shadow: 0 8px 24px rgba(2, 6, 23, 0.45);
+      box-shadow: var(--shadow);
     }
 
     .trend-tip small {
@@ -1486,7 +1526,7 @@
       justify-content: center;
       font-size: 13px;
       font-weight: 800;
-      background: rgba(15, 23, 42, 0.05);
+      background: var(--rank-num-bg);
       color: var(--slate-600);
     }
 
@@ -1524,7 +1564,7 @@
       margin-top: 7px;
       height: 6px;
       border-radius: 6px;
-      background: rgba(15, 23, 42, 0.06);
+      background: var(--rank-bar-bg);
       overflow: hidden;
     }
 
@@ -1792,7 +1832,7 @@
     }
 
     th {
-      background-color: rgba(15, 23, 42, 0.025);
+      background-color: var(--th-bg);
       color: var(--slate-600);
       font-weight: 800;
       text-transform: uppercase;
@@ -1807,7 +1847,7 @@
     }
 
     tr:hover td {
-      background-color: rgba(5, 150, 105, 0.035);
+      background-color: var(--tr-hover-bg);
     }
 
     .section-title {
@@ -2154,7 +2194,7 @@
       font-weight: 700;
       line-height: 1;
       border: none;
-      background: rgba(15, 23, 42, 0.05);
+      background: var(--modal-close-bg);
       color: var(--slate-600);
       width: 32px;
       height: 32px;
@@ -2166,8 +2206,8 @@
     }
 
     .modal-close:hover {
-      background: rgba(15, 23, 42, 0.1);
-      color: var(--dark);
+      background: var(--modal-close-hover-bg);
+      color: var(--text-primary);
     }
 
     /* TOAST MODERN */
@@ -2198,7 +2238,7 @@
     #loadingOverlay {
       position: fixed;
       inset: 0;
-      background: rgba(248, 250, 252, 0.75);
+      background: var(--loading-overlay-bg);
       backdrop-filter: blur(2px);
       -webkit-backdrop-filter: blur(2px);
       display: none;
@@ -2207,6 +2247,7 @@
       z-index: 99999;
       flex-direction: column;
       gap: 12px;
+      transition: background-color 0.3s ease;
     }
 
     #loadingOverlay.show {
@@ -2684,9 +2725,11 @@
       .pane-in, .pane-out { animation: none !important; }
     }
 
-    html.theme-dark body {
-      color: var(--text);
-      background-color: #070b16;
+    html.theme-dark body,
+    html.dark-mode body,
+    body.dark-mode {
+      color: var(--text-primary);
+      background-color: var(--bg-main);
       background-image:
         radial-gradient(1200px 600px at 85% -10%, rgba(16, 185, 129, 0.09), transparent 60%),
         radial-gradient(900px 500px at -10% 110%, rgba(45, 212, 191, 0.06), transparent 55%),
@@ -2743,12 +2786,8 @@
       box-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
     }
 
-    /* --- Header (dark) --- */
+    /* --- Header (dark) --- header-bg, header-blur, border-color handled by CSS vars */
     html.theme-dark .app-header {
-      background: rgba(10, 16, 32, 0.75);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border: 1px solid rgba(148, 163, 184, 0.12);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
     }
 
@@ -2768,13 +2807,7 @@
       border: 1px solid rgba(148, 163, 184, 0.22);
     }
 
-    html.theme-dark .btn-logout {
-      background: rgba(244, 63, 94, 0.12);
-      color: #fb7185;
-      border: 1px solid rgba(244, 63, 94, 0.28);
-    }
-
-    html.theme-dark .btn-logout:hover { background: rgba(244, 63, 94, 0.22); }
+    /* btn-logout dark: handled by --logout-* CSS variables */
 
     /* --- Cards / KPI (dark) --- */
     html.theme-dark .card {
@@ -2872,7 +2905,7 @@
     }
 
     html.theme-dark th {
-      background-color: rgba(148, 163, 184, 0.07);
+      background-color: var(--th-bg);
       color: #94a3b8;
       border-bottom: 1px solid rgba(148, 163, 184, 0.14);
     }
@@ -2882,7 +2915,7 @@
       color: #cbd5e1;
     }
 
-    html.theme-dark tr:hover td { background-color: rgba(148, 163, 184, 0.05); }
+    html.theme-dark tr:hover td { background-color: var(--tr-hover-bg); }
 
     /* --- Title, Chart, Teks (dark) --- */
     html.theme-dark .section-title { color: #34d399; }
@@ -2952,7 +2985,7 @@
     html.theme-dark .ins-card { border-color: rgba(148, 163, 184, 0.13); }
     html.theme-dark .ins-value { color: #e2e8f0; }
     html.theme-dark .ins-desc,
-    html.theme-dark .ins-empty { color: #94a3b8; }
+    html.theme-dark .ins-empty { color: var(--ins-desc-color); }
     html.theme-dark .ins-empty { background: rgba(15, 26, 46, 0.6); }
     html.theme-dark .ins-gold   { color: #fbbf24; background: rgba(251, 191, 36, 0.12); }
     html.theme-dark .ins-blue   { color: #93c5fd; background: rgba(96, 165, 250, 0.12); }
@@ -2962,8 +2995,8 @@
 
     html.theme-dark .rank-item { border-color: rgba(148, 163, 184, 0.13); }
     html.theme-dark .rank-name { color: #e2e8f0; }
-    html.theme-dark .rank-num { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; }
-    html.theme-dark .rank-bar { background: rgba(148, 163, 184, 0.12); }
+    html.theme-dark .rank-num { background: var(--rank-num-bg); color: #cbd5e1; }
+    html.theme-dark .rank-bar { background: var(--rank-bar-bg); }
     html.theme-dark .rank-qty { color: #64748b; }
 
     html.theme-dark .login-title { color: #f1f5f9; }
@@ -2982,28 +3015,33 @@
     }
 
     /* --- Modal (dark) --- */
-    html.theme-dark .modal-content {
-      background: #0f1a2e;
-      border: 1px solid rgba(148, 163, 184, 0.16);
+    html.theme-dark .modal-content,
+    html.dark-mode .modal-content {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
       box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
     }
 
-    html.theme-dark .modal-header {
-      background: #0f1a2e;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    html.theme-dark .modal-header,
+    html.dark-mode .modal-header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
     }
 
-    html.theme-dark .modal-close { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; }
-    html.theme-dark .modal-close:hover { background: rgba(148, 163, 184, 0.2); color: #f1f5f9; }
+    html.theme-dark .modal-close,
+    html.dark-mode .modal-close { background: var(--modal-close-bg); color: var(--text-primary); }
+    html.theme-dark .modal-close:hover,
+    html.dark-mode .modal-close:hover { background: var(--modal-close-hover-bg); color: var(--text-primary); }
 
     /* --- Toast & Loading (dark) --- */
-    html.theme-dark .toast {
-      background: #0b1424;
-      border: 1px solid rgba(52, 211, 153, 0.35);
+    html.theme-dark .toast,
+    html.dark-mode .toast {
+      background: var(--bg-surface);
+      border: 1px solid var(--primary);
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
-    html.theme-dark #loadingOverlay { background: rgba(7, 11, 22, 0.72); }
+    html.theme-dark #loadingOverlay { background: var(--loading-overlay-bg); }
     html.theme-dark .loading-spinner { border: 3px solid rgba(148, 163, 184, 0.18); border-top-color: #34d399; }
 
     /* --- Quick actions (dark tetap sama: sudah ink) --- */
@@ -3453,7 +3491,7 @@
           </select>
         </div>
       </div>
-      <div class="card" style="margin-top:12px; background:#f0fdf4;">
+      <div class="card" style="margin-top:12px; background:var(--total-card-bg);">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:13px; font-weight:700; color:var(--green);">Total Penjualan:</span>
           <span id="inTotalDisplay" style="font-size:20px; font-weight:900; color:var(--green);">Rp 0</span>
@@ -5903,6 +5941,7 @@
       var doc = document, root = doc.documentElement;
       var doSwitch = function () {
         var isDark = root.classList.toggle('theme-dark');
+        root.classList.toggle('dark-mode', isDark);
         try { localStorage.setItem('dash_theme', isDark ? 'dark' : 'light'); } catch (e) { }
         applyThemeThemeIcons();
         // Grafik Google Charts digambar ulang agar warnanya ikut tema baru.
