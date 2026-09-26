@@ -14,7 +14,6 @@
       --border-color: #e2e8f0;
       --primary: #059669;
       --primary-light: #ecfdf5;
-      --bottom-bar-bg: rgba(255, 255, 255, 0.94);
     }
 
     html.theme-dark,
@@ -28,112 +27,77 @@
       --border-color: rgba(148, 163, 184, 0.16);
       --primary: #10b981;
       --primary-light: rgba(16, 185, 129, 0.14);
-      --bottom-bar-bg: rgba(10, 16, 32, 0.92);
     }
 
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
-      padding: 0;
-      min-height: 100%;
-      background-color: var(--bg-main);
+      padding: 0 !important;
+      width: 100%;
+      height: 100%;
+      min-height: 100vh;
+      background-color: var(--bg-main) !important;
       color: var(--text-primary);
       transition: background-color 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
     }
 
-    .spa-view { display: none; min-height: 100vh; background-color: var(--bg-main); }
-    .spa-view.active { display: block; animation: spa-enter .24s ease-out; }
-    #landing-view { min-height: 100vh; background-color: var(--bg-main); }
-    #landing-frame { width: 100%; height: 100vh; min-height: 760px; border: 0; display: block; overflow: hidden; background-color: var(--bg-main); }
-    #dashboard-view { min-height: 100vh; position: relative; background-color: var(--bg-main); }
-    .dashboard-shell { min-height: 100vh; padding: 0; background-color: var(--bg-main); }
-    #dashboard-frame { width: 100%; height: 100vh; display: block; border: 0; border-radius: 0; background-color: var(--bg-main); }
-
-    /* ============================================================ */
-    /* DESKTOP (min-width: 769px):                                 */
-    /* Sembunyikan secara total menu navigasi bawah (Bottom Bar)    */
-    /* Hapus padding-bottom di main/body, biarkan navigasi Sidebar */
-    /* ============================================================ */
-    @media (min-width: 769px) {
-      .mobile-nav-bar {
-        display: none !important;
-      }
-      body, .spa-view, .dashboard-shell, main {
-        padding-bottom: 0 !important;
-      }
+    .spa-view {
+      display: none;
+      min-height: 100vh;
+      width: 100%;
+      margin: 0;
+      padding: 0 !important;
+      background-color: var(--bg-main) !important;
     }
 
-    /* ============================================================ */
-    /* MOBILE (max-width: 768px):                                  */
-    /* Tampilkan Bottom Bar & padding-bottom hanya di mobile       */
-    /* ============================================================ */
-    @media (max-width: 768px) {
-      body, .spa-view, .dashboard-shell {
-        padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
-      }
+    .spa-view.active {
+      display: block;
+      animation: spa-enter .24s ease-out;
+    }
 
-      .mobile-nav-bar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        z-index: 1000;
-        background: var(--bottom-bar-bg);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-top: 1px solid var(--border-color);
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
-        transition: background-color 0.3s ease, border-color 0.3s ease;
-      }
+    #landing-view {
+      min-height: 100vh;
+      background-color: var(--bg-main) !important;
+    }
 
-      .mobile-nav-inner {
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        width: 100%;
-        max-width: 480px;
-        gap: 10px;
-      }
+    #landing-frame {
+      width: 100%;
+      height: 100vh;
+      min-height: 760px;
+      border: 0;
+      display: block;
+      overflow: hidden;
+      background-color: var(--bg-main) !important;
+    }
 
-      .mobile-nav-item {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        flex: 1;
-        padding: 10px 16px;
-        border: 1px solid transparent;
-        border-radius: 12px;
-        background: transparent;
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 700;
-        transition: all 0.2s ease;
-        text-decoration: none;
-      }
+    #dashboard-view {
+      min-height: 100vh;
+      position: relative;
+      background-color: var(--bg-main) !important;
+    }
 
-      .mobile-nav-item:hover {
-        color: var(--primary);
-        background: var(--primary-light);
-      }
+    .dashboard-shell {
+      min-height: 100vh;
+      margin: 0;
+      padding: 0 !important;
+      background-color: var(--bg-main) !important;
+    }
 
-      .mobile-nav-item.active {
-        color: var(--primary);
-        background: var(--primary-light);
-        border-color: var(--primary);
-      }
+    #dashboard-frame {
+      width: 100%;
+      height: 100vh;
+      display: block;
+      border: 0;
+      border-radius: 0;
+      background-color: var(--bg-main) !important;
+    }
 
-      .mobile-nav-item svg {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-      }
+    /* Sembunyikan bilah menu bawah outer secara permanen di mobile & desktop
+       agar TIDAK ADA menu bertumpuk (POS Bottom Nav di DashboardStandalone.html
+       menjadi satu-satunya Bottom Navigation Bar di mobile). */
+    .mobile-nav-bar {
+      display: none !important;
     }
 
     @keyframes spa-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -150,34 +114,24 @@
     </main>
   </section>
 
-  <!-- BILAH MENU NAVIGASI BAWAH (BOTTOM BAR UNTUK MOBILE SAJA) -->
-  <nav class="mobile-nav-bar" id="mobileNavBar">
-    <div class="mobile-nav-inner">
-      <button class="mobile-nav-item active" id="navItemLanding" type="button" onclick="switchView('landing')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        <span>Landing Page</span>
-      </button>
-      <button class="mobile-nav-item" id="navItemDashboard" type="button" onclick="switchView('dashboard')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-        <span>Dashboard</span>
-      </button>
-    </div>
-  </nav>
-
   <script>
     var DASHBOARD_URL = 'https://script.google.com/macros/s/AKfycbzG41th4MO9BH_wPJBx40-w8FB3QfBYwRfKvCOKt3IAEVMtWRGJ0R5BbHyQx-BAtQhjAw/exec?page=dashboard';
     var dashboardLoaded = false;
+
+    // Inisialisasi tema awal dari localStorage
+    try {
+      var savedTheme = localStorage.getItem('dash_theme');
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('theme-dark', 'dark-mode');
+        document.body.classList.add('dark-mode');
+      }
+    } catch (e) {}
 
     function updateViewState(updateHistory) {
       var showDashboard = window.location.hash === '#dashboard';
       document.getElementById('landing-view').classList.toggle('active', !showDashboard);
       document.getElementById('dashboard-view').classList.toggle('active', showDashboard);
       document.body.classList.toggle('is-dashboard', showDashboard);
-      
-      var btnLanding = document.getElementById('navItemLanding');
-      var btnDashboard = document.getElementById('navItemDashboard');
-      if (btnLanding) btnLanding.classList.toggle('active', !showDashboard);
-      if (btnDashboard) btnDashboard.classList.toggle('active', showDashboard);
 
       if (showDashboard && !dashboardLoaded) {
         document.getElementById('dashboard-frame').src = DASHBOARD_URL;
@@ -199,6 +153,9 @@
         document.documentElement.classList.toggle('theme-dark', isDark);
         document.documentElement.classList.toggle('dark-mode', isDark);
         document.body.classList.toggle('dark-mode', isDark);
+      }
+      if (event.data && event.data.type === 'flourich-landing') {
+        switchView('landing');
       }
       var landingFrame = document.getElementById('landing-frame');
       if (event.source === landingFrame.contentWindow && event.data && event.data.type === 'landing-height') {

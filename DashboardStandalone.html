@@ -3161,6 +3161,9 @@
           </div>
         </div>
         <div class="header-info">
+          <button id="btnLandingReturn" class="btn-secondary" onclick="goToLandingPage()" type="button" title="Kembali ke Landing Page" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:12.5px; font-weight:700;">
+            <i class="fa-solid fa-house"></i> <span>Beranda</span>
+          </button>
           <div class="user-badge" id="userDisplayBadge">
             <i class="fa-solid fa-user-circle"></i>
             <span id="lblUserEmail">email@example.com</span>
@@ -5917,6 +5920,15 @@
   </script>
 
   <script>
+    // ============ NAVIGATION TO LANDING PAGE ============
+    function goToLandingPage() {
+      if (window.parent && window.parent !== window) {
+        try { window.parent.postMessage({ type: 'flourich-landing' }, '*'); } catch (e) {}
+      } else {
+        window.location.hash = 'beranda';
+      }
+    }
+
     // ============ TOGGLE TEMA LIGHT/DARK ============
     function applyThemeThemeIcons() {
       var isDark = document.documentElement.classList.contains('theme-dark');
