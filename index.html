@@ -31,12 +31,12 @@
 
     * { box-sizing: border-box; }
     html, body {
-      margin: 0;
+      background-color: var(--bg-main) !important;
+      margin: 0 !important;
       padding: 0 !important;
       width: 100%;
       height: 100%;
       min-height: 100vh;
-      background-color: var(--bg-main) !important;
       color: var(--text-primary);
       transition: background-color 0.3s ease, color 0.3s ease;
       overflow-x: hidden;
@@ -50,7 +50,7 @@
       display: none;
       min-height: 100vh;
       width: 100%;
-      margin: 0;
+      margin: 0 !important;
       padding: 0 !important;
       background-color: var(--bg-main) !important;
     }
@@ -63,6 +63,7 @@
     #landing-view {
       min-height: 100vh;
       background-color: var(--bg-main) !important;
+      margin-bottom: 0 !important;
     }
 
     #landing-frame {
@@ -73,6 +74,7 @@
       display: block;
       overflow: hidden;
       background-color: var(--bg-main) !important;
+      margin-bottom: 0 !important;
     }
 
     #dashboard-view {
@@ -82,13 +84,14 @@
       position: relative;
       background-color: var(--bg-main) !important;
       overflow: hidden;
+      margin-bottom: 0 !important;
     }
 
     .dashboard-shell {
       height: 100vh;
       height: 100dvh;
       width: 100%;
-      margin: 0;
+      margin: 0 !important;
       padding: 0 !important;
       background-color: var(--bg-main) !important;
       overflow: hidden;
@@ -102,11 +105,10 @@
       border: 0;
       border-radius: 0;
       background-color: var(--bg-main) !important;
+      margin-bottom: 0 !important;
     }
 
-    /* Sembunyikan bilah menu bawah outer secara permanen di mobile & desktop
-       agar POS Bottom Nav di DashboardStandalone.html menjadi satu-satunya
-       Bottom Navigation Bar yang melayang di dasar layar seluler. */
+    /* Sembunyikan bilah menu bawah outer secara permanen */
     .mobile-nav-bar {
       display: none !important;
     }
