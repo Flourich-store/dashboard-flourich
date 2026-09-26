@@ -492,16 +492,16 @@ function _ensurePenjualanHppColumns(ss) {
   // agar skema lama (ID|Tanggal|Nama|Jumlah|Total Harga|Metode|Uang|Kembali|Modal|Biaya|Laba) tetap utuh di posisinya.
   if (idxVolume === -1 || idxHppSat === -1) {
     var idxNama = lower.indexOf('nama produk') !== -1 ? lower.indexOf('nama produk') : 2;
-    var insertAt = idxNama + 2; // sisip setelah Nama Produk + (kolom baru pertama)
     if (idxVolume === -1) {
-      sheet.insertColumnsAfter(idxNama + 1);
+      // Signature GAS: insertColumnsAfter(columnPosition, howMany) — howMany WAJIB
+      sheet.insertColumnsAfter(idxNama + 1, 1);
       sheet.getRange(1, idxNama + 2).setValue('Volume (ml)');
       sheet.getRange(1, idxNama + 2).setFontWeight('bold');
     }
     if (idxHppSat === -1) {
       var lower2 = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
       var idxNama2 = lower2.indexOf('nama produk') !== -1 ? lower2.indexOf('nama produk') : 2;
-      sheet.insertColumnsAfter(idxNama2 + 2);
+      sheet.insertColumnsAfter(idxNama2 + 2, 1);
       sheet.getRange(1, idxNama2 + 3).setValue('HPP Satuan');
       sheet.getRange(1, idxNama2 + 3).setFontWeight('bold');
     }
