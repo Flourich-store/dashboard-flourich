@@ -14,17 +14,239 @@ var ACTIVE_ENV = 'PROD';
 var SHEET_ID_PROD = '17nWhZx32MhOWI6OnADqisHwjsmAYrBug4-rRT_CjUJQ'; // Database Asli
 var SHEET_ID_DEV = '1CVrF7B3TfTF8LYM5neg14gHfhgRS5O7hELlEMwCAWzk';       // Database Testing
 
-// Dipakai sebagai estimasi hanya jika belum ada data CREDIT pada periode laporan.
-// Ubah menjadi 0 jika seluruh biaya operasional sudah dicatat di sheet Credit/Debit.
-var BIAYA_OPERASIONAL_PERSEN = 10;
+// Dipakai sebagai fallback terakhir HPP baris lama tanpa Modal saat master
+// produk tidak ditemukan; tidak pernah dipakai mengestimasi pengeluaran.
+var BIAYA_OPERASIONAL_CATATAN = 'Laba bersih = laba kotor - pengeluaran tercatat (sheet Credit/Debit).';
 
 // ============================================================
-// HPP RATES
+// HPP - REFERENSI (fallback terakhir bila master produk belum punya HPP)
 // ============================================================
+// Sumber utama HPP laporan adalah kolom HPP di sheet Produk (master).
+// Tabel ini hanya fallback bila produk tidak ditemukan / HPP-nya kosong,
+// dan hanya untuk produk lama (Leci/WNA). Angka = harga katalog 2026.
 var HPP_RATES = {
-  DEFAULT: { 250: 7000, 350: 8000, 500: 12000 },
-  WNA: { 250: 8500, 350: 11700, 500: 17000 }
+  DEFAULT: { 250: 7500, 350: 9000, 500: 11000 },
+  WNA: { 250: 9500, 350: 10500, 500: 17500 }
 };
+
+function getHppRate(namaProduk, volume) {
+  var nama = String(namaProduk || '').toUpperCase();
+  var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
+  var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
+  var volNum = Number(volume || 250);
+  return rates[volNum] || (isWNA ? 9500 : 7500);
+}
+
+// Extract volume (250/350/500) dari nama produk, mis. "Semangka Leci 350 ml"
+// -> 350. Return 0 bila tidak ada volume di nama.
+function _extractVolumeFromName(namaProduk) {
+  var m = String(namaProduk || '').match(/\b(250|350|500)\b/);
+  return m ? Number(m[1]) : 0;
+}
+
+// ============================================================
+// MASTER PRODUK - BACA KOLOM HPP (schema v2)
+// ============================================================
+// Pastikan sheet Produk punya kolom HPP (schema: ID | Nama | Stok | Harga | HPP).
+// Aman dipanggil berulang: sheet lama tanpa HPP ditambah kolomnya sekali,
+// header ditulis, isi baris lama TIDAK diubah (tetap kosong = fallback tabel).
+function _ensureProdukHppColumn(ss) {
+  var sheet = ss.getSheetByName('Produk');
+  if (!sheet) return null;
+  var lastCol = sheet.getLastColumn();
+  if (lastCol >= 5 && String(sheet.getRange(1, 5).getValue()).trim().toUpperCase() === 'HPP') return sheet;
+  // Cari header HPP di kolom manapun (mis. sheet sudah diatur manual)
+  if (lastCol >= 1) {
+    var head = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    for (var i = 0; i < head.length; i++) {      if (String(head[i] || '').trim().toUpperCase() === 'HPP') return sheet;
+    }
+  }
+  var col = sheet.getLastColumn() + 1;
+  sheet.getRange(1, col).setValue('HPP');
+  sheet.getRange(1, col).setFontWeight('bold');
+  return sheet;
+}
+
+// Ambil HPP/unit dari master Produk. Return {rate, found} — found=false
+// berarti produk tidak ada di master / HPP kosong (pemanggil memakai fallback).
+function _getMasterHpp(ss, namaProduk) {
+  var sheet = ss.getSheetByName('Produk');
+  if (!sheet) return { rate: 0, found: false };
+  var values = sheet.getDataRange().getValues();
+  if (!values || values.length <= 1) return { rate: 0, found: false };
+  var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+  var idxNama = header.indexOf('nama produk');
+  if (idxNama === -1) idxNama = header.indexOf('nama');
+  var idxHpp = header.indexOf('hpp');
+  if (idxNama === -1 || idxHpp === -1) return { rate: 0, found: false };
+  var target = String(namaProduk || '').trim().toLowerCase();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][idxNama] || '').trim().toLowerCase() === target) {
+      var hpp = Number(values[i][idxHpp] || 0);
+      return hpp > 0 ? { rate: hpp, found: true } : { rate: 0, found: false };
+    }
+}
+  return { rate: 0, found: false };
+}
+
+// HPP efektif per transaksi: master produk dulu, fallback tabel referensi
+// (nama+volume) terakhir. Volume diambil dari nama produk bila kolom Volume
+// tidak tersedia, lalu default 250.
+function _resolveHpp(ss, namaProduk, volume) {
+  var master = _getMasterHpp(ss, namaProduk);
+  if (master.found) return master.rate;
+  var vol = Number(volume || 0) || _extractVolumeFromName(namaProduk) || 250;
+  return getHppRate(namaProduk, vol);
+}
+
+// Peta HPP master {namaLower: hpp} — dibaca SEKALI per eksekusi laporan
+// (jangan panggil _getMasterHpp per baris: tiap panggilan membaca ulang sheet).
+function _readMasterHppMap(ss) {
+  var map = {};
+  try {
+    var sheet = ss.getSheetByName('Produk');
+    if (!sheet) return map;
+    var values = sheet.getDataRange().getValues();
+    if (!values || values.length <= 1) return map;
+    var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+    var idxNama = header.indexOf('nama produk') !== -1 ? header.indexOf('nama produk') : (header.indexOf('nama') !== -1 ? header.indexOf('nama') : 1);
+    var idxHpp = header.indexOf('hpp');
+    if (idxNama === -1 || idxHpp === -1) return map;
+    for (var i = 1; i < values.length; i++) {
+      var nm = String(values[i][idxNama] || '').trim();
+      var hpp = Number(values[i][idxHpp] || 0);
+      if (nm && hpp > 0) map[nm.toLowerCase()] = hpp;
+    }
+  } catch (e) { Logger.log('ERROR _readMasterHppMap: ' + e); }
+  return map;
+}
+
+// ============================================================
+// NILAI STOK (inventory: kondisi saat ini, bebas filter tanggal)
+// Nilai Stok = Qty stok saat ini x HPP/unit (master produk).
+// ============================================================
+function getNilaiStok(token) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName('Produk');
+    if (!sheet) return { status: 'success', nilaiStok: 0, totalUnit: 0, rincian: [] };
+    _ensureProdukHppColumn(ss);
+    var values = sheet.getDataRange().getValues();
+    if (!values || values.length <= 1) return { status: 'success', nilaiStok: 0, totalUnit: 0, rincian: [] };
+    var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+    var idxNama = header.indexOf('nama produk') !== -1 ? header.indexOf('nama produk') : (header.indexOf('nama') !== -1 ? header.indexOf('nama') : 1);
+    var idxStok = header.indexOf('stok') !== -1 ? header.indexOf('stok') : 2;
+    var idxHpp = header.indexOf('hpp');
+    var total = 0, unit = 0, rincian = [];
+    for (var i = 1; i < values.length; i++) {
+      var nm = String(values[i][idxNama] || '').trim();
+      if (!nm) continue;
+      var stok = Number(values[i][idxStok] || 0);
+      var hppRef = null;
+      for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
+        if (PRODUK_REFERENSI[r].nama.toLowerCase() === nm.toLowerCase()) { hppRef = PRODUK_REFERENSI[r]; break; }
+      }
+      var hpp = (idxHpp !== -1 && Number(values[i][idxHpp] || 0) > 0) ? Number(values[i][idxHpp])
+        : (hppRef ? hppRef.hpp : getHppRate(nm, _extractVolumeFromName(nm) || 250));
+      total += hpp * stok;
+      unit += stok;
+      rincian.push({ nama: nm, stok: stok, hpp: hpp, nilai: hpp * stok });
+    }
+    return { status: 'success', nilaiStok: total, totalUnit: unit, rincian: rincian };
+  });
+}
+
+// ============================================================
+// BACKFILL MANUAL (opsional, TIDAK dijalankan otomatis)
+// Tulis ulang kolom Modal baris Penjualan sesuai HPP master saat ini,
+// bila ingin laporan historis mengikuti HPP baru. Panggil dari editor
+// Apps Script; histori asli TIDAK diubah kecuali fungsi ini dijalankan.
+// ============================================================
+function backfillHppPenjualan() {
+  var ss = getSpreadsheet();
+  var pj = _ensurePenjualanHppColumns(ss);
+  if (!pj.sheet) return { status: 'error', message: 'Sheet Penjualan tidak ditemukan' };
+  var masterHppMap = _readMasterHppMap(ss);
+  var values = pj.sheet.getDataRange().getValues();
+  var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+  var idxJumlah = header.indexOf('jumlah');
+  var idxModal = header.indexOf('modal');
+  var idxNama = header.indexOf('nama produk');
+  if (idxJumlah === -1 || idxModal === -1 || idxNama === -1) {
+    return { status: 'error', message: 'Kolom Jumlah/Modal/Nama Produk tidak terdeteksi' };
+  }
+  var changed = 0;
+  for (var i = 1; i < values.length; i++) {
+    var nm = String(values[i][idxNama] || '').trim();
+    var jml = Number(values[i][idxJumlah] || 0);
+    if (!nm || jml <= 0) continue;
+    var hppSat = masterHppMap[nm.toLowerCase()] || getHppRate(nm, _extractVolumeFromName(nm) || 250);
+    var modalBaru = hppSat * jml;
+    if (Number(values[i][idxModal] || 0) !== modalBaru) {
+      pj.sheet.getRange(i + 1, idxModal + 1).setValue(modalBaru);
+      changed++;
+    }
+  }
+  return { status: 'success', message: 'Kolom Modal diperbarui pada ' + changed + ' baris.' };
+}
+
+// Daftar produk referensi awal (HPP & harga jual katalog 2026).
+// Dipakai _seedHppDefaults: mengisi kolom HPP master yang masih KOSONG dan
+// menambah produk yang belum ada — TIDAK pernah menimpa nilai yang sudah diisi.
+var PRODUK_REFERENSI = [
+  { id: 'PRD001', nama: 'Semangka Leci 250 ml', stok: 0, harga: 10000, hpp: 7500 },
+  { id: 'PRD002', nama: 'Semangka Leci 350 ml', stok: 0, harga: 14000, hpp: 9000 },
+  { id: 'PRD003', nama: 'Semangka Leci 500 ml', stok: 0, harga: 20000, hpp: 11000 },
+  { id: 'PRD004', nama: 'WNA 250 ml', stok: 0, harga: 12000, hpp: 9500 },
+  { id: 'PRD005', nama: 'WNA 350 ml', stok: 0, harga: 15000, hpp: 10500 },
+  { id: 'PRD006', nama: 'WNA 500 ml', stok: 0, harga: 23000, hpp: 17500 },
+  { id: 'PRD007', nama: 'Semangka Susu 350 ml', stok: 0, harga: 15000, hpp: 10000 }
+];
+
+// Isi HPP master yang masih kosong + tambahkan produk referensi yang belum ada.
+// Hanya SUPER_ADMIN. Aman dijalankan berulang (idempotent).
+function isiHppMasterProduk(token) {
+  return _guardToken(function () {
+    _verifyToken(token, true);
+    var ss = getSpreadsheet();
+    var sheet = _ensureProdukHppColumn(ss);
+    if (!sheet) return { status: 'error', message: 'Sheet Produk tidak ditemukan' };
+    var values = sheet.getDataRange().getValues();
+    var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+    var idxId = header.indexOf('id produk') !== -1 ? header.indexOf('id produk') : 0;
+    var idxNama = header.indexOf('nama produk') !== -1 ? header.indexOf('nama produk') : (header.indexOf('nama') !== -1 ? header.indexOf('nama') : 1);
+    var idxStok = header.indexOf('stok') !== -1 ? header.indexOf('stok') : 2;
+    var idxHarga = header.indexOf('harga') !== -1 ? header.indexOf('harga') : 3;
+    var idxHpp = header.indexOf('hpp');
+    if (idxHpp === -1) return { status: 'error', message: 'Kolom HPP gagal disiapkan' };
+
+    var byName = {};
+    for (var i = 1; i < values.length; i++) {
+      var nm = String(values[i][idxNama] || '').trim();
+      if (nm) byName[nm.toLowerCase()] = i + 1; // row number sheet
+    }
+    var diisi = 0, ditambah = 0;
+    for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
+      var ref = PRODUK_REFERENSI[r];
+      var rowNum = byName[ref.nama.toLowerCase()];
+      if (rowNum) {
+        if (Number(values[rowNum - 1][idxHpp] || 0) <= 0) {
+          sheet.getRange(rowNum, idxHpp + 1).setValue(ref.hpp);
+          diisi++;
+        }
+      } else {
+        sheet.appendRow([ref.id, ref.nama, ref.stok, ref.harga, ref.hpp]);
+        ditambah++;
+      }
+    }
+    _invalidateProdukCache();
+    return {
+      status: 'success',
+      message: 'HPP master diisi untuk ' + diisi + ' produk' + (ditambah ? ', ' + ditambah + ' produk referensi ditambahkan' : '') + '.'
+    };
+  });
+}
 
 // ============================================================
 // TANGGAL - HELPERS (aman untuk Date sheet & teks dd/mm/yyyy)
@@ -88,14 +310,6 @@ function _diffDaysKey(a, b) {
   var mb = String(b || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!ma || !mb) return 0;
   return Math.round((Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3])) - Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]))) / 86400000);
-}
-
-function getHppRate(namaProduk, volume) {
-  var nama = String(namaProduk || '').toUpperCase();
-  var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
-  var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
-  var volNum = Number(volume || 250);
-  return rates[volNum] || (isWNA ? 8500 : 7000);
 }
 
 // ============================================================
@@ -266,9 +480,38 @@ function revokeSessionToken(token) {
   }
 }
 
-// ============================================================
-// REPORT BY DATE RANGE
-// ============================================================
+function _ensurePenjualanHppColumns(ss) {
+  var sheet = ss.getSheetByName('Penjualan');
+  if (!sheet) return { sheet: null, idxVolume: -1, idxHppSat: -1 };
+  var lastCol = sheet.getLastColumn();
+  var head = lastCol >= 1 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h || '').trim(); }) : [];
+  var lower = head.map(function (h) { return h.toLowerCase(); });
+  var idxVolume = lower.indexOf('volume (ml)');
+  var idxHppSat = lower.indexOf('hpp satuan');
+  // Tambah kolom Volume (ml) + HPP Satuan tepat setelah "Nama Produk"
+  // agar skema lama (ID|Tanggal|Nama|Jumlah|Total Harga|Metode|Uang|Kembali|Modal|Biaya|Laba) tetap utuh di posisinya.
+  if (idxVolume === -1 || idxHppSat === -1) {
+    var idxNama = lower.indexOf('nama produk') !== -1 ? lower.indexOf('nama produk') : 2;
+    var insertAt = idxNama + 2; // sisip setelah Nama Produk + (kolom baru pertama)
+    if (idxVolume === -1) {
+      sheet.insertColumnsAfter(idxNama + 1);
+      sheet.getRange(1, idxNama + 2).setValue('Volume (ml)');
+      sheet.getRange(1, idxNama + 2).setFontWeight('bold');
+    }
+    if (idxHppSat === -1) {
+      var lower2 = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+      var idxNama2 = lower2.indexOf('nama produk') !== -1 ? lower2.indexOf('nama produk') : 2;
+      sheet.insertColumnsAfter(idxNama2 + 2);
+      sheet.getRange(1, idxNama2 + 3).setValue('HPP Satuan');
+      sheet.getRange(1, idxNama2 + 3).setFontWeight('bold');
+    }
+    head = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (h) { return String(h || '').trim(); });
+    lower = head.map(function (h) { return h.toLowerCase(); });
+    idxVolume = lower.indexOf('volume (ml)');
+    idxHppSat = lower.indexOf('hpp satuan');
+  }
+  return { sheet: sheet, idxVolume: idxVolume, idxHppSat: idxHppSat };
+}
 function getReportByDateRange(token, startDate, endDate) {
   return _guardToken(function () {
     _verifyToken(token, false);
@@ -278,6 +521,8 @@ function getReportByDateRange(token, startDate, endDate) {
         return { status: 'success', data: [], totalTransaksi: 0, omsetKotor: 0, prevOmsetKotor: 0, prevLabaBersih: 0, prevRange: null, labaKotor: 0, labaBersih: 0 };
     }
 
+    // Migrasi kolom Volume (ml) & HPP Satuan (sekali, idempotent) SEBELUM data dibaca
+    var pj = _ensurePenjualanHppColumns(ss);
     var values = sheet.getDataRange().getValues();
 
     // Auto-detect column indices from header
@@ -286,6 +531,7 @@ function getReportByDateRange(token, startDate, endDate) {
 
     var idxTx = -1, idxTgl = -1, idxProduk = -1, idxJumlah = -1, idxHarga = -1;
     var idxTotalHarga = -1, idxMetode = -1, idxHPP = -1, idxLaba = -1, idxVolume = -1;
+    var idxHppSatuan = -1;
 
     for (var hIdx = 0; hIdx < headerLower.length; hIdx++) {
       var h = headerLower[hIdx];
@@ -296,7 +542,13 @@ function getReportByDateRange(token, startDate, endDate) {
       if (h.includes('harga satuan') || (h.includes('harga') && !h.includes('total'))) idxHarga = hIdx;
       if (h.includes('total') && h.includes('harga')) idxTotalHarga = hIdx;
       if (h.includes('metode') || h.includes('pembayaran')) idxMetode = hIdx;
-      if (h.includes('hpp') || h.includes('modal') || h.includes('biaya')) idxHPP = hIdx;
+      if (h.includes('hpp') && h.includes('satuan')) idxHppSatuan = hIdx;
+      // Kolom Modal (HPP penjualan baris lama): cari eksplisit, JANGAN sampai
+      // tertimpa 'HPP Satuan' atau 'Biaya Operasional' yang juga mengandung
+      // kata hpp/biaya — sebelumnya idxHPP mendarat di kolom Biaya (selalu 0)
+      // sehingga Modal historis diabaikan dari perhitungan.
+      if (h.includes('modal')) idxHPP = hIdx;
+      if ((h.includes('hpp') || h.includes('biaya')) && !h.includes('satuan') && idxHPP === -1) idxHPP = hIdx;
       if (h.includes('laba') || h.includes('bersih')) idxLaba = hIdx;
       if (h.includes('volume')) idxVolume = hIdx;
     }
@@ -323,7 +575,9 @@ function getReportByDateRange(token, startDate, endDate) {
     }
 
     var productMap = {}, chartMap = { 'Cash': 0, 'QRIS': 0 }, detailData = [];
-    var txCount = 0, grossTotal = 0, totalHPP = 0;
+    var txCount = 0, grossTotal = 0, totalHPP = 0, totalQtyTerjual = 0;
+    var seenTx = {};
+    var masterHppMap = _readMasterHppMap(ss);
 
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
@@ -337,6 +591,13 @@ function getReportByDateRange(token, startDate, endDate) {
       var totalHarga = hargaSatuan > 0 && jumlah > 0 ? hargaSatuan * jumlah : totalHargaSheet;
       var metode = String(row[idxMetode] || 'CASH').trim();
       var rowHPP = idxHPP !== -1 ? Number(row[idxHPP] || 0) : 0;
+      var rowVol = (pj.idxVolume !== -1) ? Number(row[pj.idxVolume] || 0) : 0;
+      var rowHppSat = (pj.idxHppSat !== -1) ? Number(row[pj.idxHppSat] || 0) : 0;
+      // HPP penjualan baris (biaya barang yang TERJUAL, bukan nilai stok):
+      // Modal lama > HPP Satuan (transaksi baru) > master produk > tabel referensi.
+      var hppSatuanRow = rowHppSat > 0 ? rowHppSat
+        : (masterHppMap[namaProduk.toLowerCase()] || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
+      var hppBaris = rowHPP > 0 ? rowHPP : hppSatuanRow * jumlah;
 
       if (!idTx || !namaProduk) continue;
 
@@ -347,15 +608,18 @@ function getReportByDateRange(token, startDate, endDate) {
         // tetap dihitung omsetnya untuk badge naik/turun di hero.
         if (prevStartKey && rowKey >= prevStartKey && rowKey <= prevEndKey) {
           prevGrossTotal += totalHarga;
-          prevTotalHPP += rowHPP > 0 ? rowHPP : getHppRate(namaProduk, row[idxVolume]) * jumlah;
+          prevTotalHPP += hppBaris;
         }
         continue;
       }
       if (endKey && rowKey > endKey) continue;
 
-      txCount++;
+      // Total transaksi = jumlah ID transaksi UNIK (bukan baris)
+      var txKey = String(idTx || '').trim();
+      if (!seenTx[txKey]) { seenTx[txKey] = true; txCount++; }
+      totalQtyTerjual += jumlah;
       grossTotal += totalHarga;
-      totalHPP += rowHPP > 0 ? rowHPP : getHppRate(namaProduk, row[idxVolume]) * jumlah;
+      totalHPP += hppBaris;
 
       detailData.push({
         tanggal: rowKey,
@@ -433,32 +697,29 @@ function getReportByDateRange(token, startDate, endDate) {
       Logger.log('ERROR hitung credit/debit: ' + e.toString());
     }
 
+    // Rumus final: Laba Bersih = Laba Kotor - Pengeluaran tercatat (+ Debit).
+    // Tanpa estimasi persen — angka harus bisa direkonsiliasi dengan sheet.
     var grossProfit = grossTotal - totalHPP;
     var biayaOperasional = totalExpenses;
-    if (biayaOperasional <= 0 && BIAYA_OPERASIONAL_PERSEN > 0) {
-      biayaOperasional = Math.max(grossProfit, 0) * BIAYA_OPERASIONAL_PERSEN / 100;
-    }
     var netTotal = grossProfit + totalIncomeOther - biayaOperasional;
 
     // Laba bersih periode pembanding (kebijakan biaya operasional sama
     // dengan periode terpilih: expenses aktual, atau persen bila kosong)
     var prevGrossProfit = prevGrossTotal - prevTotalHPP;
-    var prevBiayaOperasional = prevExpenses;
-    if (prevBiayaOperasional <= 0 && BIAYA_OPERASIONAL_PERSEN > 0) {
-      prevBiayaOperasional = Math.max(prevGrossProfit, 0) * BIAYA_OPERASIONAL_PERSEN / 100;
-    }
-    var prevNetTotal = prevGrossProfit + prevIncomeOther - prevBiayaOperasional;
+    var prevNetTotal = prevGrossProfit + prevIncomeOther - prevExpenses;
     var topProduct = topProducts[0] || null;
 
     return {
       status: 'success',
       data: detailData,
       totalTransaksi: txCount,
+      totalQtyTerjual: totalQtyTerjual,
       omsetKotor: grossTotal,
       prevOmsetKotor: prevGrossTotal,
       prevLabaBersih: prevNetTotal,
       prevRange: (prevStartKey && prevEndKey) ? { start: prevStartKey, end: prevEndKey } : null,
       totalHPP: totalHPP,
+      totalPengeluaran: totalExpenses,
       totalBiayaOperasional: biayaOperasional,
       totalPemasukanLain: totalIncomeOther,
       labaKotor: grossProfit,
@@ -499,7 +760,10 @@ function addPenjualan(token, data) {
     if (jumlah <= 0) return { status: 'error', message: 'Jumlah harus lebih dari 0' };
 
     var totalHarga = harga * jumlah;
-    var hpp = getHppRate(namaProduk, volume);
+    // HPP satuan: master produk dulu, fallback tabel referensi nama+volume.
+    // Ditulis ke sheet (kolom HPP Satuan) agar laporan historis tetap akurat
+    // walau master berubah di masa depan.
+    var hpp = _resolveHpp(getSpreadsheet(), namaProduk, volume);
     var totalHPP = hpp * jumlah;
     var laba = totalHarga - totalHPP;
 
@@ -519,10 +783,14 @@ function addPenjualan(token, data) {
     // Metode mengikuti gaya POS: CASH / QRIS
     var metodePos = metode.toUpperCase().indexOf('QR') !== -1 ? 'QRIS' : 'CASH';
 
-    // Susunan kolom mengikuti skema sheet aplikasi POS (11 kolom):
-    // ID Transaksi | Tanggal | Nama Produk | Jumlah | Total Harga | Metode Pembayaran |
-    // Uang Dibayar | Uang Kembali | Modal | Biaya Operasional | Laba bersih
-    sheet.appendRow([idTx, tanggal, namaProduk, jumlah, totalHarga, metodePos, totalHarga, 0, totalHPP, 0, laba]);
+    // Pastikan kolom Volume (ml) & HPP Satuan ada (migrasi idempotent)
+    _ensurePenjualanHppColumns(ss);
+
+    // Susunan kolom skema v2 (13 kolom):
+    // ID Transaksi | Tanggal | Nama Produk | Volume (ml) | HPP Satuan | Jumlah |
+    // Total Harga | Metode Pembayaran | Uang Dibayar | Uang Kembali | Modal |
+    // Biaya Operasional | Laba bersih
+    sheet.appendRow([idTx, tanggal, namaProduk, volume, hpp, jumlah, totalHarga, metodePos, totalHarga, 0, totalHPP, 0, laba]);
 
     // Update stock
     try {
@@ -588,7 +856,7 @@ function getProdukList(token) {
     }
 
     var ss = getSpreadsheet();
-    var sheet = ss.getSheetByName('Produk');
+    var sheet = _ensureProdukHppColumn(ss);
     if (!sheet) return { status: 'error', message: "Sheet Produk tidak ditemukan" };
 
     var values = sheet.getDataRange().getValues();
@@ -599,13 +867,14 @@ function getProdukList(token) {
       header.push(String(values[0][h] || '').trim());
     }
 
-    var idxId = 0, idxNama = 1, idxStok = 2, idxHarga = 3;
+    var idxId = 0, idxNama = 1, idxStok = 2, idxHarga = 3, idxHpp = -1;
     for (var hi = 0; hi < header.length; hi++) {
       var hLow = header[hi].toLowerCase();
       if (hLow === 'id produk' || hLow === 'idproduk' || hLow === 'id_produk' || hLow === 'id') idxId = hi;
       if (hLow === 'nama produk' || hLow === 'namaproduk' || hLow === 'nama_produk' || hLow === 'nama') idxNama = hi;
       if (hLow === 'stok' || hLow === 'stock' || hLow === 'qty' || hLow === 'jumlah') idxStok = hi;
       if (hLow === 'harga') idxHarga = hi;
+      if (hLow === 'hpp') idxHpp = hi;
     }
 
     var products = [];
@@ -618,6 +887,7 @@ function getProdukList(token) {
         idProduk: idProduk,
         namaProduk: String(row[idxNama] || '').trim(),
         stok: Number(row[idxStok] || 0),
+        hpp: idxHpp !== -1 ? Number(row[idxHpp] || 0) : 0,
         harga: Number(row[idxHarga] || 0)
       });
     }
@@ -637,14 +907,16 @@ function createProduk(token, payload) {
     var namaProduk = String(payload.namaProduk || '').trim();
     var stok = Number(payload.stok || 0);
     var harga = Number(payload.harga || 0);
+    var hpp = Number(payload.hpp || 0);
 
     if (!idProduk) return { status: 'error', message: 'ID Produk wajib diisi' };
     if (!namaProduk) return { status: 'error', message: 'Nama Produk wajib diisi' };
     if (isNaN(stok) || stok < 0) return { status: 'error', message: 'Stok harus angka >= 0' };
     if (isNaN(harga) || harga < 0) return { status: 'error', message: 'Harga harus angka >= 0' };
+    if (isNaN(hpp) || hpp < 0) return { status: 'error', message: 'HPP harus angka >= 0' };
 
     var ss = getSpreadsheet();
-    var sheet = ss.getSheetByName('Produk');
+    var sheet = _ensureProdukHppColumn(ss);
     if (!sheet) return { status: 'error', message: "Sheet Produk tidak ditemukan" };
 
     var values = sheet.getDataRange().getValues();
@@ -655,7 +927,7 @@ function createProduk(token, payload) {
       }
     }
 
-    sheet.appendRow([idProduk, namaProduk, stok, harga]);
+    sheet.appendRow([idProduk, namaProduk, stok, harga, hpp > 0 ? hpp : '']);
     _invalidateProdukCache();
     return { status: 'success', message: 'Produk berhasil ditambahkan' };
   });
@@ -672,10 +944,12 @@ function updateProduk(token, idProduk, payload) {
     var namaProduk = payload.namaProduk !== undefined ? String(payload.namaProduk || '').trim() : null;
     var stok = payload.stok !== undefined ? Number(payload.stok || 0) : null;
     var harga = payload.harga !== undefined ? Number(payload.harga || 0) : null;
+    var hpp = payload.hpp !== undefined ? Number(payload.hpp || 0) : null;
 
     if (namaProduk !== null && !namaProduk) return { status: 'error', message: 'Nama Produk wajib diisi' };
     if (stok !== null && (isNaN(stok) || stok < 0)) return { status: 'error', message: 'Stok harus angka >= 0' };
     if (harga !== null && (isNaN(harga) || harga < 0)) return { status: 'error', message: 'Harga harus angka >= 0' };
+    if (hpp !== null && (isNaN(hpp) || hpp < 0)) return { status: 'error', message: 'HPP harus angka >= 0' };
 
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Produk');
@@ -691,7 +965,7 @@ function updateProduk(token, idProduk, payload) {
       header.push(String(values[0][h] || '').trim());
     }
 
-    var idxId = 0, idxNama = 1, idxStok = 2, idxHarga = 3;
+    var idxId = 0, idxNama = 1, idxStok = 2, idxHarga = 3, idxHpp = header.indexOf('hpp');
     for (var hi = 0; hi < header.length; hi++) {
       var hLow = header[hi].toLowerCase();
       if (hLow === 'id produk' || hLow === 'idproduk' || hLow === 'id_produk' || hLow === 'id') idxId = hi;
@@ -708,15 +982,20 @@ function updateProduk(token, idProduk, payload) {
         var nextNama = namaProduk !== null ? namaProduk : String(values[i][idxNama] || '').trim();
         var nextStok = stok !== null ? stok : Number(values[i][idxStok] || 0);
         var nextHarga = harga !== null ? harga : Number(values[i][idxHarga] || 0);
+        var nextHpp = hpp !== null ? hpp : (idxHpp !== -1 ? Number(values[i][idxHpp] || 0) : 0);
 
-        // Satu tulisan untuk 4 kolom (sebelumnya 4x setValue = 4 round-trip ke Sheets API)
-        var colMin = Math.min(idxId, idxNama, idxStok, idxHarga);
-        var colMax = Math.max(idxId, idxNama, idxStok, idxHarga);
+        // Tulis semua kolom yang tersentuh dalam SATU setValues (round-trip minimal)
+        var touched = [
+          { idx: idxId, val: nextId },
+          { idx: idxNama, val: nextNama },
+          { idx: idxStok, val: nextStok },
+          { idx: idxHarga, val: nextHarga }
+        ];
+        if (idxHpp !== -1) touched.push({ idx: idxHpp, val: nextHpp > 0 ? nextHpp : '' });
+        var colMin = Math.min.apply(null, touched.map(function (t) { return t.idx; }));
+        var colMax = Math.max.apply(null, touched.map(function (t) { return t.idx; }));
         var rowVals = values[i].slice(colMin, colMax + 1);
-        rowVals[idxId - colMin] = nextId;
-        rowVals[idxNama - colMin] = nextNama;
-        rowVals[idxStok - colMin] = nextStok;
-        rowVals[idxHarga - colMin] = nextHarga;
+        for (var t = 0; t < touched.length; t++) rowVals[touched[t].idx - colMin] = touched[t].val;
         sheet.getRange(i + 1, colMin + 1, 1, colMax - colMin + 1).setValues([rowVals]);
 
         _invalidateProdukCache();
@@ -1026,7 +1305,7 @@ function addCreditDebit(token, type, data) {
     var nominal = Number(data.nominal || 0);
 
     if (!kategori) return { status: 'error', message: 'Kategori wajib diisi' };
-    if (!deskripsi) return { status: 'deskripsi wajib diisi' };
+    if (!deskripsi) return { status: 'error', message: 'Deskripsi wajib diisi' };
     if (isNaN(nominal) || nominal <= 0) return { status: 'error', message: 'Nominal harus angka > 0' };
 
     var paymentMethod = metodePembayaran.toUpperCase();

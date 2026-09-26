@@ -763,7 +763,7 @@
     /* Strip statistik menyatu di hero */
     .hero-stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
       margin-top: 22px;
       position: relative;
@@ -802,6 +802,8 @@
     }
 
     .hstat-icon--tx { color: #6ee7b7; background: rgba(16, 185, 129, 0.16); }
+    .hstat-icon--hpp { color: #fda4af; background: rgba(244, 63, 94, 0.14); }
+    .hstat-icon--exp { color: #fdba74; background: rgba(249, 115, 22, 0.14); }
     .hstat-icon--net { color: #fcd34d; background: rgba(251, 191, 36, 0.14); }
     .hstat-icon--clean { color: #93c5fd; background: rgba(96, 165, 250, 0.14); }
 
@@ -987,6 +989,9 @@
     .stsum--total .stsum-dot { background: #10b981; }
     .stsum--out .stsum-dot { background: #ef4444; }
     .stsum--low .stsum-dot { background: #f59e0b; }
+    .stsum--gold .stsum-dot { background: #d97706; }
+    .stsum--gold .stsum-num { color: #92400e; }
+    html.theme-dark .stsum--gold .stsum-num { color: #fcd34d; }
 
     .stsum--out .stsum-num { color: #b91c1c; }
     .stsum--low .stsum-num { color: #92400e; }
@@ -3044,19 +3049,29 @@
             <div class="hstat">
               <div class="hstat-label"><span class="hstat-icon hstat-icon--tx"><i class="fa-solid fa-receipt"></i></span> Transaksi</div>
               <div class="hstat-value" id="kpiTx">0</div>
-              <div class="hstat-sub">Jumlah baris transaksi</div>
+              <div class="hstat-sub"><span id="kpiQty">0</span> unit terjual</div>
+            </div>
+            <div class="hstat">
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--hpp"><i class="fa-solid fa-tags"></i></span> HPP Terjual</div>
+              <div class="hstat-value" id="kpiHpp">Rp 0</div>
+              <div class="hstat-sub">Biaya barang yang terjual</div>
+            </div>
+            <div class="hstat">
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--exp"><i class="fa-solid fa-wallet"></i></span> Pengeluaran</div>
+              <div class="hstat-value" id="kpiExpense">Rp 0</div>
+              <div class="hstat-sub">Biaya operasional tercatat</div>
             </div>
             <div class="hstat">
               <div class="hstat-label"><span class="hstat-icon hstat-icon--net"><i class="fa-solid fa-piggy-bank"></i></span> Laba Kotor</div>
               <div class="hstat-value" id="kpiNet">Rp 0</div>
-              <div class="hstat-sub">Omset - HPP</div>
+              <div class="hstat-sub">Omset - HPP terjual</div>
             </div>
             <div class="hstat">
-              <div class="hstat-label"><span class="hstat-icon hstat-icon--clean"><i class="fa-solid fa-wallet"></i></span> Laba Bersih
+              <div class="hstat-label"><span class="hstat-icon hstat-icon--clean"><i class="fa-solid fa-scale-balanced"></i></span> Laba Bersih
                 <span class="hstat-delta" id="netDelta" hidden title="vs periode sebelumnya"><span id="netDeltaBadge">–</span></span>
               </div>
               <div class="hstat-value" id="netTotalValue">Rp 0</div>
-              <div class="hstat-sub">Setelah biaya operasional</div>
+              <div class="hstat-sub">Laba kotor - pengeluaran</div>
             </div>
           </div>
 
@@ -3210,6 +3225,7 @@
       <section id="section-produk" class="content-section">
         <div class="section-title"><i class="fa-solid fa-box"></i> Daftar Produk</div>
         <div class="stock-summary" id="stockSummary"></div>
+        <div class="muted" id="nilaiStokBox" style="display:none; margin-top:10px; font-weight:700;"></div>
         <div class="btn-bar" style="margin-top:10px;">
           <button class="btn-primary btn" type="button" onclick="openProdukModal()"><i class="fa-solid fa-plus"></i>&nbsp;Kelola / Tambah Produk</button>
           <select id="produkStokFilter" class="stock-filter" title="Filter berdasarkan status stok">
@@ -3221,12 +3237,13 @@
         <div class="table-responsive">
           <table>
             <thead>
-              <tr>
-                <th>ID Produk</th>
-                <th>Nama Produk</th>
-                <th>Stok</th>
-                <th>Harga</th>
-              </tr>
+            <tr>
+              <th>ID Produk</th>
+              <th>Nama Produk</th>
+              <th>Stok</th>
+              <th>HPP</th>
+              <th>Harga</th>
+            </tr>
             </thead>
             <tbody id="produkTbody">
               <tr>
@@ -3458,6 +3475,10 @@
             <input type="number" id="prodStokInp" min="0" step="1" placeholder="0">
           </div>
           <div class="filter-group">
+            <label>HPP (Rp)</label>
+            <input type="number" id="prodHppInp" min="0" step="1" placeholder="0">
+          </div>
+          <div class="filter-group">
             <label>Harga (Rp)</label>
             <input type="number" id="prodHargaInp" min="0" step="1" placeholder="0">
           </div>
@@ -3476,6 +3497,7 @@
               <th>ID</th>
               <th>Nama</th>
               <th>Stok</th>
+              <th>HPP</th>
               <th>Harga</th>
               <th>Aksi</th>
             </tr>
@@ -3504,18 +3526,6 @@
     // ============================================================
     // KONFIGURASI & STATE
     // ============================================================
-    var HPP_RATES = {
-      DEFAULT: { 250: 7000, 350: 8000, 500: 12000 },
-      WNA: { 250: 8500, 350: 11700, 500: 17000 }
-    };
-
-    function getHppRate(namaProduk, volume) {
-      var nama = String(namaProduk || '').toUpperCase();
-      var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
-      var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
-      var volNum = Number(volume || 250);
-      return rates[volNum] || (isWNA ? 8500 : 7000);
-    }
     var cachedProduk = [];
     var cachedPenjualan = [];
     var cachedCD = [];
@@ -3919,6 +3929,7 @@
 
       document.getElementById('prodNamaInp').value = produk.namaProduk || produk.nama_produk || produk.nama || '';
       document.getElementById('prodStokInp').value = produk.stok;
+      document.getElementById('prodHppInp').value = produk.hpp || '';
       document.getElementById('prodHargaInp').value = produk.harga;
 
       idInp.disabled = true;
@@ -4210,6 +4221,7 @@
           renderDailyTrend(res);
           renderInsights(res);
           updateKPI(res);
+          loadNilaiStok();
         } else {
           showToast(res.message || 'Gagal memuat laporan', 'error');
           document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
@@ -4462,7 +4474,10 @@
 
     function updateKPI(res) {
       document.getElementById('kpiTx').textContent = Number(res.totalTransaksi || 0).toLocaleString('id-ID');
+      document.getElementById('kpiQty').textContent = Number(res.totalQtyTerjual || 0).toLocaleString('id-ID');
       document.getElementById('kpiGross').textContent = formatIDR(res.omsetKotor || 0);
+      document.getElementById('kpiHpp').textContent = formatIDR(res.totalHPP || 0);
+      document.getElementById('kpiExpense').textContent = formatIDR(res.totalPengeluaran || 0);
       document.getElementById('kpiNet').textContent = formatIDR(res.labaKotor || 0);
       document.getElementById('netTotalValue').textContent = formatIDR(res.labaBersih || 0);
       document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
@@ -4839,6 +4854,22 @@
         '<div class="stsum stsum--out"><div class="stsum-num">' + out.toLocaleString('id-ID') + '</div><div class="stsum-label"><span class="stsum-dot"></span> Stok Habis</div></div>';
     }
 
+    // Nilai Stok = Qty stok saat ini x HPP/unit (kondisi inventory, bebas
+    // filter tanggal). Ditarik dari backend getNilaiStok (master produk).
+    function loadNilaiStok() {
+      safeGoogleRun('getNilaiStok', [getToken()], function (res) {
+        var box = document.getElementById('nilaiStokBox');
+        if (!box) return;
+        if (res && res.status === 'success') {
+          box.style.display = 'block';
+          box.innerHTML = '<i class="fa-solid fa-coins"></i> Nilai Stok Saat Ini: ' + formatIDR(res.nilaiStok || 0) +
+            ' <span style="font-weight:500;">(' + Number(res.totalUnit || 0).toLocaleString('id-ID') + ' unit \u00d7 HPP — kondisi inventory, mengikuti stok produk jadi)</span>';
+        } else {
+          box.style.display = 'none';
+        }
+      }, function () { });
+    }
+
     function stockFilterValue() {
       var el = document.getElementById('produkStokFilter');
       return el ? el.value : 'all';
@@ -4857,7 +4888,7 @@
       var tbody = document.getElementById('produkTbody');
       if (!tbody) return;
       if (!cachedProduk || cachedProduk.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-text">Tidak ada produk</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-text">Tidak ada produk</td></tr>';
         return;
       }
       if (list.length === 0) {
@@ -4874,6 +4905,7 @@
           '<td>' + escapeHtml(id) + '</td>' +
           '<td>' + escapeHtml(nama) + '</td>' +
           '<td><span class="stock-badge ' + cls + '" title="' + stockStatusTitle(cls) + '">' + Number(p.stok || 0) + '</span></td>' +
+          '<td>' + (Number(p.hpp || 0) > 0 ? formatIDR(p.hpp) : '<span class="muted">\u2014</span>') + '</td>' +
           '<td>' + formatIDR(p.harga || 0) + '</td>' +
           '</tr>';
       }).join('');
@@ -4893,6 +4925,7 @@
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
+        loadNilaiStok();
       }, function () {
         var t = document.getElementById('produkTbody');
         if (t && t.innerHTML.indexOf('fa-spin') !== -1) {
@@ -4908,6 +4941,7 @@
           renderProdukModal(cachedProduk);
           renderProdukMain(cachedProduk);
           updateProdukDatalist(cachedProduk);
+          loadNilaiStok();
         } else {
           document.getElementById('modalProdukTbody').innerHTML = '<tr><td colspan="5" class="empty-text">Gagal memuat produk</td></tr>';
         }
@@ -4937,7 +4971,7 @@
 
       const canModify = getRole() === 'SUPER_ADMIN';
       if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-text">Tidak ada produk. Tambahkan produk pertama Anda di form atas.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tidak ada produk. Tambahkan produk pertama Anda di form atas.</td></tr>';
         return;
       }
 
@@ -4952,6 +4986,7 @@
           '<td>' + escapeHtml(id) + '</td>' +
           '<td>' + escapeHtml(nama) + '</td>' +
           '<td><span class="stock-badge ' + stockStatusClass(p.stok) + '">' + Number(p.stok || 0) + '</span></td>' +
+          '<td>' + (Number(p.hpp || 0) > 0 ? formatIDR(p.hpp) : '<span class="muted">\u2014</span>') + '</td>' +
           '<td>' + formatIDR(p.harga || 0) + '</td>' +
           '<td>' + aksi + '</td>' +
           '</tr>';
@@ -4986,9 +5021,11 @@
         idProduk: document.getElementById('prodIdInp').value.trim(),
         namaProduk: document.getElementById('prodNamaInp').value.trim(),
         stok: Number(document.getElementById('prodStokInp').value) || 0,
+        hpp: Number(document.getElementById('prodHppInp').value) || 0,
         harga: Number(document.getElementById('prodHargaInp').value) || 0
       };
       if (!payload.idProduk || !payload.namaProduk) return showToast('ID dan Nama Produk wajib diisi!', 'error');
+      if (payload.hpp <= 0) return showToast('HPP wajib diisi (biaya produksi per unit)!', 'error');
       if (payload.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
 
       safeGoogleRun('createProduk', [getToken(), payload], function (res) {
@@ -5010,6 +5047,7 @@
         idProduk: idInp.value.trim(),
         namaProduk: document.getElementById('prodNamaInp').value.trim(),
         stok: Number(document.getElementById('prodStokInp').value) || 0,
+        hpp: Number(document.getElementById('prodHppInp').value) || 0,
         harga: Number(document.getElementById('prodHargaInp').value) || 0
       };
 
@@ -5045,6 +5083,7 @@
       delete idInp.dataset.idLama;
       document.getElementById('prodNamaInp').value = '';
       document.getElementById('prodStokInp').value = '';
+      document.getElementById('prodHppInp').value = '';
       document.getElementById('prodHargaInp').value = '';
       idInp.disabled = false;
       var btnEdit = document.getElementById('btnSimpanEdit');
@@ -5617,7 +5656,13 @@
     function showEmptyPeriodState() {
       cachedPenjualan = [];
       document.getElementById('kpiTx').textContent = '0';
+      var kpiQtyEl = document.getElementById('kpiQty');
+      if (kpiQtyEl) kpiQtyEl.textContent = '0';
       document.getElementById('kpiGross').textContent = 'Rp 0';
+      var kpiHppEl = document.getElementById('kpiHpp');
+      if (kpiHppEl) kpiHppEl.textContent = 'Rp 0';
+      var kpiExpEl = document.getElementById('kpiExpense');
+      if (kpiExpEl) kpiExpEl.textContent = 'Rp 0';
       document.getElementById('kpiNet').textContent = 'Rp 0';
       document.getElementById('netTotalValue').textContent = 'Rp 0';
       document.getElementById('chartTotalOmset').textContent = '';
