@@ -42,6 +42,10 @@
       overflow-x: hidden;
     }
 
+    body.is-dashboard {
+      overflow: hidden !important;
+    }
+
     .spa-view {
       display: none;
       min-height: 100vh;
@@ -72,21 +76,28 @@
     }
 
     #dashboard-view {
-      min-height: 100vh;
+      height: 100vh;
+      height: 100dvh;
+      width: 100%;
       position: relative;
       background-color: var(--bg-main) !important;
+      overflow: hidden;
     }
 
     .dashboard-shell {
-      min-height: 100vh;
+      height: 100vh;
+      height: 100dvh;
+      width: 100%;
       margin: 0;
       padding: 0 !important;
       background-color: var(--bg-main) !important;
+      overflow: hidden;
     }
 
     #dashboard-frame {
       width: 100%;
-      height: 100vh;
+      height: 100vh !important;
+      height: 100dvh !important;
       display: block;
       border: 0;
       border-radius: 0;
@@ -94,8 +105,8 @@
     }
 
     /* Sembunyikan bilah menu bawah outer secara permanen di mobile & desktop
-       agar TIDAK ADA menu bertumpuk (POS Bottom Nav di DashboardStandalone.html
-       menjadi satu-satunya Bottom Navigation Bar di mobile). */
+       agar POS Bottom Nav di DashboardStandalone.html menjadi satu-satunya
+       Bottom Navigation Bar yang melayang di dasar layar seluler. */
     .mobile-nav-bar {
       display: none !important;
     }
@@ -163,10 +174,6 @@
       }
       if (event.source === landingFrame.contentWindow && event.data && event.data.type === 'flourich-dashboard') {
         switchView('dashboard');
-      }
-      var dashboardFrame = document.getElementById('dashboard-frame');
-      if (event.source === dashboardFrame.contentWindow && event.data && event.data.type === 'dashboard-height') {
-        dashboardFrame.style.height = Math.max(760, Number(event.data.height) || 0) + 'px';
       }
     });
     window.addEventListener('load', function () { updateViewState(false); });

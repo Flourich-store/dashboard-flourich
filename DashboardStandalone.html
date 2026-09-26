@@ -714,9 +714,9 @@
     }
 
     .chip {
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      background: rgba(148, 163, 184, 0.08);
-      color: #cbd5e1;
+      border: 1px solid var(--border-color);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
       font-family: inherit;
       font-size: 12.5px;
       font-weight: 700;
@@ -727,16 +727,16 @@
     }
 
     .chip:hover {
-      border-color: rgba(52, 211, 153, 0.55);
-      color: #ffffff;
-      background: rgba(16, 185, 129, 0.14);
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
     }
 
     .chip.chip-active {
-      background: linear-gradient(135deg, #10b981, #059669);
-      border-color: transparent;
+      background: var(--primary);
+      border-color: var(--primary);
       color: #ffffff;
-      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
     }
 
     /* Tanggal + aksi di bawah hero */
@@ -784,25 +784,20 @@
       margin-left: auto;
     }
 
-    /* Tombol aksi di hero selalu di atas panel gelap (kedua tema), jadi
-       warnanya tidak boleh mewarisi btn-secondary light-mode (abu redup
-       + border pudar yang nyaris tak terlihat). Kontras tinggi + ikon
-       emerald agar Export CSV & Reset jelas terbaca. */
-    .hero-actions .btn-secondary,
-    html.theme-dark .hero-actions .btn-secondary {
-      background: rgba(148, 163, 184, 0.16);
-      color: #f1f5f9;
-      border: 1px solid rgba(148, 163, 184, 0.45);
+    .hero-actions .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
       font-weight: 700;
+      transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
     }
 
-    .hero-actions .btn-secondary i { color: #6ee7b7; }
+    .hero-actions .btn-secondary i { color: var(--primary); }
 
-    .hero-actions .btn-secondary:hover,
-    html.theme-dark .hero-actions .btn-secondary:hover {
-      background: rgba(148, 163, 184, 0.28);
-      border-color: rgba(52, 211, 153, 0.6);
-      color: #ffffff;
+    .hero-actions .btn-secondary:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
     /* Strip statistik menyatu di hero */
@@ -2297,15 +2292,16 @@
       gap: 14px;
       text-align: left;
       padding: 16px 18px;
-      border: 1px solid var(--ink-border);
+      border: 1px solid var(--border-color);
       border-radius: 18px;
-      background: linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
-      color: var(--ink-text);
+      background: var(--bg-surface);
+      color: var(--text-primary);
       cursor: pointer;
       font-family: inherit;
       position: relative;
       overflow: hidden;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.3s ease, color 0.3s ease;
     }
 
     .quick-tile::after {
@@ -2316,14 +2312,14 @@
       width: 150px;
       height: 150px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, transparent 65%);
+      background: radial-gradient(circle, var(--primary-light) 0%, transparent 65%);
       pointer-events: none;
     }
 
     .quick-tile:hover {
       transform: translateY(-3px);
-      border-color: rgba(52, 211, 153, 0.45);
-      box-shadow: 0 14px 32px rgba(8, 15, 35, 0.35);
+      border-color: var(--primary);
+      box-shadow: var(--shadow);
     }
 
     .quick-tile:active {
@@ -2339,21 +2335,29 @@
       align-items: center;
       justify-content: center;
       font-size: 18px;
-      color: #6ee7b7;
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: var(--primary);
+      background: var(--primary-light);
+      border: 1px solid var(--primary);
     }
 
     .quick-tile:nth-child(2) .quick-icon {
-      color: #fcd34d;
+      color: #d97706;
       background: rgba(251, 191, 36, 0.14);
       border-color: rgba(251, 191, 36, 0.3);
     }
 
+    html.theme-dark .quick-tile:nth-child(2) .quick-icon {
+      color: #fcd34d;
+    }
+
     .quick-tile:nth-child(3) .quick-icon {
-      color: #93c5fd;
+      color: #2563eb;
       background: rgba(96, 165, 250, 0.14);
       border-color: rgba(96, 165, 250, 0.3);
+    }
+
+    html.theme-dark .quick-tile:nth-child(3) .quick-icon {
+      color: #93c5fd;
     }
 
     .quick-text {
@@ -2365,18 +2369,20 @@
     .quick-title {
       font-size: 14.5px;
       font-weight: 800;
-      color: #f8fafc;
+      color: var(--text-primary);
       letter-spacing: -0.2px;
+      transition: color 0.3s ease;
     }
 
     .quick-sub {
       margin-top: 3px;
       font-size: 12px;
-      color: var(--ink-muted);
+      color: var(--text-secondary);
       font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      transition: color 0.3s ease;
     }
 
     @media (max-width: 900px) {
@@ -2415,24 +2421,25 @@
       .sidebar-overlay { display: none !important; }
 
       /* Ruang untuk bottom nav agar konten terbawah tidak tertutup */
-      .main-panel { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
-      .toast { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+      .main-panel, main, .container { padding-bottom: 80px !important; }
+      .toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
 
-      /* Bottom nav melayang ala aplikasi seluler: dinamis adaptif tema */
+      /* Bottom nav melayang di dasar layar secara permanen (fixed bottom) */
       .bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        z-index: 1000;
-        display: flex;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 9999 !important;
+        display: flex !important;
         gap: 2px;
         padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-        background: var(--bg-surface);
-        backdrop-filter: blur(14px) saturate(140%);
-        -webkit-backdrop-filter: blur(14px) saturate(140%);
-        border-top: 1px solid var(--border-color);
-        box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.12);
+        background: var(--bg-surface) !important;
+        backdrop-filter: blur(16px) saturate(140%);
+        -webkit-backdrop-filter: blur(16px) saturate(140%);
+        border-top: 1px solid var(--border-color) !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2) !important;
         animation: bnav-in 0.35s ease;
         transition: background-color 0.3s ease, border-color 0.3s ease;
       }
