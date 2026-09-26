@@ -121,7 +121,11 @@
       color: var(--dark);
       -webkit-tap-highlight-color: transparent;
       width: 100%;
-      overflow-x: hidden;
+      /* overflow-x: hidden SESENGAJA dihapus: sebelumnya menyembunyikan
+         konten yang keluar viewport (card/filter terpotong tanpa bisa
+         di-scroll). Root cause overflow kini dibereskan di sumbernya
+         (.hero-controls & .hero-stats mobile) sehingga kebocoran layout
+         terlihat dan terukur, bukan ditutup-tutupi. */
       min-height: 100vh;
       min-height: 100dvh;
     }
@@ -771,7 +775,10 @@
     /* Strip statistik menyatu di hero */
     .hero-stats {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      /* minmax(0,1fr): kartu BOLEH menyusut di bawah min-content label —
+         tanpa ini, di tablet landscape 5 kolom meluber & terpotong oleh
+         overflow:hidden milik .hero (root cause tambahan di luar mobile) */
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 12px;
       margin-top: 22px;
       position: relative;
@@ -796,6 +803,12 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
       color: var(--ink-muted);
+      /* Label boleh patah baris di kartu sempit — jangan pernah dipotong
+         ellipsis; min-width:0 mencegah flex item memaksa kartu melebar */
+      min-width: 0;
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
 
     .hstat-icon {
@@ -2348,6 +2361,12 @@
       }
     }
 
+    /* Tablet: 5 kartu terlalu sempit — turun ke 3 kolom (3+2). Ditulis
+       SEBELUM blok 768px agar mobile menimpanya. */
+    @media (max-width: 1023px) {
+      .hero-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
     @media (max-width: 768px) {
       /* Sidebar samping digantikan bottom navigation di mobile */
       .hide-on-desktop { display: none !important; }
@@ -2418,6 +2437,13 @@
         line-height: 1;
       }
 
+      /* Layar sangat kecil (iPhone SE/Android mini): label sedikit diperkecil
+         agar 6 menu tetap satu baris tanpa wrap; touch target tetap >=44px */
+      @media (max-width: 360px) {
+        .bnav-item { font-size: 9px; padding: 6px 1px 5px; }
+        .bnav-item i { font-size: 15px; }
+      }
+
       .bnav-item:active { transform: scale(0.94); }
 
       .bnav-item.active {
@@ -2440,14 +2466,23 @@
 
       .hero { padding: 20px 16px 18px; }
       .hero-top { flex-direction: column; align-items: stretch; }
+      /* ROOT CAUSE overflow mobile: .hero-field flex:0 0 auto menolak
+         menyusut, dan .hero-actions berisi 3 tombol dengan min-content
+         lebih lebar dari container (Tampilkan + Export CSV + Reset tidak
+         mau dipatahkan flex) sehingga meluber ±24px keluar viewport.
+         Solusi: flex-direction column, field boleh menyusut, dan tombol
+         boleh wrap menjadi baris baru. */
       .hero-controls { flex-direction: column; align-items: stretch; }
+      .hero-field { flex: 1 1 auto; width: 100%; min-width: 0; }
       .hero-field input { width: 100%; }
-      .hero-actions { margin-left: 0; }
-      .hero-actions .btn { flex: 1; }
-      /* 5 kartu KPI: 2 kolom agar hero tidak terlalu panjang saat discroll;
-         kartu terakhir (Laba Bersih) span penuh sebagai penutup hierarki */
-      .hero-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .hero-actions { margin-left: 0; flex-wrap: wrap; min-width: 0; }
+      .hero-actions .btn { flex: 1 1 120px; min-width: 0; white-space: normal; }
+      /* 5 kartu KPI: 2 kolom dengan minmax(0,1fr) agar isi tidak memaksa
+         grid melebar; kartu terakhir (Laba Bersih) span penuh */
+      .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .hero-stats .hstat:last-child { grid-column: 1 / -1; }
+      /* Label KPI boleh wrap di kartu sempit — jangan dipotong ellipsis */
+      .hstat-label { min-width: 0; white-space: normal; word-break: break-word; overflow-wrap: anywhere; }
       /* Modal bottom-sheet: slide dari bawah ala aplikasi seluler */
       .modal.show .modal-content { animation: sheetIn 0.34s cubic-bezier(0.16, 1, 0.3, 1); }
       @keyframes sheetIn {
@@ -2533,6 +2568,9 @@
     @media (max-width: 480px) {
       body { font-size: 14px; }
       .grid { grid-template-columns: 1fr; }
+      /* Mobile kecil: kartu KPI 1 kolom — 2 kolom membuat label uppercase
+         (HPP TERJUAL, LABA BERSIH) terpotong di kartu ±147px */
+      .hero-stats { grid-template-columns: 1fr; }
       .kpi-title { font-size: 13px; }
       .kpi-value { font-size: 20px; }
       .kpi-sub { font-size: 12px; }
