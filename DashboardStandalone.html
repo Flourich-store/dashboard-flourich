@@ -191,6 +191,12 @@
       top: var(--modal-scroll-lock, 0px);
     }
 
+    /* Container-scroll (mobile): scroll latar milik .app-shell, bukan body —
+      kunci juga saat modal terbuka agar latar tidak ikut terseret. */
+    body.modal-open .app-shell {
+      overflow: hidden !important;
+    }
+
     .app-shell {
       display: flex;
       min-height: 100vh;
@@ -2478,19 +2484,31 @@
     }
 
     @media (max-width: 768px) {
+      /* CONTAINER-SCROLL: di dalam iframe lintas-domain (github.io -> GAS ->
+         sandbox Google), body-scroll sering mati di iOS/Android — gesture
+         jatuh ke halaman luar yang overflow:hidden. Pindahkan scroll ke
+         .app-shell (tinggi tetap + momentum touch) agar scroll selalu jalan. */
       html, body {
-        overflow-x: hidden !important;
+        height: 100% !important;
+        max-height: 100dvh !important;
+        overflow: hidden !important;
         max-width: 100vw !important;
-        min-height: 100dvh !important;
         background-color: var(--bg-main) !important;
-        overscroll-behavior-y: none !important;
         overscroll-behavior: none !important;
       }
 
-      .app-shell,
+      .app-shell {
+        display: flex !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: contain !important;
+      }
+
       .main-panel,
       .container {
-        min-height: 100dvh !important;
         background-color: var(--bg-main) !important;
       }
 
@@ -3873,8 +3891,12 @@
       // Hanya saat body BELUM terkunci (modal pertama) — modal bertumpuk
       // tidak boleh menimpa posisi tersimpan dengan 0.
       if (!document.body.classList.contains('modal-open')) {
-        var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        // Container-scroll (mobile): scroll aktif bisa di window (desktop)
+        // atau .app-shell (mobile) — simpan keduanya, pulihkan keduanya.
+        var appShellEl = document.querySelector('.app-shell');
+        var scrollY = window.scrollY || document.documentElement.scrollTop || (appShellEl ? appShellEl.scrollTop : 0);
         document.body.dataset.scrollY = String(scrollY);
+        document.body.dataset.shellScrollY = String(appShellEl ? appShellEl.scrollTop : 0);
         document.body.style.setProperty('--modal-scroll-lock', (-scrollY) + 'px');
       }
       el.style.display = 'flex';
@@ -3930,11 +3952,16 @@
           // Buka kunci body dulu, baru pulihkan posisi scroll (scrollTo tidak
           // berefek selama body masih position:fixed) — keduanya dalam satu
           // task sehingga tidak ada kedip/lompatan yang terlihat.
+          // Pulihkan window scroll DAN .app-shell scroll (mobile).
           var y = Number(document.body.dataset.scrollY || 0);
+          var shellY = Number(document.body.dataset.shellScrollY || 0);
+          var shellEl2 = document.querySelector('.app-shell');
           document.body.classList.remove('modal-open');
           document.body.style.removeProperty('--modal-scroll-lock');
           delete document.body.dataset.scrollY;
+          delete document.body.dataset.shellScrollY;
           window.scrollTo(0, y);
+          if (shellEl2) shellEl2.scrollTop = shellY;
         }
       };
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -5856,6 +5883,11 @@
           section.classList.toggle('active', isActive);
           section.classList.toggle('hidden', !isActive);
         });
+
+        // Container-scroll (mobile): tiap modul mulai dari atas — scroll
+        // kini milik .app-shell, bukan body/window.
+        var scroller = document.querySelector('.app-shell');
+        if (scroller) scroller.scrollTop = 0;
       }
 
       navItems.forEach(function (navItem) {
