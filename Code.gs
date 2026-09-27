@@ -622,12 +622,10 @@ function getReportByDateRange(token, startDate, endDate) {
       var rowHppSat = (pj.idxHppSat !== -1) ? _num(row[pj.idxHppSat]) : 0;
       var jumlahRaw = _num(row[idxJumlah]);
 
-      // Baris gaya-POS: aplikasi POS menulis posisional mengikuti skema LAMA
-      // (sebelum kolom Volume/HPP Satuan disisipkan), sehingga datanya bergeser:
-      //   qty -> kolom Volume (ml), subtotal baris -> kolom HPP Satuan,
-      //   Jumlah kosong, Total Harga = uang dibayar level TRANSAKSI (berulang
-      //   di semua baris satu transaksi), Metode = kembalian (angka).
-      // Tafsir ulang agar laporan tetap akurat tanpa mengubah sheet.
+      // JARING PENGAMAN LEGACY: baris gaya-POS seharusnya sudah dikonversi
+      // ke skema v2 oleh adapter (trigger sinkronBarisPosOnChange / migrasi
+      // migrasiBarisPosKeV2). Tafsir ulang tetap dipertahankan agar laporan
+      // tetap akurat bila ada baris POS yang lolos sebelum trigger terpasang.
       var isNumericMetode = /^-?\d+([.,]\d+)?$/.test(metode);
       var posStyle = pj.idxVolume !== -1 && pj.idxHppSat !== -1
         && jumlahRaw <= 0 && rowVol >= 1 && rowHppSat > 0
@@ -819,11 +817,10 @@ function addPenjualan(token, data) {
     var totalHarga = harga * jumlah;
     // HPP satuan: master produk dulu, fallback tabel referensi nama+volume.
     // Ditulis ke sheet (kolom HPP Satuan) agar laporan historis tetap akurat
-    // walau master berubah di masa depan.
-    var hpp = _resolveHpp(getSpreadsheet(), namaProduk, volume);
-    var totalHPP = hpp * jumlah;
-    var laba = totalHarga - totalHPP;
-
+    // walau master berubah di masa depan.      var hpp = _resolveHpp(getSpreadsheet(), namaProduk, volume);
+      var totalHPP = hpp * jumlah;
+      var laba = totalHarga - totalHPP;
+    
     // TRX ID mengikuti format aplikasi POS: FR-<timestamp milidetik>
     // Cek unik cukup baca kolom A saja (bukan seluruh 11 kolom sheet)
     var existingIds = {};
@@ -847,7 +844,10 @@ function addPenjualan(token, data) {
     // ID Transaksi | Tanggal | Nama Produk | Volume (ml) | HPP Satuan | Jumlah |
     // Total Harga | Metode Pembayaran | Uang Dibayar | Uang Kembali | Modal |
     // Biaya Operasional | Laba bersih
-    sheet.appendRow([idTx, tanggal, namaProduk, volume, hpp, jumlah, totalHarga, metodePos, totalHarga, 0, totalHPP, 0, laba]);
+    sheet.appendRow(_barisPenjualanV2({
+      id: idTx, tanggal: tanggal, nama: namaProduk, volume: volume, hppSatuan: hpp,
+      jumlah: jumlah, total: totalHarga, metode: metodePos, dibayar: totalHarga, kembali: 0
+    }));
 
     // Update stock
     try {
@@ -858,6 +858,175 @@ function addPenjualan(token, data) {
 
     return { status: 'success', message: 'Penjualan berhasil disimpan', idTx: idTx };
   });
+}
+
+// ============================================================
+// ADAPTER SKEMA PENJUALAN (POS <-> DASHBOARD)
+// ============================================================
+// Aplikasi POS menulis baris Penjualan secara POSISIONAL mengikuti skema
+// lama (sebelum kolom Volume (ml)/HPP Satuan disisipkan). Skema v2 dashboard
+// punya 13 kolom, sedangkan tulisan POS cocok dengan tata letak lama:
+//
+//   v2:    ID | Tanggal | Nama | Volume(ml) | HPP Satuan | Jumlah | Total |
+//          Metode | Dibayar | Kembali | Modal | Biaya Ops | Laba
+//   POS:   ID | Tanggal | Nama | [qty]     | [subtotal] | (kosong)| [dibayar tx] |
+//          [kembalian] | 0 | 0 | [subtotal] | (kosong) | (kosong)
+//
+// Adapter di sini menormalkan KEDUA arah penulisan ke satu bentuk kanonik
+// sehingga reader laporan tidak perlu menafsir ulang saat runtime.
+
+// Susun baris skema v2 dari field bernama — satu-satunya cara menulis baris
+// Penjualan baru agar posisi kolom tidak pernah bergeser.
+function _barisPenjualanV2(f) {
+  var tanggal = f.tanggal instanceof Date ? f.tanggal : new Date(f.tanggal || Date.now());
+  var jumlah = _num(f.jumlah);
+  var total = _num(f.total);
+  var hppSatuan = _num(f.hppSatuan);
+  var laba = total - hppSatuan * jumlah;
+  return [
+    String(f.id || ''),
+    tanggal,
+    String(f.nama || ''),
+    _num(f.volume) || 250,
+    hppSatuan,
+    jumlah,
+    total,
+    String(f.metode || 'CASH').toUpperCase(),
+    _num(f.dibayar),
+    _num(f.kembali),
+    hppSatuan * jumlah, // Modal = HPP Satuan x Jumlah (biaya barang terjual)
+    0,                  // Biaya Operasional diisi lewat sheet Credit/Debit
+    laba
+  ];
+}
+
+// Kembalikan true bila baris (array mentah) berpola tulisan POS: Jumlah
+// kosong, qty di Volume, subtotal di HPP Satuan, Metode kosong/angka.
+function _isBarisGayaPos(row, idx) {
+  var metode = String(row[idx.idxMetode] || '').trim();
+  var isNumericMetode = /^-?\d+([.,]\d+)?$/.test(metode);
+  return _num(row[idx.idxVolume]) >= 1
+    && _num(row[idx.idxHppSat]) > 0
+    && _num(row[idx.idxJumlah]) <= 0
+    && (metode === '' || isNumericMetode);
+}
+
+// Konversi satu baris gaya-POS -> skema v2. Return array 13 kolom atau null
+// bila bukan baris POS/baris tidak lengkap (tidak diubah).
+function _konversiBarisPosKeV2(row, masterHppMap) {
+  var idx = {
+    idxTx: 0, idxTgl: 1, idxProduk: 2, idxVolume: 3, idxHppSat: 4,
+    idxJumlah: 5, idxTotal: 6, idxMetode: 7, idxDibayar: 8, idxKembali: 9, idxModal: 10
+  };
+  var nama = String(row[idx.idxProduk] || '').trim();
+  var idTx = String(row[idx.idxTx] || '').trim();
+  var tanggalCell = row[idx.idxTgl];
+  if (!idTx || !nama || !tanggalCell) return null;
+  if (!_isBarisGayaPos(row, idx)) return null;
+
+  // Tanggal harus valid: objek Date dari sheet, atau teks yang bisa
+  // di-parse (_parseSheetDateKey). Selain itu -> tolak (jangan diubah).
+  var tgl = (tanggalCell instanceof Date && !isNaN(tanggalCell.getTime())) ? tanggalCell : null;
+  if (!tgl) {
+    var dateKey = _parseSheetDateKey(tanggalCell);
+    if (!dateKey) return null;
+    var pm = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    tgl = new Date(Number(pm[1]), Number(pm[2]) - 1, Number(pm[3]));
+  }
+
+  var jumlah = _num(row[idx.idxVolume]);
+  var subtotal = _num(row[idx.idxHppSat]);
+  // Kembalian POS ada di kolom Metode (angka); dibayar transaksi ada di Total Harga.
+  var kembali = _num(String(row[idx.idxMetode] || '').replace(',', '.'));
+  var dibayar = _num(row[idx.idxTotal]);
+  var hppSatuan = _num(masterHppMap[nama.toLowerCase()])
+    || getHppRate(nama, _extractVolumeFromName(nama) || 250);
+
+  return _barisPenjualanV2({
+    id: idTx,
+    tanggal: tgl,
+    nama: nama,
+    volume: _extractVolumeFromName(nama) || 250,
+    hppSatuan: hppSatuan,
+    jumlah: jumlah,
+    total: subtotal,
+    metode: 'CASH', // POS tidak menulis metode di skema lama
+    dibayar: dibayar > 0 ? dibayar : subtotal,
+    kembali: kembali
+  });
+}
+
+// Trigger onChange: berjalan otomatis setiap POS menulis/mengubah sheet
+// (install sekali lewat pasangTriggerSinkronPos()). Idempotent — baris yang
+// sudah v2 tidak disentuh.
+function sinkronBarisPosOnChange(e) {
+  try {
+    if (!e || !e.changeType || String(e.changeType) !== 'EDIT') return;
+    // e.source adalah Spreadsheet pemicu; duck-typing getSheetByName agar
+    // kokoh lintas realm/runtime (instanceof Spreadsheet tidak reliable).
+    var ss = (e.source && typeof e.source.getSheetByName === 'function')
+      ? e.source
+      : SpreadsheetApp.getActiveSpreadsheet();
+    _konversiBarisPosDiSheet(ss);
+  } catch (err) {
+    Logger.log('ERROR sinkronBarisPosOnChange: ' + err);
+  }
+}
+
+// Pindai sheet Penjualan dan tulis ulang baris gaya-POS ke skema v2.
+// Return ringkasan; dipakai trigger dan migrasi manual.
+function _konversiBarisPosDiSheet(ss) {
+  var pj = _ensurePenjualanHppColumns(ss);
+  var sheet = pj.sheet;
+  if (!sheet) return { status: 'error', message: 'Sheet Penjualan tidak ditemukan' };
+  var values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return { status: 'success', dikonversi: 0 };
+
+  var masterHppMap = _readMasterHppMap(ss);
+  var idx = { idxVolume: pj.idxVolume, idxHppSat: pj.idxHppSat, idxJumlah: _cariKolom(values[0], 'jumlah'), idxMetode: _cariKolom(values[0], 'metode') };
+  if (idx.idxVolume === -1 || idx.idxHppSat === -1 || idx.idxJumlah === -1 || idx.idxMetode === -1) {
+    return { status: 'error', message: 'Kolom v2 tidak lengkap di sheet Penjualan' };
+  }
+
+  var updated = 0;
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var converted = _konversiBarisPosKeV2(row, masterHppMap);
+    if (!converted) continue;
+    sheet.getRange(i + 1, 1, 1, converted.length).setValues([converted]);
+    updated++;
+    if (updated >= 200) break; // batas aman kuota per eksekusi
+  }
+  if (updated > 0) _invalidateProdukCache();
+  return { status: 'success', dikonversi: updated };
+}
+
+// Cari index kolom berdasarkan substring header (lowercase).
+function _cariKolom(headerRow, keyword) {
+  for (var i = 0; i < headerRow.length; i++) {
+    if (String(headerRow[i] || '').toLowerCase().indexOf(String(keyword).toLowerCase()) !== -1) return i;
+  }
+  return -1;
+}
+
+// Pasang trigger onChange (install SEKALI dari editor Apps Script).
+function pasangTriggerSinkronPos() {
+  // Hapus trigger lama dengan handler sama agar tidak dobel.
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'sinkronBarisPosOnChange') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('sinkronBarisPosOnChange').forSpreadsheet(getSpreadsheet()).onChange().create();
+  return { status: 'success', message: 'Trigger sinkron POS terpasang' };
+}
+
+// ============================================================
+// MIGRASI MANUAL (opsional): konversi seluruh baris POS lama ke v2.
+// Jalankan dari editor Apps Script: migrasiBarisPosKeV2()
+// Aman dijalankan berulang (idempotent).
+function migrasiBarisPosKeV2() {
+  var hasil = _konversiBarisPosDiSheet(getSpreadsheet());
+  Logger.log('migrasiBarisPosKeV2: ' + JSON.stringify(hasil));
+  return hasil;
 }
 
 function updateStock(namaProduk, qtySold) {
