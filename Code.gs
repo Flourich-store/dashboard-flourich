@@ -363,6 +363,11 @@ function doGet(e) {
   var page = e && e.parameter ? String(e.parameter.page || '').trim().toLowerCase() : '';
   var fileName = page === 'dashboard' ? 'DashboardStandalone' : 'landingpage';
   Logger.log('doGet: page=' + page + ', file=' + fileName);
+  // Bootstrap aktivasi adapter POS sekali jalan (pasang trigger + migrasi
+  // baris POS lama). Tidak pernah melempar error ke pemuatan halaman.
+  if (page === 'dashboard') {
+    try { _bootstrapSinkronPos(getSpreadsheet()); } catch (bootErr) { Logger.log('Bootstrap doGet skip: ' + bootErr); }
+  }
   try {
     return HtmlService.createHtmlOutputFromFile(fileName)
         .setTitle(page === 'dashboard' ? 'Flourich Dashboard' : 'Flourich App')
@@ -1017,6 +1022,26 @@ function pasangTriggerSinkronPos() {
   });
   ScriptApp.newTrigger('sinkronBarisPosOnChange').forSpreadsheet(getSpreadsheet()).onChange().create();
   return { status: 'success', message: 'Trigger sinkron POS terpasang' };
+}
+
+// Bootstrap otomatis saat dashboard dibuka (dipanggil doGet): bila trigger
+// sinkron POS belum terpasang, pasang lalu migrasikan baris POS lama sekali
+// jalan. Tidak pernah melempar error — kegagalan aktivasi tidak boleh
+// mengganggu pemuatan dashboard.
+function _bootstrapSinkronPos(ss) {
+  try {
+    var sudah = ScriptApp.getProjectTriggers().some(function (t) {
+      return t.getHandlerFunction() === 'sinkronBarisPosOnChange';
+    });
+    if (!sudah) {
+      ScriptApp.newTrigger('sinkronBarisPosOnChange').forSpreadsheet(ss).onChange().create();
+      Logger.log('Bootstrap: trigger sinkronBarisPosOnChange terpasang');
+    }
+    var hasil = _konversiBarisPosDiSheet(ss);
+    if (hasil && hasil.dikonversi > 0) Logger.log('Bootstrap: ' + hasil.dikonversi + ' baris POS dikonversi ke v2');
+  } catch (e) {
+    Logger.log('ERROR _bootstrapSinkronPos (diabaikan): ' + e);
+  }
 }
 
 // ============================================================
