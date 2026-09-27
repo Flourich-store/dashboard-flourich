@@ -2604,7 +2604,7 @@
       /* Layar sangat kecil (iPhone SE/Android mini): label sedikit diperkecil
          agar 6 menu tetap satu baris tanpa wrap; touch target tetap >=44px */
       @media (max-width: 360px) {
-        .bnav-item { font-size: 9px; padding: 6px 1px 5px; }
+        .bnav-item { font-size: 9px; padding: 6px 1px 5px; min-height: 44px; }
         .bnav-item i { font-size: 15px; }
       }
 
@@ -2736,6 +2736,54 @@
     @media (max-width: 500px) {
       .hide-mobile {
         display: none !important;
+      }
+    }
+
+    /* ============================================================
+       AUDIT SENTUH MOBILE: touch target minimal 44x44px (Apple HIG /
+       Material). Diterapkan <=768px saja agar desktop tidak berubah.
+       Elemen kecil diperluas lewat padding + hit-area transparan
+       (pseudo-element) tanpa mengubah visual proporsinya berlebihan.
+       ============================================================ */
+    @media (max-width: 768px) {
+      /* Chip toggle tren (Semua/Cash/QRIS): sebelumnya 25px tinggi */
+      .tchip {
+        padding: 12px 16px !important;
+        min-height: 44px !important;
+        font-size: 12.5px !important;
+      }
+      .tchip i { font-size: 11px; }
+
+      /* Chip preset periode (Hari ini/7 hari/30 hari/Bulan ini) */
+      .chip {
+        padding: 11px 16px !important;
+        min-height: 44px;
+      }
+
+      /* Tombol tema di header */
+      .theme-toggle {
+        width: 44px !important;
+        height: 44px !important;
+      }
+
+      /* Tombol Keluar: aksi destruktif, target wajib lega */
+      .btn-logout {
+        padding: 11px 16px !important;
+        min-height: 44px;
+      }
+
+      /* Tombol tutup modal (bottom-sheet): mudah dijangkau ibu jari */
+      .modal-close {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 22px !important;
+      }
+
+      /* Input & select form: nyaman diketik satu tangan */
+      .modal-content input,
+      .modal-content select,
+      .modal-content textarea {
+        min-height: 44px;
       }
     }
 
