@@ -2498,7 +2498,9 @@
       }
 
       .app-shell {
-        display: flex !important;
+        /* TANPA display:flex !important di sini: inline style="display:none"
+           dari JS (halaman login) harus tetap menang agar header/bottom-nav
+           tidak bocor ke halaman login. Flex diambil dari rule base. */
         height: 100dvh !important;
         max-height: 100dvh !important;
         overflow-y: auto !important;
