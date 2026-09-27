@@ -82,7 +82,7 @@ function _getMasterHpp(ss, namaProduk) {
   var target = String(namaProduk || '').trim().toLowerCase();
   for (var i = 1; i < values.length; i++) {
     if (String(values[i][idxNama] || '').trim().toLowerCase() === target) {
-      var hpp = Number(values[i][idxHpp] || 0);
+      var hpp = _num(values[i][idxHpp]);
       return hpp > 0 ? { rate: hpp, found: true } : { rate: 0, found: false };
     }
 }
@@ -114,7 +114,7 @@ function _readMasterHppMap(ss) {
     if (idxNama === -1 || idxHpp === -1) return map;
     for (var i = 1; i < values.length; i++) {
       var nm = String(values[i][idxNama] || '').trim();
-      var hpp = Number(values[i][idxHpp] || 0);
+      var hpp = _num(values[i][idxHpp]);
       if (nm && hpp > 0) map[nm.toLowerCase()] = hpp;
     }
   } catch (e) { Logger.log('ERROR _readMasterHppMap: ' + e); }
@@ -142,12 +142,12 @@ function getNilaiStok(token) {
     for (var i = 1; i < values.length; i++) {
       var nm = String(values[i][idxNama] || '').trim();
       if (!nm) continue;
-      var stok = Number(values[i][idxStok] || 0);
+      var stok = _num(values[i][idxStok]);
       var hppRef = null;
       for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
         if (PRODUK_REFERENSI[r].nama.toLowerCase() === nm.toLowerCase()) { hppRef = PRODUK_REFERENSI[r]; break; }
       }
-      var hpp = (idxHpp !== -1 && Number(values[i][idxHpp] || 0) > 0) ? Number(values[i][idxHpp])
+      var hpp = (idxHpp !== -1 && _num(values[i][idxHpp]) > 0) ? _num(values[i][idxHpp])
         : (hppRef ? hppRef.hpp : getHppRate(nm, _extractVolumeFromName(nm) || 250));
       total += hpp * stok;
       unit += stok;
@@ -422,17 +422,46 @@ function _verifyToken(token, needSuperAdmin) {
   return sess;
 }
 
+// Sanitizer transport untuk google.script.run: SATU SAJA nilai ilegal
+// (NaN, Infinity, Date, undefined) di dalam return value membuat Apps Script
+// mengirim NULL ke withSuccessHandler — frontend menampilkan "Respons kosong
+// dari server" tanpa jejak error di manapun. Bersihkan rekursif sebelum return.
+function _transportSafe(val) {
+  if (val === null || typeof val === 'boolean' || typeof val === 'string') return val;
+  if (typeof val === 'number') return isFinite(val) ? val : 0;
+  if (val instanceof Date) return Utilities.formatDate(val, 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+  if (Array.isArray(val)) {
+    for (var a = 0; a < val.length; a++) val[a] = _transportSafe(val[a]);
+    return val;
+  }
+  if (typeof val === 'object') {
+    for (var k in val) {
+      if (!Object.prototype.hasOwnProperty.call(val, k)) continue;
+      if (val[k] === undefined) { val[k] = null; continue; }
+      val[k] = _transportSafe(val[k]);
+    }
+    return val;
+  }
+  return null; // function/symbol dll — ilegal bagi transport
+}
+
 // Wrapper agar semua fungsi ber-token punya penanganan error yang konsisten
 function _guardToken(fn) {
   try {
-    return fn();
+    return _transportSafe(fn());
   } catch (e) {
     var msg = String(e && e.message || e);
     if (msg.indexOf(ERR_UNAUTH) !== -1 || msg.indexOf('Akses ditolak') !== -1) {
       return { status: 'error', auth: false, message: msg };
     }
-    return { status: 'error', message: msg };
+    return _transportSafe({ status: 'error', message: msg });
   }
+}
+
+// Angka aman dari sel sheet: sel berisi teks/kosong -> 0 (bukan NaN).
+function _num(v) {
+  var n = Number(v);
+  return isFinite(n) ? n : 0;
 }
 
 function checkLogin(username, password){
@@ -585,22 +614,23 @@ function getReportByDateRange(token, startDate, endDate) {
       var idTx = row[idxTx];
       var tanggalCell = row[idxTgl];
       var namaProduk = String(row[idxProduk] || '').trim();
-      var jumlah = Number(row[idxJumlah] || 0);
-      var hargaSatuan = idxHarga !== -1 ? Number(row[idxHarga] || 0) : 0;
-      var totalHargaSheet = idxTotalHarga !== -1 ? Number(row[idxTotalHarga] || 0) : 0;
+      var jumlah = _num(row[idxJumlah]);
+      var hargaSatuan = idxHarga !== -1 ? _num(row[idxHarga]) : 0;
+      var totalHargaSheet = idxTotalHarga !== -1 ? _num(row[idxTotalHarga]) : 0;
       var totalHarga = hargaSatuan > 0 && jumlah > 0 ? hargaSatuan * jumlah : totalHargaSheet;
       var metode = String(row[idxMetode] || 'CASH').trim();
-      var rowHPP = idxHPP !== -1 ? Number(row[idxHPP] || 0) : 0;
-      var rowVol = (pj.idxVolume !== -1) ? Number(row[pj.idxVolume] || 0) : 0;
-      var rowHppSat = (pj.idxHppSat !== -1) ? Number(row[pj.idxHppSat] || 0) : 0;
+      var rowHPP = idxHPP !== -1 ? _num(row[idxHPP]) : 0;
+      var rowVol = (pj.idxVolume !== -1) ? _num(row[pj.idxVolume]) : 0;
+      var rowHppSat = (pj.idxHppSat !== -1) ? _num(row[pj.idxHppSat]) : 0;
       // HPP penjualan baris (biaya barang yang TERJUAL, bukan nilai stok):
       // Modal lama > HPP Satuan (transaksi baru) > master produk > tabel referensi.
       var hppSatuanRow = rowHppSat > 0 ? rowHppSat
         : (masterHppMap[namaProduk.toLowerCase()] || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
       var hppBaris = rowHPP > 0 ? rowHPP : hppSatuanRow * jumlah;
 
-      if (!idTx || !namaProduk) continue;
-
+      // Skip baris rusak: Jumlah 0/teks membuat pembagian harga menghasilkan
+      // Infinity/NaN yang meng-null-kan seluruh respons transport GAS.
+      if (!idTx || !namaProduk || jumlah <= 0) continue;
       var rowKey = _parseSheetDateKey(tanggalCell);
       if (!rowKey) continue;
       if (startKey && rowKey < startKey) {
@@ -624,7 +654,7 @@ function getReportByDateRange(token, startDate, endDate) {
       detailData.push({
         tanggal: rowKey,
         namaProduk: namaProduk,
-        harga: totalHarga / jumlah, // Calculate harga satuan
+        harga: jumlah > 0 ? totalHarga / jumlah : 0, // harga satuan aman
         jumlah: jumlah,
         total: totalHarga,
         metode: metode
@@ -682,7 +712,7 @@ function getReportByDateRange(token, startDate, endDate) {
       for (var c = 0; c < cdItems.length; c++) {
         var it = cdItems[c];
         var tipeUpper = String(it.tipe || '').toUpperCase();
-        var nominal = Number(it.nominal || 0);
+        var nominal = _num(it.nominal);
         var inCur = (!startKey || it.tanggal >= startKey) && (!endKey || it.tanggal <= endKey);
         var inPrev = !!prevStartKey && it.tanggal >= prevStartKey && it.tanggal <= prevEndKey;
         if (tipeUpper === 'CREDIT') {
@@ -886,9 +916,9 @@ function getProdukList(token) {
       products.push({
         idProduk: idProduk,
         namaProduk: String(row[idxNama] || '').trim(),
-        stok: Number(row[idxStok] || 0),
-        hpp: idxHpp !== -1 ? Number(row[idxHpp] || 0) : 0,
-        harga: Number(row[idxHarga] || 0)
+        stok: _num(row[idxStok]),
+        hpp: idxHpp !== -1 ? _num(row[idxHpp]) : 0,
+        harga: _num(row[idxHarga])
       });
     }
 
@@ -1097,7 +1127,7 @@ function getStokBahan(token) {
       stok.push({
         bahan: nama,
         satuan: String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN,
-        sisa: Number(values[i][2] || 0),
+        sisa: _num(values[i][2]),
         diupdate: String(values[i][3] || '')
       });
     }
@@ -1137,7 +1167,7 @@ function adjustStokBahan(token, bahan, aksi, jumlah, catatan) {
         targetRow = i + 1;
         matchName = nm;
         satuan = String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN;
-        sisa = Number(values[i][2] || 0);
+        sisa = _num(values[i][2]);
       }
     }
     if (targetRow === -1) {
@@ -1218,7 +1248,7 @@ function updateBahanBaku(token, namaLama, payload) {
       if (!nm) continue;
       if (nm.toLowerCase() === namaLama.toLowerCase()) {
         targetRow = i + 1;
-        sisa = Number(values[i][2] || 0);
+        sisa = _num(values[i][2]);
       } else if (nm.toLowerCase() === namaBaru.toLowerCase()) {
         return { status: 'error', message: 'Nama "' + namaBaru + '" sudah dipakai bahan lain' };
       }
@@ -1247,7 +1277,7 @@ function deleteBahanBaku(token, nama) {
       if (String(values[i][0] || '').trim().toLowerCase() === nama.toLowerCase()) {
         targetRow = i + 1;
         satuan = String(values[i][1] || BAHAN_DEFAULT_SATUAN).trim() || BAHAN_DEFAULT_SATUAN;
-        sisa = Number(values[i][2] || 0);
+        sisa = _num(values[i][2]);
         break;
       }
     }
@@ -1344,7 +1374,7 @@ function _readCreditDebitItems(ss, startDate, endDate) {
       kategori: String(row[2] || ''),
       deskripsi: String(row[3] || ''),
       metodePembayaran: String(row[4] || ''),
-      nominal: Number(row[5] || 0)
+      nominal: _num(row[5])
     });
   }
 
