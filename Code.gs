@@ -22,21 +22,79 @@ var BIAYA_OPERASIONAL_CATATAN = 'Laba bersih = laba kotor - pengeluaran tercatat
 // HPP - REFERENSI (fallback terakhir bila master produk belum punya HPP)
 // ============================================================
 // Sumber utama HPP laporan adalah kolom HPP di sheet Produk (master).
-// Tabel ini hanya fallback bila produk tidak ditemukan / HPP-nya kosong,
-// dan hanya untuk produk lama (Leci/WNA). Angka = harga katalog 2026.
+// Tabel ini hanya fallback bila produk tidak ditemukan / HPP-nya kosong.
+// Angka = katalog 2026 (source of truth):
+//   Semangka Leci 250/350/500 : 7.500 / 9.000 / 11.000
+//   WNA        250/350/500    : 9.500 / 10.500 / 17.500
+//   Semangka Susu 350         : 10.000
 var HPP_RATES = {
   DEFAULT: { 250: 7500, 350: 9000, 500: 11000 },
-  WNA: { 250: 9500, 350: 10500, 500: 17500 }
+  WNA: { 250: 9500, 350: 10500, 500: 17500 },
+  // Semangka Susu WAJIB punya kelompok sendiri. Tanpa ini "Semangsu 350 ml"
+  // jatuh ke DEFAULT (9.000) - salah 1.000 per unit dari katalog 10.000.
+  SUSU: { 350: 10000 }
+};
+
+// Nama lama produk yang sudah diganti nama barunya (keputusan pemilik usaha):
+// "Menu Opsional" & "Semangka Potong" pada baris penjualan lama = produk yang
+// sekarang bernama Semangka Susu 350 ml, jadi HPP-nya ikut katalog Susu
+// (10.000), bukan HPP default Semangka Leci (7.500).
+// Key = nama lowercase persis, value = kunci kanonik jenis|volume.
+var ALIAS_PRODUK = {
+  'menu opsional': 'susu|350',
+  'semangka potong': 'susu|350'
 };
 
 function getHppRate(namaProduk, volume) {
-  var nama = String(namaProduk || '').toUpperCase();
-  // Wonapel = Wortel Nanas Apel (varian WNA yang tidak mengandung substring
-  // 'WNA' maupun 'WORTEL NANAS APEL' di namanya).
-  var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1 || nama.indexOf('WONAPEL') !== -1;
-  var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
-  var volNum = Number(volume || 250);
-  return rates[volNum] || (isWNA ? 9500 : 7500);
+  var kunci = _kunciProduk(namaProduk); // sudah termasuk ALIAS_PRODUK
+  var jenis, volNum;
+  if (kunci) {
+    jenis = kunci.split('|')[0];
+    volNum = Number(kunci.split('|')[1]);
+  } else {
+    // Nama tanpa istilah/volume dikenal: pertahankan deteksi lama.
+    var nama = String(namaProduk || '').toUpperCase();
+    // Wonapel = Wortel Nanas Apel (varian WNA yang tidak mengandung substring
+    // 'WNA' maupun 'WORTEL NANAS APEL' di namanya).
+    jenis = (nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1 || nama.indexOf('WONAPEL') !== -1) ? 'wna'
+      : ((nama.indexOf('SEMANGKA SUSU') !== -1 || nama.indexOf('SEMANGSU') !== -1) ? 'susu' : 'default');
+    volNum = Number(volume || 250);
+  }
+  var rates = jenis === 'wna' ? HPP_RATES.WNA : (jenis === 'susu' ? HPP_RATES.SUSU : HPP_RATES.DEFAULT);
+  var fallback = jenis === 'wna' ? 9500 : (jenis === 'susu' ? 10000 : 7500);
+  return rates[volNum] || fallback;
+}
+
+// Kunci kanonik "jenis|volume" untuk mencocokkan nama produk yang berbeda
+// istilah. Sheet Produksi memakai nama POS (Semangci / Wonapel / Semangsu),
+// sedangkan katalog & nama transaksi lama memakai (Semangka Leci / WNA /
+// Semangka Susu), ditambah nama lama di ALIAS_PRODUK. Match by nama persis
+// membuat HPP master TIDAK PERNAH terbaca untuk varian yang namanya beda,
+// sehingga laporan diam-diam jatuh ke tabel fallback dan tidak ikut saat
+// master diupdate.
+// Return '' bila jenis/volume tidak terbaca (pemanggil pakai nama persis).
+function _kunciProduk(namaProduk) {
+  var n = String(namaProduk || '').trim().toLowerCase();
+  if (!n) return '';
+  var alias = ALIAS_PRODUK[n];
+  if (alias) return alias; // nama lama: langsung ke produk penggantinya
+  var m = n.match(/\b(250|350|500)\b/);
+  if (!m) return ''; // tanpa volume tidak boleh dicocokkan (risiko varian ketuker)
+  var jenis = '';
+  if (n.indexOf('semangka leci') !== -1 || n.indexOf('semangci') !== -1 || n.indexOf('semgaci') !== -1) jenis = 'leci';
+  else if (n.indexOf('wna') !== -1 || n.indexOf('wonapel') !== -1 || n.indexOf('wortel nanas apel') !== -1) jenis = 'wna';
+  else if (n.indexOf('semangka susu') !== -1 || n.indexOf('semangsu') !== -1) jenis = 'susu';
+  if (!jenis) return '';
+  return jenis + '|' + m[1];
+}
+
+// Cari HPP di peta master {namaLower atau kunciKanonik: hpp}.
+function _hppDariMap(map, namaProduk) {
+  if (!map) return 0;
+  var k = String(namaProduk || '').trim().toLowerCase();
+  if (map[k]) return map[k];
+  var kc = _kunciProduk(namaProduk);
+  return kc && map[kc] ? map[kc] : 0;
 }
 
 // Extract volume (250/350/500) dari nama produk, mis. "Semangka Leci 350 ml"
@@ -82,8 +140,13 @@ function _getMasterHpp(ss, namaProduk) {
   var idxHpp = header.indexOf('hpp');
   if (idxNama === -1 || idxHpp === -1) return { rate: 0, found: false };
   var target = String(namaProduk || '').trim().toLowerCase();
+  var targetKey = _kunciProduk(namaProduk);
   for (var i = 1; i < values.length; i++) {
-    if (String(values[i][idxNama] || '').trim().toLowerCase() === target) {
+    var nmBaris = String(values[i][idxNama] || '').trim().toLowerCase();
+    // Cocok persis ATAU lewat kunci kanonik jenis|volume, supaya nama POS
+    // (Semangci/Wonapel/Semangsu) tetap terbaca oleh nama katalog (Semangka
+    // Leci/WNA/Semangka Susu) dan sebaliknya.
+    if (nmBaris === target || (targetKey && nmBaris && _kunciProduk(nmBaris) === targetKey)) {
       var hpp = _num(values[i][idxHpp]);
       return hpp > 0 ? { rate: hpp, found: true } : { rate: 0, found: false };
     }
@@ -117,7 +180,11 @@ function _readMasterHppMap(ss) {
     for (var i = 1; i < values.length; i++) {
       var nm = String(values[i][idxNama] || '').trim();
       var hpp = _num(values[i][idxHpp]);
-      if (nm && hpp > 0) map[nm.toLowerCase()] = hpp;
+      if (nm && hpp > 0) {
+        map[nm.toLowerCase()] = hpp;
+        var kc = _kunciProduk(nm); // kunci kanonik: nama POS <-> nama katalog
+        if (kc) map[kc] = hpp;
+      }
     }
   } catch (e) { Logger.log('ERROR _readMasterHppMap: ' + e); }
   return map;
@@ -183,7 +250,7 @@ function backfillHppPenjualan() {
     var nm = String(values[i][idxNama] || '').trim();
     var jml = Number(values[i][idxJumlah] || 0);
     if (!nm || jml <= 0) continue;
-    var hppSat = masterHppMap[nm.toLowerCase()] || getHppRate(nm, _extractVolumeFromName(nm) || 250);
+    var hppSat = _hppDariMap(masterHppMap, nm) || getHppRate(nm, _extractVolumeFromName(nm) || 250);
     var modalBaru = hppSat * jml;
     if (Number(values[i][idxModal] || 0) !== modalBaru) {
       pj.sheet.getRange(i + 1, idxModal + 1).setValue(modalBaru);
@@ -208,6 +275,11 @@ var PRODUK_REFERENSI = [
 
 // Isi HPP master yang masih kosong + tambahkan produk referensi yang belum ada.
 // Hanya SUPER_ADMIN. Aman dijalankan berulang (idempotent).
+// Pencocokan memakai kunci kanonik jenis|volume: sheet Produksi memakai nama
+// POS (Semangci/Wonapel/Semangsu) sementara referensi memakai nama katalog
+// (Semangka Leci/WNA/Semangka Susu). Tanpa ini fungsi ini mengira "produk
+// belum ada" lalu MENAMBAH 7 baris duplikat sehingga master tercampur dua
+// istilah dan stok/penjualan terbelah dua.
 function isiHppMasterProduk(token) {
   return _guardToken(function () {
     _verifyToken(token, true);
@@ -223,15 +295,19 @@ function isiHppMasterProduk(token) {
     var idxHpp = header.indexOf('hpp');
     if (idxHpp === -1) return { status: 'error', message: 'Kolom HPP gagal disiapkan' };
 
-    var byName = {};
+    var byName = {}, byKey = {};
     for (var i = 1; i < values.length; i++) {
       var nm = String(values[i][idxNama] || '').trim();
-      if (nm) byName[nm.toLowerCase()] = i + 1; // row number sheet
+      if (nm) {
+        byName[nm.toLowerCase()] = i + 1; // row number sheet
+        var kc = _kunciProduk(nm);
+        if (kc && !byKey[kc]) byKey[kc] = i + 1;
+      }
     }
     var diisi = 0, ditambah = 0;
     for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
       var ref = PRODUK_REFERENSI[r];
-      var rowNum = byName[ref.nama.toLowerCase()];
+      var rowNum = byName[ref.nama.toLowerCase()] || byKey[_kunciProduk(ref.nama)] || 0;
       if (rowNum) {
         if (Number(values[rowNum - 1][idxHpp] || 0) <= 0) {
           sheet.getRange(rowNum, idxHpp + 1).setValue(ref.hpp);
@@ -248,6 +324,65 @@ function isiHppMasterProduk(token) {
       message: 'HPP master diisi untuk ' + diisi + ' produk' + (ditambah ? ', ' + ditambah + ' produk referensi ditambahkan' : '') + '.'
     };
   });
+}
+
+// ============================================================
+// PERBAIKAN DATA: ISI TANGGAL KOSONG DARI ID TRANSAKSI
+// ============================================================
+// 45 baris penjualan lama punya kolom Tanggal KOSONG, akibatnya
+// _parseSheetDateKey() return '' dan barisnya DILEWATI SENYAP dari semua
+// KPI (total Rp 681.000 / 52 unit tidak pernah muncul di laporan periode
+// mana pun). ID baris lama berformat FR-<epoch ms>, jadi tanggalnya bisa
+// dipulihkan.
+//
+// HANYA mengisi sel Tanggal yang kosong - tidak pernah menimpa tanggal yang
+// sudah ada. Idempoten, aman dijalankan berulang. Dipanggil dari editor Apps
+// Script (owner), tidak bisa diakses dari web app.
+//
+// CATATAN: timestamp ID adalah saat baris DIBUAT (bukan saat transaksi),
+// sehingga ke-45 baris akan jatuh pada hari yang sama (impor massal).
+// Bila tanggal jual sesungguhnya diketahui, lebih akurat isi manual di sheet.
+function isiTanggalPenjualanDariId() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Penjualan');
+  if (!sheet) return { status: 'error', message: 'Sheet Penjualan tidak ditemukan' };
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { status: 'success', message: 'Tidak ada baris data.', diisi: 0 };
+
+  var lastCol = sheet.getLastColumn();
+  var head = sheet.getRange(1, 1, 1, lastCol).getValues()[0]
+    .map(function (h) { return String(h || '').trim().toLowerCase(); });
+  var idxId = 0;
+  var idxTgl = head.indexOf('tanggal');
+  if (idxTgl === -1) return { status: 'error', message: 'Kolom Tanggal tidak ditemukan' };
+
+  var n = lastRow - 1;
+  var idCol = sheet.getRange(2, idxId + 1, n, 1).getValues();
+  var tglRange = sheet.getRange(2, idxTgl + 1, n, 1);
+  var tglCol = tglRange.getValues();
+
+  var diisi = 0, dilewatiBukanFormatFR = 0;
+  for (var i = 0; i < n; i++) {
+    var sudah = tglCol[i][0];
+    if (sudah !== '' && sudah !== null && sudah !== undefined && !(sudah instanceof Date && isNaN(sudah.getTime()))) continue;
+    var id = String(idCol[i][0] || '').trim();
+    var m = id.match(/^FR-(\d{13})$/);
+    if (!m) { if (id) dilewatiBukanFormatFR++; continue; }
+    // Epoch ms -> tanggal kalender Asia/Jakarta (UTC+7), disimpan sebagai Date
+    // tengah hari UTC supaya tampil tepat pada tanggal yang sama di sheet.
+    var jkt = new Date(Number(m[1]) + 7 * 3600 * 1000);
+    tglRange.getCell(i + 1, 1).setValue(
+      new Date(Date.UTC(jkt.getUTCFullYear(), jkt.getUTCMonth(), jkt.getUTCDate()))
+    );
+    diisi++;
+  }
+  return {
+    status: 'success',
+    diisi: diisi,
+    dilewatiBukanFormatFR: dilewatiBukanFormatFR,
+    message: 'Tanggal diisi pada ' + diisi + ' baris' +
+      (dilewatiBukanFormatFR ? ', ' + dilewatiBukanFormatFR + ' baris ID-nya bukan format FR-<epoch> dan dilewati' : '') + '.'
+  };
 }
 
 // ============================================================
@@ -643,7 +778,7 @@ function getReportByDateRange(token, startDate, endDate) {
         totalHarga = rowHppSat; // subtotal BARIS (bukan Total Harga kolom, itu uang dibayar tx)
         // Modal & HPP Satuan baris POS berisi OMZET (bukan biaya) -> jangan
         // dipakai sebagai HPP; pakai master produk, fallback tabel referensi.
-        var hppSatuanPos = masterHppMap[namaProduk.toLowerCase()]
+        var hppSatuanPos = _hppDariMap(masterHppMap, namaProduk)
           || getHppRate(namaProduk, _extractVolumeFromName(namaProduk) || 250);
         hppBaris = hppSatuanPos * jumlah;
       } else {
@@ -654,7 +789,7 @@ function getReportByDateRange(token, startDate, endDate) {
         // HPP penjualan baris (biaya barang yang TERJUAL, bukan nilai stok):
         // Modal lama > HPP Satuan (transaksi baru) > master produk > tabel referensi.
         var hppSatuanRow = rowHppSat > 0 ? rowHppSat
-          : (masterHppMap[namaProduk.toLowerCase()] || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
+          : (_hppDariMap(masterHppMap, namaProduk) || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
         hppBaris = rowHPP > 0 ? rowHPP : hppSatuanRow * jumlah;
       }
 
@@ -944,7 +1079,7 @@ function _konversiBarisPosKeV2(row, masterHppMap) {
   // Kembalian POS ada di kolom Metode (angka); dibayar transaksi ada di Total Harga.
   var kembali = _num(String(row[idx.idxMetode] || '').replace(',', '.'));
   var dibayar = _num(row[idx.idxTotal]);
-  var hppSatuan = _num(masterHppMap[nama.toLowerCase()])
+  var hppSatuan = _num(_hppDariMap(masterHppMap, nama))
     || getHppRate(nama, _extractVolumeFromName(nama) || 250);
 
   return _barisPenjualanV2({
