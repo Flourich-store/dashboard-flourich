@@ -31,7 +31,9 @@ var HPP_RATES = {
 
 function getHppRate(namaProduk, volume) {
   var nama = String(namaProduk || '').toUpperCase();
-  var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1;
+  // Wonapel = Wortel Nanas Apel (varian WNA yang tidak mengandung substring
+  // 'WNA' maupun 'WORTEL NANAS APEL' di namanya).
+  var isWNA = nama.indexOf('WNA') !== -1 || nama.indexOf('WORTEL NANAS APEL') !== -1 || nama.indexOf('WONAPEL') !== -1;
   var rates = isWNA ? HPP_RATES.WNA : HPP_RATES.DEFAULT;
   var volNum = Number(volume || 250);
   return rates[volNum] || (isWNA ? 9500 : 7500);
@@ -614,19 +616,44 @@ function getReportByDateRange(token, startDate, endDate) {
       var idTx = row[idxTx];
       var tanggalCell = row[idxTgl];
       var namaProduk = String(row[idxProduk] || '').trim();
-      var jumlah = _num(row[idxJumlah]);
-      var hargaSatuan = idxHarga !== -1 ? _num(row[idxHarga]) : 0;
-      var totalHargaSheet = idxTotalHarga !== -1 ? _num(row[idxTotalHarga]) : 0;
-      var totalHarga = hargaSatuan > 0 && jumlah > 0 ? hargaSatuan * jumlah : totalHargaSheet;
-      var metode = String(row[idxMetode] || 'CASH').trim();
+      var metode = String(row[idxMetode] || '').trim();
       var rowHPP = idxHPP !== -1 ? _num(row[idxHPP]) : 0;
       var rowVol = (pj.idxVolume !== -1) ? _num(row[pj.idxVolume]) : 0;
       var rowHppSat = (pj.idxHppSat !== -1) ? _num(row[pj.idxHppSat]) : 0;
-      // HPP penjualan baris (biaya barang yang TERJUAL, bukan nilai stok):
-      // Modal lama > HPP Satuan (transaksi baru) > master produk > tabel referensi.
-      var hppSatuanRow = rowHppSat > 0 ? rowHppSat
-        : (masterHppMap[namaProduk.toLowerCase()] || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
-      var hppBaris = rowHPP > 0 ? rowHPP : hppSatuanRow * jumlah;
+      var jumlahRaw = _num(row[idxJumlah]);
+
+      // Baris gaya-POS: aplikasi POS menulis posisional mengikuti skema LAMA
+      // (sebelum kolom Volume/HPP Satuan disisipkan), sehingga datanya bergeser:
+      //   qty -> kolom Volume (ml), subtotal baris -> kolom HPP Satuan,
+      //   Jumlah kosong, Total Harga = uang dibayar level TRANSAKSI (berulang
+      //   di semua baris satu transaksi), Metode = kembalian (angka).
+      // Tafsir ulang agar laporan tetap akurat tanpa mengubah sheet.
+      var isNumericMetode = /^-?\d+([.,]\d+)?$/.test(metode);
+      var posStyle = pj.idxVolume !== -1 && pj.idxHppSat !== -1
+        && jumlahRaw <= 0 && rowVol >= 1 && rowHppSat > 0
+        && (metode === '' || isNumericMetode);
+
+      var jumlah, totalHarga, hppBaris;
+      if (posStyle) {
+        jumlah = rowVol;
+        metode = 'CASH'; // kolom Metode baris POS berisi angka kembalian, bukan metode
+        totalHarga = rowHppSat; // subtotal BARIS (bukan Total Harga kolom, itu uang dibayar tx)
+        // Modal & HPP Satuan baris POS berisi OMZET (bukan biaya) -> jangan
+        // dipakai sebagai HPP; pakai master produk, fallback tabel referensi.
+        var hppSatuanPos = masterHppMap[namaProduk.toLowerCase()]
+          || getHppRate(namaProduk, _extractVolumeFromName(namaProduk) || 250);
+        hppBaris = hppSatuanPos * jumlah;
+      } else {
+        jumlah = jumlahRaw;
+        var hargaSatuan = idxHarga !== -1 ? _num(row[idxHarga]) : 0;
+        var totalHargaSheet = idxTotalHarga !== -1 ? _num(row[idxTotalHarga]) : 0;
+        totalHarga = hargaSatuan > 0 && jumlah > 0 ? hargaSatuan * jumlah : totalHargaSheet;
+        // HPP penjualan baris (biaya barang yang TERJUAL, bukan nilai stok):
+        // Modal lama > HPP Satuan (transaksi baru) > master produk > tabel referensi.
+        var hppSatuanRow = rowHppSat > 0 ? rowHppSat
+          : (masterHppMap[namaProduk.toLowerCase()] || getHppRate(namaProduk, rowVol || _extractVolumeFromName(namaProduk) || 250));
+        hppBaris = rowHPP > 0 ? rowHPP : hppSatuanRow * jumlah;
+      }
 
       // Skip baris rusak: Jumlah 0/teks membuat pembagian harga menghasilkan
       // Infinity/NaN yang meng-null-kan seluruh respons transport GAS.
