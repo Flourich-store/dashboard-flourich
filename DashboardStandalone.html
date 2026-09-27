@@ -4648,10 +4648,15 @@
       var html = '';
       for (var i = 0; i < data.length; i++) {
         var row = data[i];
-        var isQris = String(row.metode || '').toUpperCase().indexOf('QR') !== -1;
+        var metRaw = String(row.metode || '').trim();
+        var isQris = metRaw.toUpperCase().indexOf('QR') !== -1;
+        var isCash = metRaw.toUpperCase() === 'CASH';
+        // Metode kosong = tidak tercatat oleh POS: tampil netral, jangan dipaksa Cash.
         var mBadge = isQris
           ? '<span class="badge badge-qris"><i class="fa-solid fa-qrcode"></i> QRIS</span>'
-          : '<span class="badge badge-cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>';
+          : (isCash
+            ? '<span class="badge badge-cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>'
+            : '<span class="badge badge-cash"><i class="fa-solid fa-circle-question"></i> -</span>');
         html += '<tr>' +
           '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
           '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +

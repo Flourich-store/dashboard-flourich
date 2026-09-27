@@ -639,7 +639,7 @@ function getReportByDateRange(token, startDate, endDate) {
       var jumlah, totalHarga, hppBaris;
       if (posStyle) {
         jumlah = rowVol;
-        metode = 'CASH'; // kolom Metode baris POS berisi angka kembalian, bukan metode
+        metode = ''; // kolom Metode baris POS berisi angka kembalian, bukan metode — biarkan kosong, jangan mengarang CASH
         totalHarga = rowHppSat; // subtotal BARIS (bukan Total Harga kolom, itu uang dibayar tx)
         // Modal & HPP Satuan baris POS berisi OMZET (bukan biaya) -> jangan
         // dipakai sebagai HPP; pakai master produk, fallback tabel referensi.
@@ -896,7 +896,7 @@ function _barisPenjualanV2(f) {
     hppSatuan,
     jumlah,
     total,
-    String(f.metode || 'CASH').toUpperCase(),
+    String(f.metode || '').toUpperCase(), // kosong = tidak tercatat (jangan mengarang CASH)
     _num(f.dibayar),
     _num(f.kembali),
     hppSatuan * jumlah, // Modal = HPP Satuan x Jumlah (biaya barang terjual)
@@ -955,7 +955,7 @@ function _konversiBarisPosKeV2(row, masterHppMap) {
     hppSatuan: hppSatuan,
     jumlah: jumlah,
     total: subtotal,
-    metode: 'CASH', // POS tidak menulis metode di skema lama
+    metode: '', // JANGAN mengisi CASH/QRIS: POS tidak menulis metode, kosongkan agar terlihat jelas dan tidak menyesatkan laporan metode
     dibayar: dibayar > 0 ? dibayar : subtotal,
     kembali: kembali
   });
@@ -1037,10 +1037,42 @@ function _bootstrapSinkronPos(ss) {
       ScriptApp.newTrigger('sinkronBarisPosOnChange').forSpreadsheet(ss).onChange().create();
       Logger.log('Bootstrap: trigger sinkronBarisPosOnChange terpasang');
     }
+    _reparasiMetodePosKosong(ss);
     var hasil = _konversiBarisPosDiSheet(ss);
     if (hasil && hasil.dikonversi > 0) Logger.log('Bootstrap: ' + hasil.dikonversi + ' baris POS dikonversi ke v2');
   } catch (e) {
     Logger.log('ERROR _bootstrapSinkronPos (diabaikan): ' + e);
+  }
+}
+
+// REPARASI SEKALI JALAN: migrasi baris POS 27 Sep 2026 sebelumnya menulis
+// 'CASH' ke kolom Metode, padahal POS tidak pernah mencatat metode — nilai
+// asli CASH/QRIS tidak terekam di sheet sehingga tidak bisa dipulihkan.
+// Kembalikan kolom H (Metode) baris tsb menjadi KOSONG, tanpa menyentuh
+// kolom/data lain. Dijalankan maksimal satu kali (guard script property).
+function _reparasiMetodePosKosong(ss) {
+  var GUARD = 'REPARASI_METODE_POS_2709_DONE';
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty(GUARD)) return;
+  try {
+    var pj = _ensurePenjualanHppColumns(ss);
+    var sheet = pj.sheet;
+    if (!sheet) return;
+    var values = sheet.getDataRange().getValues();
+    var idxMet = _cariKolom(values[0], 'metode');
+    if (idxMet === -1) return;
+    var cleaned = 0;
+    for (var i = 1; i < values.length; i++) {
+      var rowKey = _parseSheetDateKey(values[i][1]);
+      if (rowKey !== '2026-09-27') continue;
+      if (String(values[i][idxMet] || '').trim().toUpperCase() !== 'CASH') continue;
+      sheet.getRange(i + 1, idxMet + 1).setValue(''); // HANYA kolom Metode
+      cleaned++;
+    }
+    props.setProperty(GUARD, 'cleaned=' + cleaned);
+    Logger.log('Reparasi metode POS 27 Sep: ' + cleaned + ' baris dikosongkan');
+  } catch (e) {
+    Logger.log('ERROR _reparasiMetodePosKosong: ' + e);
   }
 }
 
