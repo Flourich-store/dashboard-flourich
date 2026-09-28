@@ -2509,6 +2509,24 @@
         overscroll-behavior-y: contain !important;
       }
 
+      /* BUG-1 (ditemukan lewat ukur viewport 320x568 & landscape 740x360):
+         html/body di atas memakai overflow:hidden + scroll dipindah ke
+         .app-shell. Karena #loginPage adalah SAUDARA .app-shell (bukan anak),
+         halaman login tidak punya scroller sama sekali -> kartu setinggi
+         573-620px terpotong dan tombol "Masuk" tidak bisa disentuh saat
+         viewport pendek. Jadikan .login-wrapper scroller viewport-sized.
+         align-items:flex-start + margin auto pada kartu = tetap terpusat saat
+         muat, tapi tidak ada bagian atas yang terpotong saat tidak muat. */
+      .login-wrapper {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        align-items: flex-start;
+        padding: 16px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+      }
+      .login-card { margin-top: auto; margin-bottom: auto; }
+
       .main-panel,
       .container {
         background-color: var(--bg-main) !important;
@@ -2608,6 +2626,15 @@
       @media (max-width: 360px) {
         .bnav-item { font-size: 9px; padding: 6px 1px 5px; min-height: 44px; }
         .bnav-item i { font-size: 15px; }
+
+        /* BUG-2: .tchip dipaksa padding 12px 16px untuk target sentuh 44px,
+           membuat 3 chip (Semua/Cash/QRIS) selebar 215px sedangkan tempatnya
+           hanya 186px di layar 320px -> 29px chip terpotong. Bagi rata. */
+        .hero-trend-toggle { width: 100%; }
+        /* Selektor ber-torch specificity: aturan .tchip { padding:12px 16px !important }
+           di blok 768px punya spesifisitas sama dan muncul SETELAH ini, sehingga
+           padding horizontal 16px ikut menimpa (chip 57px = 32px padding). */
+        .hero-trend-toggle .tchip { flex: 1 1 0; min-width: 0; padding: 12px 8px !important; }
       }
 
       .bnav-item:active { transform: scale(0.94); }
@@ -2701,6 +2728,16 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* BUG-3: text-overflow hanya berlaku untuk text node langsung, sedangkan
+         username ada di dalam <span> anak flex -> sebelumnya username terpotong
+         KERAS tanpa "..." (320px: hanya 84px dari 129px terlihat). Pindahkan
+         aturan ellipsis ke elemen anak itu. */
+      .user-badge span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .card { padding: 16px; }
       .kpi-card { min-height: 0; }
@@ -2733,6 +2770,16 @@
       .modal-content .btn-bar {
         margin-bottom: 40px !important;
       }
+    }
+
+    /* BUG-1b: layar pendek (landscape HP, potret 320x568) - logo 210px membuat
+       kartu login >620px sehingga CTA terendorse bawah. Perkecil logo + padding
+       agar tombol "Masuk" terlihat tanpa harus menggulir. */
+    @media (max-width: 768px) and (max-height: 680px) {
+      .logo-login { width: 128px; margin-bottom: 8px; }
+      .login-card { padding: 22px 18px; }
+      .login-title { font-size: 16px; }
+      .login-sub { margin-bottom: 12px; font-size: 13px; }
     }
 
     @media (max-width: 500px) {
