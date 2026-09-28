@@ -1977,20 +1977,23 @@
       min-height: 100%;
       padding: 20px;
       background: radial-gradient(circle at top right, rgba(16, 185, 129, 0.08), transparent 40%),
-        radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%);
+        radial-gradient(circle at bottom left, rgba(5, 150, 105, 0.05), transparent 40%),
+        var(--bg-main);
     }
 
-    /* Login memakai identitas ink: kartu gelap premium di kedua tema */
+    /* Login mengikuti tema aktif: kartu terang + token tema di light mode,
+       identitas ink (kartu gelap premium) dipindah ke blok html.theme-dark
+       di bawah supaya dark mode tetap persis seperti sebelumnya. */
     .login-card {
-      background: linear-gradient(160deg, var(--ink) 0%, var(--ink-2) 100%);
+      background: linear-gradient(160deg, var(--bg-surface) 0%, var(--bg) 100%);
       padding: 36px 28px;
       border-radius: var(--radius-lg);
-      box-shadow: 0 30px 70px rgba(8, 15, 35, 0.45);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.06);
       width: 100%;
       max-width: 380px;
       text-align: center;
-      border: 1px solid var(--ink-border);
-      color: var(--ink-text);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
       position: relative;
       overflow: hidden;
       animation: loginCardIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2041,33 +2044,46 @@
       pointer-events: none;
     }
 
-    .login-card .login-title { color: #f8fafc; }
-    .login-card .login-sub { color: var(--ink-muted); }
+    .login-card .login-title { color: var(--text-primary); }
+    .login-card .login-sub { color: var(--text-secondary); }
 
     .login-card input {
-      background: rgba(10, 16, 28, 0.65);
-      border: 1px solid rgba(148, 163, 184, 0.28);
-      color: #f1f5f9;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
     }
 
-    .login-card input::placeholder { color: #64748b; }
+    .login-card input::placeholder { color: var(--slate-600); }
 
-    .login-card .input-icon { color: #64748b; }
+    .login-card .input-icon { color: var(--slate-600); }
+
+    /* Ikon lihat-sandi: di atas kartu putih butuh kontras >= 4.5:1 */
+    .login-card .btn-toggle-pass { color: var(--slate-600); }
 
     .login-card .login-hint {
       color: #cbd5e1;
       background: rgba(148, 163, 184, 0.09);
     }
 
+    /* Kotak error di light mode: warna sudah inline (merah muda), tambahkan border */
+    html:not(.theme-dark) #loginError { border: 1px solid #fecaca; }
+
+    /* Aksi tingkat tiga: ghost transparan + lebih ringan dari tombol "Masuk".
+       Target sentuh tetap 44px di layar kecil karena aturan min-height 44px
+       untuk .btn sudah berlaku pada @media max-width 768px. */
     .login-card .btn-secondary {
-      color: #cbd5e1;
-      border-color: rgba(148, 163, 184, 0.3);
+      color: var(--slate-600);
+      border-color: var(--border);
       background: transparent;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 600;
     }
 
     .login-card .btn-secondary:hover {
-      background: rgba(148, 163, 184, 0.1);
-      color: #f1f5f9;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: rgba(5, 150, 105, 0.35);
     }
 
     @keyframes fadeIn {
@@ -3171,7 +3187,32 @@
       background: linear-gradient(160deg, #0a101c 0%, #0e1b33 100%);
       border: 1px solid var(--ink-border);
       box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(16, 185, 129, 0.08);
+      color: var(--ink-text);
     }
+
+    /* Identitas ink dulu ada di aturan base; sekarang dikembalikan khusus tema
+       gelap dengan NILAI YANG PERSIS sama seperti sebelum perubahan, yaitu
+        - input  : gaya input global dark (html.theme-dark input), bukan .login-card input
+                   (spesifisitas (0,1,2) mengalahkan (0,1,1))
+        - tombol : gaya tombol sekunder global dark (html.theme-dark .btn-secondary)
+     */
+    html.theme-dark .login-card input {
+      background-color: #0b1424;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      color: var(--text);
+    }
+
+    html.theme-dark .login-card input::placeholder { color: #475569; }
+
+    html.theme-dark .login-card .btn-toggle-pass { color: #64748b; }
+
+    html.theme-dark .login-card .btn-secondary {
+      background: rgba(148, 163, 184, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: var(--text);
+    }
+
+    html.theme-dark .login-card .btn-secondary:hover { background: rgba(148, 163, 184, 0.22); }
 
     /* Komponen baru di tema gelap */
     html.theme-dark .stsum {
