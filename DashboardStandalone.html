@@ -3978,8 +3978,6 @@
     // Satu periode hanya DILAYANI cache sekali per section, supaya klik
     // "Tampilkan" berikutnya di section yang sama tetap berarti muat ulang.
     var reportCache = null;         // { start, end, res, dipakai: { sectionId: true } }
-    var nilaiStokInFlight = false;  // penjaga anti-duplikat getNilaiStok
-    var nilaiStokPerluUlang = false;// ada permintaan nilai stok yang tertahan penjaga
     var produkSudahDimuat = false;  // Produk dimuat saat tabnya dibuka, sekali/sesi
     var bahanSudahDimuat = false;   // Bahan dimuat saat tabnya dibuka, sekali/sesi
     var lastChartData = [];
@@ -4727,8 +4725,8 @@
     function muatProdukSekali() {
       if (produkSudahDimuat) return;
       produkSudahDimuat = true;
+      // Kotak "Nilai Stok" (section-produk) juga terisi dari respons ini.
       loadProduk();
-      loadNilaiStok(); // kotak "Nilai Stok" berada di section-produk, bukan Overview
     }
 
     function muatBahanSekali() {
@@ -5407,10 +5405,10 @@
           batalkanCacheLaporan();
           loadReport();
           // Stok berkurang di server (updateStock) — muat ulang daftar produk
-          // agar ringkasan & badge stok langsung sinkron dengan POS, sekaligus
-          // segarkan kotak Nilai Stok (qty x HPP berubah saat stok turun).
+          // agar ringkasan & badge stok langsung sinkron dengan POS. Kotak Nilai
+          // Stok ikut ter-refresh dari respons yang sama, jadi tidak perlu
+          // panggilan getNilaiStok kedua (yang juga bisa menampilkan angka lama).
           loadProduk();
-          loadNilaiStok();
         } else {
           showToast(res.message || 'Gagal menyimpan penjualan', 'error');
         }
@@ -5466,32 +5464,44 @@
     }
 
     // Nilai Stok = Qty stok saat ini x HPP/unit (kondisi inventory, bebas
-    // filter tanggal). Ditarik dari backend getNilaiStok (master produk).
+    // filter tanggal). Angka ini sekarang ikut di respons getProdukList, jadi
+    // tab Produk hanya perlu SATU panggilan server. Fungsi ini masih dipakai
+    // sebagai fallback bila respons belum pernah diterima.
+    var cachedNilaiStok = null;
+    function terapkanNilaiStok(res) {
+      if (!res || res.status !== 'success') return false;
+      // WAJIB cek keberadaan field: respons dari server versi lama tidak punya
+      // nilaiStok sama sekali. Tanpa cek ini, kotak akan menampilkan "Rp 0"
+      // dan jalur fallback tidak pernah berjalan.
+      if (typeof res.nilaiStok !== 'number' || !isFinite(res.nilaiStok)) return false;
+      cachedNilaiStok = res;
+      var box = document.getElementById('nilaiStokBox');
+      if (!box) return true;
+      box.style.display = 'block';
+      box.innerHTML = '<i class="fa-solid fa-coins"></i> Nilai Stok Saat Ini: ' + formatIDR(res.nilaiStok || 0) +
+        ' <span style="font-weight:500;">(' + Number(res.totalUnit || 0).toLocaleString('id-ID') + ' unit \u00d7 HPP — kondisi inventory, mengikuti stok produk jadi)</span>';
+      return true;
+    }
+
+    var nilaiStokInFlight = false;  // penjaga anti-duplikat jalur fallback
     function loadNilaiStok() {
-      // Anti-duplikat: pemuatan produk, prefetch, dan beberapa aksi lain bisa
-      // memicunya hampir bersamaan. Satu permintaan cukup karena semuanya
-      // mengisi kotak yang sama — permintaan kedua diabaikan diam-diam, bukan
-      // dilempar sebagai "permintaan sedang diproses". Bila ada permintaan
-      // kedua, ia dijalankan setelah yang pertama selesai agar angkanya tidak
-      // basi (mis. stok baru berubah karena penjualan).
-      if (nilaiStokInFlight) { nilaiStokPerluUlang = true; return; }
+      // Jalur utama: angka sudah ikut di respons produk -> tanpa permintaan.
+      if (terapkanNilaiStok(cachedNilaiStok)) return;
+      // Fallback: server lama (belum menyertakan nilaiStok) atau respons belum
+      // pernah diterima. Penjaga anti-duplikat tetap ada di sini: beberapa
+      // pemicu bisa hampir bersamaan (menu produk, CRUD produk) dan semuanya
+      // mengisi kotak yang sama, jadi penjaga ini cukup menjatuhkan permintaan
+      // kedua diam-diam, bukan melempar "permintaan sedang diproses".
+      if (nilaiStokInFlight) return;
       nilaiStokInFlight = true;
       safeGoogleRun('getNilaiStok', [getToken()], function (res) {
-        var box = document.getElementById('nilaiStokBox');
-        if (!box) return;
-        if (res && res.status === 'success') {
-          box.style.display = 'block';
-          box.innerHTML = '<i class="fa-solid fa-coins"></i> Nilai Stok Saat Ini: ' + formatIDR(res.nilaiStok || 0) +
-            ' <span style="font-weight:500;">(' + Number(res.totalUnit || 0).toLocaleString('id-ID') + ' unit \u00d7 HPP — kondisi inventory, mengikuti stok produk jadi)</span>';
-        } else {
-          box.style.display = 'none';
+        nilaiStokInFlight = false;
+        if (!terapkanNilaiStok(res)) {
+          var box = document.getElementById('nilaiStokBox');
+          if (box) box.style.display = 'none';
         }
       }, function () {
         nilaiStokInFlight = false;
-        if (nilaiStokPerluUlang) {
-          nilaiStokPerluUlang = false;
-          loadNilaiStok();
-        }
       });
     }
 
@@ -5550,9 +5560,9 @@
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
-        // CATATAN: loadNilaiStok() TIDAK dipanggil di sini lagi. Kotak Nilai Stok
-        // dimuat bersamaan oleh muatProdukSekali(); dulu panggilan berantai di
-        // dalam callback ini menambah ±1,5-2 detik sebelum angkanya muncul.
+        // Nilai Stok ikut dalam respons yang sama: tidak ada panggilan kedua.
+        // Kalau server belum mengirimnya, jalankan jalur fallback.
+        if (!terapkanNilaiStok(res)) loadNilaiStok();
       }, function () {
         var t = document.getElementById('produkTbody');
         if (t && t.innerHTML.indexOf('fa-spin') !== -1) {
@@ -5562,15 +5572,15 @@
     }
 
     function loadProdukCRUD(isRetry) {
-      // Nilai stok ikut berubah setiap CRUD produk: ambil paralel dengan daftar
-      // produk (dulu berantai di dalam callback → ±1,5-2 detik ekstra).
-      loadNilaiStok();
+      // Nilai stok ikut berubah setiap CRUD produk dan sudah ikut di respons
+      // getProdukList, jadi tidak perlu panggilan getNilaiStok terpisah.
       safeGoogleRun('getProdukList', [getToken()], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
           renderProdukModal(cachedProduk);
           renderProdukMain(cachedProduk);
           updateProdukDatalist(cachedProduk);
+          if (!terapkanNilaiStok(res)) loadNilaiStok();
         } else {
           document.getElementById('modalProdukTbody').innerHTML = '<tr><td colspan="5" class="empty-text">Gagal memuat produk</td></tr>';
         }

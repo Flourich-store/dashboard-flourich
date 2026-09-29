@@ -192,7 +192,29 @@ function _readMasterHppMap(ss) {
 
 // ============================================================
 // NILAI STOK (inventory: kondisi saat ini, bebas filter tanggal)
-// Nilai Stok = Qty stok saat ini x HPP/unit (master produk).
+// Nilai Stok = Qty x HPP/unit. Satu implementasi untuk semua pemanggil:
+// getNilaiStok (kotak Nilai Stok) dan getProdukList (daftar produk) memakai
+// helper ini agar angkanya tidak mungkin berbeda. HPP: master dulu, lalu
+// tabel referensi PRODUK_REFERENSI, lalu katalog getHppRate.
+function _hitungNilaiStok(values, idxNama, idxStok, idxHpp) {
+  var total = 0, unit = 0, rincian = [];
+  for (var i = 1; i < values.length; i++) {
+    var nm = String(values[i][idxNama] || '').trim();
+    if (!nm) continue;
+    var stok = _num(values[i][idxStok]);
+    var hppRef = null;
+    for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
+      if (PRODUK_REFERENSI[r].nama.toLowerCase() === nm.toLowerCase()) { hppRef = PRODUK_REFERENSI[r]; break; }
+    }
+    var hpp = (idxHpp !== -1 && _num(values[i][idxHpp]) > 0) ? _num(values[i][idxHpp])
+      : (hppRef ? hppRef.hpp : getHppRate(nm, _extractVolumeFromName(nm) || 250));
+    total += hpp * stok;
+    unit += stok;
+    rincian.push({ nama: nm, stok: stok, hpp: hpp, nilai: hpp * stok });
+  }
+  return { nilaiStok: total, totalUnit: unit, rincian: rincian };
+}
+
 // ============================================================
 function getNilaiStok(token) {
   return _guardToken(function () {
@@ -207,22 +229,8 @@ function getNilaiStok(token) {
     var idxNama = header.indexOf('nama produk') !== -1 ? header.indexOf('nama produk') : (header.indexOf('nama') !== -1 ? header.indexOf('nama') : 1);
     var idxStok = header.indexOf('stok') !== -1 ? header.indexOf('stok') : 2;
     var idxHpp = header.indexOf('hpp');
-    var total = 0, unit = 0, rincian = [];
-    for (var i = 1; i < values.length; i++) {
-      var nm = String(values[i][idxNama] || '').trim();
-      if (!nm) continue;
-      var stok = _num(values[i][idxStok]);
-      var hppRef = null;
-      for (var r = 0; r < PRODUK_REFERENSI.length; r++) {
-        if (PRODUK_REFERENSI[r].nama.toLowerCase() === nm.toLowerCase()) { hppRef = PRODUK_REFERENSI[r]; break; }
-      }
-      var hpp = (idxHpp !== -1 && _num(values[i][idxHpp]) > 0) ? _num(values[i][idxHpp])
-        : (hppRef ? hppRef.hpp : getHppRate(nm, _extractVolumeFromName(nm) || 250));
-      total += hpp * stok;
-      unit += stok;
-      rincian.push({ nama: nm, stok: stok, hpp: hpp, nilai: hpp * stok });
-    }
-    return { status: 'success', nilaiStok: total, totalUnit: unit, rincian: rincian };
+    var hasil = _hitungNilaiStok(values, idxNama, idxStok, idxHpp);
+    return { status: 'success', nilaiStok: hasil.nilaiStok, totalUnit: hasil.totalUnit, rincian: hasil.rincian };
   });
 }
 
@@ -1273,11 +1281,22 @@ function _invalidateProdukCache() {
   __produkCacheAt = 0;
 }
 
+// Simpan payload produk + nilai stok (satu objek) supaya cache tidak perlu
+// dihitung dua kali.
+function _cacheProduk(payload) {
+  __produkCache = payload;
+  __produkCacheAt = Date.now();
+}
+
 function getProdukList(token) {
   return _guardToken(function () {
     _verifyToken(token, false);
     if (__produkCache && (Date.now() - __produkCacheAt) < PRODUK_CACHE_TTL_MS) {
-      return { status: 'success', products: __produkCache, cached: true };
+      var c = __produkCache;
+      return {
+        status: 'success', products: c.products, cached: true,
+        nilaiStok: c.nilaiStok, totalUnit: c.totalUnit, rincian: c.rincian
+      };
     }
 
     var ss = getSpreadsheet();
@@ -1285,7 +1304,10 @@ function getProdukList(token) {
     if (!sheet) return { status: 'error', message: "Sheet Produk tidak ditemukan" };
 
     var values = sheet.getDataRange().getValues();
-    if (!values || values.length <= 1) { __produkCache = []; __produkCacheAt = Date.now(); return { status: 'success', products: [] }; }
+    if (!values || values.length <= 1) {
+      _cacheProduk({ products: [], nilaiStok: 0, totalUnit: 0, rincian: [] });
+      return { status: 'success', products: [], nilaiStok: 0, totalUnit: 0, rincian: [] };
+    }
 
     var header = [];
     for (var h = 0; h < values[0].length; h++) {
@@ -1317,9 +1339,18 @@ function getProdukList(token) {
       });
     }
 
-    __produkCache = products;
-    __produkCacheAt = Date.now();
-    return { status: 'success', products: products };
+    // Nilai Stok ikut dihitung dari nilai yang SUDAH dibaca di atas (tanpa
+    // pembacaan sheet tambahan) supaya tab Produk cukup satu panggilan server.
+    var nilai = _hitungNilaiStok(values, idxNama, idxStok, idxHpp);
+    var payload = {
+      status: 'success',
+      products: products,
+      nilaiStok: nilai.nilaiStok,
+      totalUnit: nilai.totalUnit,
+      rincian: nilai.rincian
+    };
+    _cacheProduk(payload);
+    return payload;
   });
 }
 
