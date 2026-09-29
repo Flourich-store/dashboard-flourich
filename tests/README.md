@@ -20,6 +20,8 @@ Atau per berkas, mis. `node tests/p2-nilai-stok.test.mjs`.
 | Berkas | Yang dijaga |
 | --- | --- |
 | `add-penjualan.test.mjs` | `addPenjualan`: jumlah baris tersimpan, perhitungan HPP, ID transaksi, dan qty 0 ditolak (bukan dibalik jadi 1) |
+| `pos-adapter.test.mjs` | Adapter POS→v2: deteksi baris gaya-POS, konversi 13 kolom, peta kanonik nama (Semangci→Semangka Leci), idempoten, HPP master vs katalog |
+| `pos-laporan.test.mjs` | `getReportByDateRange` membaca baris v2 + baris gaya-POS belumlah terkonversi: omset, laba (HPP via kunci kanonik), qty, metode kosong, chart |
 | `p2-nilai-stok.test.mjs` | Nilai Stok dihitung identik oleh `getProdukList` dan `getNilaiStok` (keduanya memakai `_hitungNilaiStok`) |
 | `perf-p1.test.mjs` | Invarian performa klien: satu panggilan `getProdukList` per muat tab Produk, tidak ada panggilan `getNilaiStok` susulan,respons basi dikenali |
 | `mutasi-perf12.mjs` | Uji mutasi: assertion `perf-p1` benar-benar menangkap pelanggaran, bukan hanya lulus diam-diam |

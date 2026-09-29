@@ -15,6 +15,8 @@ const lengkap = process.argv.includes('--lengkap');
 
 const CEK = [
   { nama: 'add-penjualan',        file: 'add-penjualan.test.mjs',        soal: 'addPenjualan: baris tersimpan, HPP, qty 0 ditolak (Code.gs:960)' },
+  { nama: 'pos-adapter',          file: 'pos-adapter.test.mjs',          soal: 'adapter POS->v2: deteksi, konversi, peta kanonik nama' },
+  { nama: 'pos-laporan',          file: 'pos-laporan.test.mjs',          soal: 'laporan membaca baris v2 + gaya-POS dengan benar' },
   { nama: 'p2-nilai-stok',        file: 'p2-nilai-stok.test.mjs',        soal: 'Nilai Stok identik antara getProdukList dan getNilaiStok' },
   { nama: 'perf-p1',              file: 'perf-p1.test.mjs',              soal: 'invariant performa frontend (satu panggilan per muat)' },
   { nama: 'login-theme',          file: 'login-theme.test.mjs',          soal: 'warna kartu login ikut tema terang/gelap' },
