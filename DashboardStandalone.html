@@ -3742,7 +3742,7 @@
         </div>
         <div class="filter-group">
           <label>Jumlah</label>
-          <input type="number" id="inJumlah" placeholder="0" min="1" value="1">
+          <input type="number" id="inJumlah" placeholder="1" min="1" value="1">
         </div>
       </div>
       <div class="filter-row">
@@ -5378,19 +5378,22 @@
     // MODUL PENJUALAN - INPUT
     // ============================================================
     function aksiInputPenjualan() {
+      const jml = document.getElementById('inJumlah');
       const data = {
         token: getToken(),
         tanggal: document.getElementById('inTanggal').value || getTodayISO(),
         namaProduk: document.getElementById('inNamaProduk').value.trim(),
         harga: Number(document.getElementById('inHarga').value) || 0,
-        jumlah: Number(document.getElementById('inJumlah').value) || 1,
+        // Default 1 hanya saat kolom kosong. 'Number(x) || 1' akan mengubah
+        // 0 (falsy) menjadi 1 sehingga qty 0 lolos dan tersimpan sebagai 1 unit.
+        jumlah: jml.value === '' ? 1 : Number(jml.value),
         volume: Number(document.getElementById('inVolume').value) || 250,
         metode: document.getElementById('inMetode').value
       };
 
       if (!data.namaProduk) return showToast('Nama produk wajib diisi!', 'error');
       if (data.harga <= 0) return showToast('Harga harus lebih dari 0!', 'error');
-      if (data.jumlah <= 0) return showToast('Jumlah harus lebih dari 0!', 'error');
+      if (!isFinite(data.jumlah) || data.jumlah <= 0) return showToast('Jumlah harus lebih dari 0!', 'error');
 
       safeGoogleRun('addPenjualan', [getToken(), data], function (res) {
         if (res && res.status === 'success') {

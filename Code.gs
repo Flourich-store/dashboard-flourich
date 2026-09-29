@@ -944,7 +944,12 @@ function addPenjualan(token, data) {
     if (data.tanggal) tanggal.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
     var namaProduk = String(data.namaProduk || '').trim();
     var harga = Number(data.harga || 0);
-    var jumlah = Number(data.jumlah || 1);
+    // Default 1 HANYA bila kolom benar-benar kosong. Jangan pakai
+    // 'Number(x || 1)': angka 0 yang falsy ikut jadi 1 sehingga penjualan
+    // qty 0 diam-diam tercatat sebagai 1 unit.
+    var jumlah = (data.jumlah === undefined || data.jumlah === null || data.jumlah === '')
+      ? 1
+      : Number(data.jumlah);
     var volume = Number(data.volume || 250);
     var metodeRaw = String(data.metode || 'Cash').trim();
     // Hanya CASH / QRIS yang diterima (mengikuti gaya POS)
@@ -952,7 +957,8 @@ function addPenjualan(token, data) {
 
     if (!namaProduk) return { status: 'error', message: 'Nama produk wajib diisi' };
     if (harga <= 0) return { status: 'error', message: 'Harga harus lebih dari 0' };
-    if (jumlah <= 0) return { status: 'error', message: 'Jumlah harus lebih dari 0' };
+    // isFinite menolak NaN (mis. jumlah = "abc") yang lolos dari perbandingan <= 0.
+    if (!isFinite(jumlah) || jumlah <= 0) return { status: 'error', message: 'Jumlah harus lebih dari 0' };
 
     var totalHarga = harga * jumlah;
     // HPP satuan: master produk dulu, fallback tabel referensi nama+volume.
