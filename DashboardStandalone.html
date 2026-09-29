@@ -3687,7 +3687,7 @@
             </thead>
             <tbody id="produkTbody">
               <tr>
-                <td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td>
+                <td colspan="5" class="empty-text">Data produk dimuat saat tab ini dibuka</td>
               </tr>
             </tbody>
           </table>
@@ -3700,7 +3700,7 @@
           <button class="btn-primary btn" type="button" onclick="openBahanBaruModal()"><i class="fa-solid fa-plus"></i>&nbsp;Kelola / Tambah Bahan</button>
         </div>
         <div class="bahan-grid" id="bahanGrid">
-          <div class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat stok bahan...</div>
+          <div class="empty-text">Data stok bahan dimuat saat tab ini dibuka</div>
         </div>
         <div class="bahan-note">
           <i class="fa-solid fa-circle-info"></i>
@@ -3972,6 +3972,16 @@
     var pendingRequests = {};
     var chartsReady = false;
     var reportLoading = false;
+    // Cache laporan per periode. Tab Grafik & Penjualan sering melihat periode
+    // yang sama dengan tab Overview; tanpa cache, tiap tab mengulang
+    // getReportByDateRange (±2,4-5,8 detik) untuk data yang identik.
+    // Satu periode hanya DILAYANI cache sekali per section, supaya klik
+    // "Tampilkan" berikutnya di section yang sama tetap berarti muat ulang.
+    var reportCache = null;         // { start, end, res, dipakai: { sectionId: true } }
+    var nilaiStokInFlight = false;  // penjaga anti-duplikat getNilaiStok
+    var nilaiStokPerluUlang = false;// ada permintaan nilai stok yang tertahan penjaga
+    var produkSudahDimuat = false;  // Produk dimuat saat tabnya dibuka, sekali/sesi
+    var bahanSudahDimuat = false;   // Bahan dimuat saat tabnya dibuka, sekali/sesi
     var lastChartData = [];
     var trendRows = [];    // data transaksi laporan terakhir (untuk sparkline hero)
     var trendMode = 'all'; // 'all' | 'cash' | 'qris'
@@ -4048,9 +4058,14 @@
       } else if (modalId === 'modalPenjualan') {
         var dateEl = document.getElementById('inTanggal');
         if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
+        // Datalist nama produk dipakai form ini: pastikan datanya terisi walau
+        // tab Produk belum pernah dibuka (produk tidak lagi ditarik saat login).
+        muatProdukSekali();
       } else if (modalId === 'modalBahan') {
         setAdjAksi('tambah');
         syncAdjSisa();
+        // Dropdown bahan diisi dari data stok bahan — muat bila belum ada.
+        muatBahanSekali();
       }
     }
 
@@ -4138,9 +4153,14 @@
 
       // Filter periode TIDAK dijalankan otomatis saat dashboard dibuka.
       // Data laporan baru dimuat setelah user menekan tombol "Tampilkan".
-      loadProduk();
-      loadStokBahan();
-      fetchLastBahanLog();
+      //
+      // PERFORMA: Produk & Bahan TIDAK lagi dimuat di jalur login. Masing-masing
+      // satu panggilan server (±1,7-2,2 detik) dan round-trip di Apps Script
+      // saling mengantre, sehingga laporan yang benar-benar ditunggu user ikut
+      // lambat. Sekarang datanya dimuat saat tabnya dibuka (activateSection),
+      // lalu diprefetch diam-diam saat browser idle agar biasanya sudah siap
+      // sebelum diklik — dan prefetch itu mengalah bila laporan sedang dimuat.
+      jadwalkanPrefetchProdukBahan();
       bindStokBahanEvents();
       showEmptyPeriodState();
       preloadCharts();
@@ -4676,6 +4696,69 @@
       });
     }
 
+    // ============================================================
+    // CACHE LAPORAN PER PERIODE (memangkas round-trip yang identik)
+    // ============================================================
+    // Pemakai: tab Grafik & tab Penjualan, yang sering memakai periode sama
+    // dengan tab Overview. Satu periode dilayani cache SEKALI per section agar
+    // tombol "Tampilkan" tetap berarti "muat ulang dari server".
+    function perbaruiCacheLaporan(start, end, res) {
+      reportCache = { start: start, end: end, res: res, dipakai: {} };
+    }
+
+    function ambilCacheLaporan(start, end, sectionId) {
+      if (!reportCache || !reportCache.res) return null;
+      if (reportCache.start !== start || reportCache.end !== end) return null;
+      if (reportCache.dipakai[sectionId]) return null; // sudah dipakai section ini: klik berikutnya = muat ulang
+      if (!reportCache.res.data && !reportCache.res.chartData) return null;
+      reportCache.dipakai[sectionId] = true;
+      return reportCache.res;
+    }
+
+    // Dipanggil setiap kali data sumber laporan berubah (tulis penjualan /
+    // credit-debit) supaya section lain tidak menyajikan angka basi.
+    function batalkanCacheLaporan() {
+      reportCache = null;
+    }
+
+    // ============================================================
+    // MUAT PRODUK / BAHAN SAAT DIBUTUHKAN (bukan di jalur login)
+    // ============================================================
+    function muatProdukSekali() {
+      if (produkSudahDimuat) return;
+      produkSudahDimuat = true;
+      loadProduk();
+      loadNilaiStok(); // kotak "Nilai Stok" berada di section-produk, bukan Overview
+    }
+
+    function muatBahanSekali() {
+      if (bahanSudahDimuat) return;
+      bahanSudahDimuat = true;
+      loadStokBahan();
+      fetchLastBahanLog();
+    }
+
+    // Prefetch diam-diam supaya tab Produk/Bahan biasanya sudah terisi saat
+    // diklik. Menunda diri selama laporan sedang dimuat: round-trip Apps Script
+    // saling mengantre, jadi jangan berebut dengan permintaan yang ditunggu user.
+    function jadwalkanPrefetchProdukBahan() {
+      var percobaan = 0;
+      function jalankan() {
+        if (reportLoading && percobaan < 40) {
+          percobaan++;
+          setTimeout(jalankan, 500);
+          return;
+        }
+        muatProdukSekali();
+        muatBahanSekali();
+      }
+      // Jeda awal 2 detik. Prefetch yang terlalu cepat justru berebut slot
+      // server dengan laporan yang biasanya langsung diminta user begitu
+      // dashboard terbuka (round-trip Apps Script saling mengantre). Membuka
+      // tab Produk/Bahan tetap seketika memuat datanya lewat muat*Sekali().
+      setTimeout(jalankan, 2000);
+    }
+
     function loadReport() {
       if (reportLoading) {
         showToast('Laporan sedang dimuat, tunggu sebentar...', 'error');
@@ -4704,6 +4787,7 @@
 
       safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
+          perbaruiCacheLaporan(start, end, res);
           cachedPenjualan = res.data || [];
           renderReport(res);
           renderTopProducts(res.topProducts || []);
@@ -4713,7 +4797,6 @@
           renderDailyTrend(res);
           renderInsights(res);
           updateKPI(res);
-          loadNilaiStok();
         } else {
           showToast(res.message || 'Gagal memuat laporan', 'error');
           document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
@@ -4766,6 +4849,18 @@
       }
       if (start > end) {
         showToast('Start date tidak boleh lebih besar dari end date!', 'error');
+        return;
+      }
+
+      // PERFORMA: periode ini mungkin sudah dimuat di tab Overview. Pakai cache
+      // (hemat satu round-trip ±2,4-5,8 detik untuk data yang identik). Cache
+      // sekali-pakai per section, jadi klik "Tampilkan" berikutnya di tab ini
+      // tetap memuat ulang dari server.
+      var dariCache = ambilCacheLaporan(start, end, 'penjualan');
+      if (dariCache) {
+        cachedPenjualan = dariCache.data || [];
+        renderReport(dariCache);
+        showToast('Menampilkan periode ini dari data yang sudah dimuat. Klik "Tampilkan" lagi untuk memuat ulang dari server.', 'success');
         return;
       }
 
@@ -5247,6 +5342,18 @@
         return;
       }
 
+      // PERFORMA: periode ini mungkin sudah dimuat di tab Overview. Pakai cache
+      // (hemat satu round-trip ±2,4-5,8 detik untuk data yang identik). Cache
+      // sekali-pakai per section, jadi klik "Tampilkan" berikutnya di tab ini
+      // tetap memuat ulang dari server.
+      var dariCache = ambilCacheLaporan(start, end, 'chart');
+      if (dariCache) {
+        document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(dariCache.omsetKotor || 0);
+        renderChart(dariCache.chartData || []);
+        showToast('Menampilkan periode ini dari data yang sudah dimuat. Klik "Tampilkan" lagi untuk memuat ulang dari server.', 'success');
+        return;
+      }
+
       document.getElementById('chartKategori').innerHTML = '<div class="loading-text" style="padding:60px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat grafik...</div>';
       safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
@@ -5293,10 +5400,14 @@
           document.getElementById('inHarga').value = '';
           document.getElementById('inJumlah').value = '1';
           document.getElementById('inTotalDisplay').textContent = 'Rp 0';
+          // Data penjualan berubah: cache laporan periode mana pun tidak valid lagi.
+          batalkanCacheLaporan();
           loadReport();
           // Stok berkurang di server (updateStock) — muat ulang daftar produk
-          // agar ringkasan & badge stok langsung sinkron dengan POS.
+          // agar ringkasan & badge stok langsung sinkron dengan POS, sekaligus
+          // segarkan kotak Nilai Stok (qty x HPP berubah saat stok turun).
           loadProduk();
+          loadNilaiStok();
         } else {
           showToast(res.message || 'Gagal menyimpan penjualan', 'error');
         }
@@ -5354,6 +5465,14 @@
     // Nilai Stok = Qty stok saat ini x HPP/unit (kondisi inventory, bebas
     // filter tanggal). Ditarik dari backend getNilaiStok (master produk).
     function loadNilaiStok() {
+      // Anti-duplikat: pemuatan produk, prefetch, dan beberapa aksi lain bisa
+      // memicunya hampir bersamaan. Satu permintaan cukup karena semuanya
+      // mengisi kotak yang sama — permintaan kedua diabaikan diam-diam, bukan
+      // dilempar sebagai "permintaan sedang diproses". Bila ada permintaan
+      // kedua, ia dijalankan setelah yang pertama selesai agar angkanya tidak
+      // basi (mis. stok baru berubah karena penjualan).
+      if (nilaiStokInFlight) { nilaiStokPerluUlang = true; return; }
+      nilaiStokInFlight = true;
       safeGoogleRun('getNilaiStok', [getToken()], function (res) {
         var box = document.getElementById('nilaiStokBox');
         if (!box) return;
@@ -5364,7 +5483,13 @@
         } else {
           box.style.display = 'none';
         }
-      }, function () { });
+      }, function () {
+        nilaiStokInFlight = false;
+        if (nilaiStokPerluUlang) {
+          nilaiStokPerluUlang = false;
+          loadNilaiStok();
+        }
+      });
     }
 
     function stockFilterValue() {
@@ -5422,7 +5547,9 @@
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
-        loadNilaiStok();
+        // CATATAN: loadNilaiStok() TIDAK dipanggil di sini lagi. Kotak Nilai Stok
+        // dimuat bersamaan oleh muatProdukSekali(); dulu panggilan berantai di
+        // dalam callback ini menambah ±1,5-2 detik sebelum angkanya muncul.
       }, function () {
         var t = document.getElementById('produkTbody');
         if (t && t.innerHTML.indexOf('fa-spin') !== -1) {
@@ -5432,13 +5559,15 @@
     }
 
     function loadProdukCRUD(isRetry) {
+      // Nilai stok ikut berubah setiap CRUD produk: ambil paralel dengan daftar
+      // produk (dulu berantai di dalam callback → ±1,5-2 detik ekstra).
+      loadNilaiStok();
       safeGoogleRun('getProdukList', [getToken()], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
           renderProdukModal(cachedProduk);
           renderProdukMain(cachedProduk);
           updateProdukDatalist(cachedProduk);
-          loadNilaiStok();
         } else {
           document.getElementById('modalProdukTbody').innerHTML = '<tr><td colspan="5" class="empty-text">Gagal memuat produk</td></tr>';
         }
@@ -5662,6 +5791,8 @@
           if (start && end) {
             loadCreditDebit();
           }
+          // Credit/Debit masuk ke laba bersih & rincian: buang cache laporan.
+          batalkanCacheLaporan();
           loadReport();
         } else {
           showToast(res.message || 'Gagal menyimpan catatan', 'error');
@@ -6028,6 +6159,12 @@
         // kini milik .app-shell, bukan body/window.
         var scroller = document.querySelector('.app-shell');
         if (scroller) scroller.scrollTop = 0;
+
+        // Muat data section saat tabnya benar-benar dibuka (idempoten: sekali
+        // per sesi). Ini yang membuat jalur login bebas dari 2-3 round-trip
+        // produk/bahan yang tidak ada hubungannya dengan halaman yang dilihat.
+        if (targetId === 'section-produk') muatProdukSekali();
+        if (targetId === 'section-bahan') muatBahanSekali();
       }
 
       navItems.forEach(function (navItem) {
