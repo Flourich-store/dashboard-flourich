@@ -957,10 +957,11 @@ function addPenjualan(token, data) {
     var totalHarga = harga * jumlah;
     // HPP satuan: master produk dulu, fallback tabel referensi nama+volume.
     // Ditulis ke sheet (kolom HPP Satuan) agar laporan historis tetap akurat
-    // walau master berubah di masa depan.      var hpp = _resolveHpp(getSpreadsheet(), namaProduk, volume);
-      var totalHPP = hpp * jumlah;
-      var laba = totalHarga - totalHPP;
-    
+    // walau master berubah di masa depan.
+    var hpp = _resolveHpp(getSpreadsheet(), namaProduk, volume);
+    var totalHPP = hpp * jumlah;
+    var laba = totalHarga - totalHPP;
+
     // TRX ID mengikuti format aplikasi POS: FR-<timestamp milidetik>
     // Cek unik cukup baca kolom A saja (bukan seluruh 11 kolom sheet)
     var existingIds = {};
