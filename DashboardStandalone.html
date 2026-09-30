@@ -3319,6 +3319,98 @@
     html.theme-dark .quick-tile {
       border-color: rgba(148, 163, 184, 0.13);
     }
+
+    /* ============================================================
+       PERINGATAN BARIS CREDIT/DEBIT BELUM TERKATEGORI
+       ------------------------------------------------------------
+       Baris Credit/Debit yang kolom Jenisnya kosong / bernilai lama
+       tidak boleh diasumsikan masuk kategori manapun. Nilainya tidak
+       masuk Laba Bersih, tapi nominalnya harus TERLIHAT supaya selisih
+       laba tidak muncul sebagai angka yang terpotong diam-diam.
+
+       Warna diambil dari token yang sudah ada (--logout-*) yang
+       didefinisikan di kedua tema, jadi panel ini otomatis ikut
+       light/dark tanpa declare warna baru.
+       ============================================================ */
+    .cd-warn {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin: 14px 0 0;
+      padding: 12px 14px;
+      border: 1px solid var(--logout-border);
+      border-left: 4px solid var(--logout-color);
+      border-radius: var(--radius-sm);
+      background: var(--logout-bg);
+      color: var(--text-primary);
+    }
+    .cd-warn[hidden] { display: none; }
+    .cd-warn-icon {
+      flex: 0 0 auto;
+      color: var(--logout-color);
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+    .cd-warn-body { min-width: 0; flex: 1 1 auto; }
+    .cd-warn-title {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--logout-color);
+      margin: 0 0 2px;
+    }
+    .cd-warn-text {
+      margin: 0;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
+    .cd-warn-text b { color: var(--text-primary); }
+
+    /* Tabel rincian, ditempatkan di tab Catatan Keuangan */
+    .cd-warn-detail { margin-top: 14px; }
+    .cd-warn-detail[hidden] { display: none; }
+    .cd-warn-detail-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--logout-border);
+      border-bottom: 0;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      background: var(--logout-bg);
+      color: var(--logout-color);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .cd-warn-detail-body {
+      border: 1px solid var(--logout-border);
+      border-top: 0;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      overflow: hidden;
+      background: var(--card-bg, var(--bg-surface));
+    }
+    .cd-warn-detail-body table { margin: 0; width: 100%; }
+    .cd-warn-foot {
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      border-top: 1px solid var(--border-color);
+    }
+    .cd-alasan {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--logout-border);
+      background: var(--logout-bg);
+      color: var(--logout-color);
+      font-size: 0.72rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    @media (max-width: 640px) {
+      .cd-warn { padding: 10px 12px; }
+      .cd-warn-text { font-size: 0.82rem; }
+    }
   </style>
 
   <!-- CSP handling for iframe -->
@@ -3485,6 +3577,18 @@
                   class="fa-solid fa-rotate-left"></i>&nbsp;Reset</button>
             </div>
           </div>
+
+          <!-- Ringkasan baris Credit/Debit yang belum terkategori.
+               Disembunyikan sampai laporan dimuat; saat muncul, isinya
+               berarti nominal BELUM masuk Laba Bersih. -->
+          <div class="cd-warn" id="kpiCdPeringatan" hidden>
+            <span class="cd-warn-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+            <div class="cd-warn-body">
+              <p class="cd-warn-title" id="kpiCdPeringatanJudul">Baris Credit/Debit belum terkategori</p>
+              <p class="cd-warn-text" id="kpiCdPeringatanTeks"></p>
+            </div>
+          </div>
+
           <div class="hero-stats">
             <div class="hstat">
               <div class="hstat-label"><span class="hstat-icon hstat-icon--tx"><i class="fa-solid fa-receipt"></i></span> Transaksi</div>
@@ -3622,6 +3726,36 @@
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Rincian baris yang kolom Jenisnya tidak bisa dipetakan ke
+             kategori mana pun. Diisi dari laporan periode Overview; kalau
+             laporan belum dimuat, disembunyikan (bukan menampilkan
+             "semua beres" yang menyesatkan). -->
+        <div class="cd-warn-detail" id="kpiCdRincian" hidden>
+          <div class="cd-warn-detail-head">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span id="kpiCdRincianJudul">Rincian baris belum terkategori</span>
+          </div>
+          <div class="cd-warn-detail-body">
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Tipe</th>
+                    <th>Kategori</th>
+                    <th>Deskripsi</th>
+                    <th class="hide-mobile">Jenis</th>
+                    <th>Nominal</th>
+                    <th>Alasan</th>
+                  </tr>
+                </thead>
+                <tbody id="kpiCdRincianTbody"></tbody>
+              </table>
+            </div>
+            <div class="cd-warn-foot" id="kpiCdRincianFoot"></div>
+          </div>
         </div>
       </section>
 
@@ -4798,6 +4932,8 @@
         } else {
           showToast(res.message || 'Gagal memuat laporan', 'error');
           document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
+          // Jangan biarkan peringatan periode lama tetap tampil setelah gagal muat.
+          resetPeringatanKpiCd();
         }
       }, function () {
         reportLoading = false;
@@ -5075,6 +5211,145 @@
       var end = document.getElementById('endDate').value;
       var hint = document.getElementById('heroPeriodHint');
       if (hint) hint.innerHTML = 'Periode&nbsp;<b>' + escapeHtml(start || end || '...') + '</b>&nbsp;–&nbsp;<b>' + escapeHtml(end || start || '...') + '</b>';
+      renderPeringatanKpiCd(res);
+    }
+
+    // ============================================================
+    // CREDIT/DEBIT - BARIS YANG BELUM TERKATEGORI
+    // ============================================================
+    // Kolom Jenis pada sheet Credit/Debit menentukan apakah sebuah baris
+    // masuk Biaya Operasional, Beban Non-Operasional, Pendapatan Lain, atau
+    // inventori. Baris yang Jenisnya kosong / bernilai skema lama TIDAK
+    // boleh diasumsikan masuk kategori mana pun.
+    //
+    // Konsekuensinya: nominal baris itu tidak masuk Laba Bersih. Kalau
+    // diam-diam disembunyikan, Laba Bersih terlihat utuh padahal sebenarnya
+    // understated sebesar nominal tersebut. Jadi ditampilkan sebagai
+    // peringatan, bukan disembunyikan dan bukan ikut dihitung.
+    //
+    // Dua tempat tampilan (sesuai permintaan pemilik usaha):
+    //   1. Ringkasan jumlah + nominal, di atas kartu KPI pada tab Overview.
+    //   2. Rincian per baris, di tab Catatan Keuangan di bawah tabel.
+    var ALASAN_CD = {
+      JENIS_KOSONG: 'Kolom Jenis kosong',
+      JENIS_TIDAK_DIKENAL: 'Nilai Jenis tidak dikenal',
+      CAMPURAN: 'Campuran - belum bisa dipecah'
+    };
+    var BATAS_RINCIAN_CD = 100; // html masih perlu dibaca; batasi agar tidak melumpuhkan
+
+    function renderPeringatanKpiCd(res) {
+      var kotak = document.getElementById('kpiCdPeringatan');
+      var judul = document.getElementById('kpiCdPeringatanJudul');
+      var teks = document.getElementById('kpiCdPeringatanTeks');
+      var rincian = document.getElementById('kpiCdRincian');
+      var rincianJudul = document.getElementById('kpiCdRincianJudul');
+      var rincianTbody = document.getElementById('kpiCdRincianTbody');
+      var rincianFoot = document.getElementById('kpiCdRincianFoot');
+      if (!kotak || !rincian || !rincianTbody) return;
+
+      var r = (res && res.rincianCreditDebit) || {};
+      var baris = (res && res.perluTindakLanjut) || [];
+      var belumMasuk = Number(r.tidakDikenali || 0);
+
+      // Kasus gagal baca / kolom Jenis hilang: ini kondisi breakdown, bukan
+      // "semua beres". Nominal tidak bisa dihitung sama sekali.
+      var breakdown = !!r.kolomJenisHilang || !!r.gagalDibaca;
+      if (breakdown) {
+        judul.innerHTML = 'Rincian biaya tidak dapat dihitung';
+        if (r.gagalDibaca) {
+          // Nominalnya tidak diketahui sama sekali. Menulis "Rp0 belum masuk"
+          // akan menyiratkan tidak ada biaya, padahal kita memang tidak tahu.
+          teks.innerHTML = 'Sheet Credit/Debit <b>gagal dibaca</b>, jadi rincian ' +
+            'Biaya Operasional, Beban Non-Operasional, dan Pendapatan Lain ' +
+            'tidak dapat dihitung. Laba Bersih di bawah <b>mengabaikan</b> ' +
+            'seluruh Credit/Debit periode ini - jangan dipakai untuk laporan ' +
+            'sampai laporan dimuat ulang berhasil.';
+        } else {
+          teks.innerHTML = 'Sheet Credit/Debit tidak punya kolom <b>Jenis</b>, ' +
+            'jadi setiap baris tanpa penanda kategori. <b>' + formatIDR(belumMasuk) +
+            '</b> belum masuk Laba Bersih. Tambahkan kolom <b>Jenis</b> di sheet ' +
+            'Credit/Debit (isilah: Biaya Operasional / Non Operasional / ' +
+            'Bahan Baku / Kemasan / Pendapatan Lain / Campuran), lalu muat ulang laporan.';
+        }
+        kotak.hidden = false;
+      } else if (baris.length) {
+        judul.innerHTML = baris.length + ' baris Credit/Debit belum terkategori';
+        teks.innerHTML = '<b>' + formatIDR(belumMasuk) + '</b> belum masuk Laba Bersih ' +
+          'karena kolom Jenis-nya kosong atau memakai nilai lama. ' +
+          'Baris ini tidak diasumsikan masuk kategori mana pun - ' +
+          'lihat rinciannya di tab <b>Catatan Keuangan</b>.';
+        kotak.hidden = false;
+      } else {
+        // Semua baris punya Jenis yang dikenali: sembunyikan, jangan
+        // menampilkan peringatan palsu.
+        kotak.hidden = true;
+        judul.innerHTML = 'Baris Credit/Debit belum terkategori';
+        teks.innerHTML = '';
+      }
+      if (breakdown) {
+        // Rincian per baris tidak bisa ditampilkan kalau yang terjadi adalah
+        // kegagalan baca / kolom hilang - bukan daftar baris tertentu.
+        rincianTbody.innerHTML = '';
+        rincianFoot.innerHTML = '';
+        rincian.hidden = true;
+        rincianJudul.textContent = 'Rincian baris belum terkategori';
+        return;
+      }
+
+      // --- Rincian per baris ---
+      if (baris.length) {
+        var tampil = baris.slice(0, BATAS_RINCIAN_CD);
+        var html = '';
+        for (var i = 0; i < tampil.length; i++) {
+          var b = tampil[i];
+          var jenisTxt = String(b.jenis || '').trim();
+          var alasan = ALASAN_CD[b.alasan] || String(b.alasan || 'Tidak diketahui');
+          html += '<tr>' +
+            '<td>' + escapeHtml(b.tanggal || '-') + '</td>' +
+            '<td>' + escapeHtml(b.tipe || '-') + '</td>' +
+            '<td>' + escapeHtml(b.kategori || '-') + '</td>' +
+            '<td>' + escapeHtml(b.deskripsi || '-') + '</td>' +
+            '<td class="hide-mobile">' + escapeHtml(jenisTxt || '(kosong)') + '</td>' +
+            '<td><b>' + formatIDR(b.nominal || 0) + '</b></td>' +
+            '<td><span class="cd-alasan">' + escapeHtml(alasan) + '</span></td>' +
+            '</tr>';
+        }
+        rincianTbody.innerHTML = html;
+        rincianJudul.textContent = baris.length + ' baris belum terkategori - total ' +
+          formatIDR(belumMasuk) + ' belum masuk Laba Bersih';
+        var sisanya = baris.length - tampil.length;
+        rincianFoot.innerHTML = 'Total ' + baris.length + ' baris, ' + formatIDR(belumMasuk) +
+          '. Nilainya tidak masuk Laba Bersih dan tidak diasumsikan masuk kategori mana pun. ' +
+          (sisanya > 0
+            ? 'Menampilkan ' + tampil.length + ' baris pertama, sisa ' + sisanya +
+              ' baris bisa dilihat di tab <b>Catatan Keuangan</b> sheet.'
+            : 'Perbaiki kolom Jenis di sheet Credit/Debit lalu muat ulang laporan.');
+        rincian.hidden = false;
+      } else {
+        // Kosongkan juga judulnya, bukan hanya tbody/foot: kalau panel suatu
+        // saat dibuka tanpa render baru, teks periode lama akan tampil.
+        rincianTbody.innerHTML = '';
+        rincianFoot.innerHTML = '';
+        rincian.hidden = true;
+        rincianJudul.textContent = 'Rincian baris belum terkategori';
+      }
+    }
+
+    function resetPeringatanKpiCd() {
+      var kotak = document.getElementById('kpiCdPeringatan');
+      var judul = document.getElementById('kpiCdPeringatanJudul');
+      var teks = document.getElementById('kpiCdPeringatanTeks');
+      var rincian = document.getElementById('kpiCdRincian');
+      var rincianJudul = document.getElementById('kpiCdRincianJudul');
+      var tbody = document.getElementById('kpiCdRincianTbody');
+      var foot = document.getElementById('kpiCdRincianFoot');
+      if (kotak) kotak.hidden = true;
+      if (judul) judul.innerHTML = 'Baris Credit/Debit belum terkategori';
+      if (teks) teks.innerHTML = '';
+      if (rincian) rincian.hidden = true;
+      if (rincianJudul) rincianJudul.textContent = 'Rincian baris belum terkategori';
+      if (tbody) tbody.innerHTML = '';
+      if (foot) foot.innerHTML = '';
     }
 
     // ============================================================
@@ -6326,6 +6601,7 @@
       if (netDelta) netDelta.hidden = true;
       var insightGrid = document.getElementById('insightGrid');
       if (insightGrid) insightGrid.innerHTML = '<div class="ins-empty">Pilih periode dan klik "Tampilkan"</div>';
+      resetPeringatanKpiCd();
       var chips = document.querySelectorAll('#heroPresets .chip');
       for (var ci = 0; ci < chips.length; ci++) chips[ci].classList.remove('chip-active');
       document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';

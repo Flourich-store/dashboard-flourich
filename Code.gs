@@ -428,9 +428,25 @@ function _parseSheetDateKey(cell) {
     }
     return '';
   }
+  // Cabang ini hanya untuk sel bertipe TEKS. Sel tanggal asli sudah ditangani
+  // di atas (objek Date) dan itu yang overwhelmingly dipakai produksi.
+  //
+  // Catatan: locale sheet ini menulis tanggal M/D/YYYY, jadi "9/27" berarti
+  // 27 September. Versi lama mengasumsikan D/M dan hasilnya:
+  //   "9/27"  -> return ''  -> BARIS DILEWATI SENYAP dari laporan
+  //   "7/9"   -> 07-09      -> tertukar bulan dan hari
+  // Karena angka pertama pada "9/27" bukan tanggal yang valid, disambiguate
+  // dari angka mana yang melebihi 12; kalau keduanya <=12 ambil M/D sesuai
+  // locale sheet.
   m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/);
   if (m) {
-    var d2 = Number(m[1]), mo2 = Number(m[2]), y2 = Number(m[3]);
+    var a1 = Number(m[1]), a2 = Number(m[2]), y2 = Number(m[3]);
+    var d2, mo2;
+    if (a1 > 12 && a2 <= 12) {
+      d2 = a1; mo2 = a2;   // bukti format D/M
+    } else {
+      mo2 = a1; d2 = a2;   // M/D (default sesuai locale sheet)
+    }
     if (mo2 >= 1 && mo2 <= 12 && d2 >= 1 && d2 <= 31) {
       return y2 + '-' + ('0' + mo2).slice(-2) + '-' + ('0' + d2).slice(-2);
     }
@@ -872,44 +888,83 @@ function getReportByDateRange(token, startDate, endDate) {
       return b.omset - a.omset;
     });
 
-    // Hitung Credit (Pengeluaran) dan Debit (Pemasukan Tambahan).
+    // Hitung KPI Credit/Debit berdasarkan kolom Jenis.
     // Dibaca sekali pada rentang gabungan (periode pembanding + periode
     // terpilih) lalu dipartisi per baris, sehingga laba bersih periode
     // pembanding untuk badge delta bisa dihitung tanpa baca sheet ekstra.
-    var totalExpenses = 0;
-    var totalIncomeOther = 0;
-    var prevExpenses = 0, prevIncomeOther = 0;
+    //
+    // Declare di luar try: kalau pembacaan gagal, nilainya tetap 0 dan
+    // kolom peringatan tetap terkirim ke dashboard. Variabel yang di-declare
+    // di dalam try akan hilang bersama error-nya sehingga dashboard tidak
+    // bisa membedakan "tidak ada biaya" dari "gagal baca".
+    var biayaOperasional = 0;
+    var bebanNonOperasional = 0;
+    var pendapatanLain = 0;
+    var inventori = 0;
+    var campuran = 0;
+    var tidakDikenali = 0;
+    var perluTindakLanjut = [];
+    var kolomJenisHilang = false;
+    var cdGagalDibaca = false;
+    var prevBiayaOperasional = 0, prevBebanNonOperasional = 0, prevPendapatanLain = 0;
     try {
       var cdBounds = [prevStartKey, startKey].filter(Boolean).sort();
       var cdItems = _readCreditDebitItems(ss, cdBounds[0] || '', endKey || '');
-      for (var c = 0; c < cdItems.length; c++) {
-        var it = cdItems[c];
-        var tipeUpper = String(it.tipe || '').toUpperCase();
-        var nominal = _num(it.nominal);
-        var inCur = (!startKey || it.tanggal >= startKey) && (!endKey || it.tanggal <= endKey);
-        var inPrev = !!prevStartKey && it.tanggal >= prevStartKey && it.tanggal <= prevEndKey;
-        if (tipeUpper === 'CREDIT') {
-          if (inCur) totalExpenses += nominal;
-          if (inPrev) prevExpenses += nominal;
-        } else if (tipeUpper === 'DEBIT') {
-          if (inCur) totalIncomeOther += nominal;
-          if (inPrev) prevIncomeOther += nominal;
-        }
-      }
+      var aggCd = _agregasiKpiCd(cdItems, startKey, endKey, prevStartKey, prevEndKey);
+      biayaOperasional = aggCd.biayaOperasional;
+      bebanNonOperasional = aggCd.bebanNonOperasional;
+      pendapatanLain = aggCd.pendapatanLain;
+      inventori = aggCd.inventori;
+      campuran = aggCd.campuran;
+      tidakDikenali = aggCd.tidakDikenali;
+      perluTindakLanjut = aggCd.tidakDikenaliDetail;
+      kolomJenisHilang = aggCd.kolomJenisHilang;
+      prevBiayaOperasional = aggCd.prevBiayaOperasional;
+      prevBebanNonOperasional = aggCd.prevBebanNonOperasional;
+      prevPendapatanLain = aggCd.prevPendapatanLain;
     } catch (e) {
+      cdGagalDibaca = true;
       Logger.log('ERROR hitung credit/debit: ' + e.toString());
     }
 
-    // Rumus final: Laba Bersih = Laba Kotor - Pengeluaran tercatat (+ Debit).
-    // Tanpa estimasi persen — angka harus bisa direkonsiliasi dengan sheet.
-    var grossProfit = grossTotal - totalHPP;
-    var biayaOperasional = totalExpenses;
-    var netTotal = grossProfit + totalIncomeOther - biayaOperasional;
+    // Baris yang belum terkategori sengaja TIDAK diasumsikan masuk kategori
+    // manapun. Nilainya tidak masuk Laba Bersih, tapi tetap ditampilkan agar
+    // selisihnya kelihatan dan bisa ditindaklanjuti.
+    if (kolomJenisHilang) {
+      Logger.log('[KPI-CD] PERINGATAN: sheet Credit/Debit tidak punya kolom "Jenis". ' +
+        'Semua baris dianggap tidak terkategori dan TIDAK masuk Laba Bersih.');
+    }
+    if (perluTindakLanjut.length) {
+      Logger.log('[KPI-CD] ' + perluTindakLanjut.length + ' baris belum terkategori, ' +
+        'total belum masuk Laba Bersih: Rp' + tidakDikenali);
+      for (var u = 0; u < perluTindakLanjut.length; u++) {
+        var ub = perluTindakLanjut[u];
+        Logger.log('  ' + ub.tanggal + ' Rp' + ub.nominal +
+          ' | Jenis="' + ub.jenis + '" (' + ub.alasan + ') | ' + ub.kategori);
+      }
+    }
 
-    // Laba bersih periode pembanding (kebijakan biaya operasional sama
-    // dengan periode terpilih: expenses aktual, atau persen bila kosong)
-    var prevGrossProfit = prevGrossTotal - prevTotalHPP;
-    var prevNetTotal = prevGrossProfit + prevIncomeOther - prevExpenses;
+    // Rumus final (lihat blok "KPI CREDIT/DEBIT" di atas untuk alasannya).
+    // Penjualan Bersih = Gross Sales; tidak ada diskon/refund di sistem ini.
+    var penjualanBersihTotal = penjualanBersih(grossTotal);
+    var labaKotor = penjualanBersihTotal - totalHPP;
+    var netTotal = _labaBersihFrom({
+      omsetKotor: penjualanBersihTotal,
+      totalHPP: totalHPP,
+      pendapatanLain: pendapatanLain,
+      biayaOperasional: biayaOperasional,
+      bebanNonOperasional: bebanNonOperasional
+    });
+
+    // Laba bersih periode pembanding memakai rumus yang PERSIS sama.
+    var prevPenjualanBersih = penjualanBersih(prevGrossTotal);
+    var prevNetTotal = _labaBersihFrom({
+      omsetKotor: prevPenjualanBersih,
+      totalHPP: prevTotalHPP,
+      pendapatanLain: prevPendapatanLain,
+      biayaOperasional: prevBiayaOperasional,
+      bebanNonOperasional: prevBebanNonOperasional
+    });
     var topProduct = topProducts[0] || null;
 
     return {
@@ -917,16 +972,30 @@ function getReportByDateRange(token, startDate, endDate) {
       data: detailData,
       totalTransaksi: txCount,
       totalQtyTerjual: totalQtyTerjual,
-      omsetKotor: grossTotal,
+      omsetKotor: penjualanBersihTotal,
+      penjualanBersih: penjualanBersihTotal,
       prevOmsetKotor: prevGrossTotal,
       prevLabaBersih: prevNetTotal,
       prevRange: (prevStartKey && prevEndKey) ? { start: prevStartKey, end: prevEndKey } : null,
       totalHPP: totalHPP,
-      totalPengeluaran: totalExpenses,
+      // Kartu KPI "Pengeluaran" berlabel "Biaya operasional tercatat",
+      // jadi isinya Biaya Operasional saja (bukan jumlah semua bucket).
+      totalPengeluaran: biayaOperasional,
       totalBiayaOperasional: biayaOperasional,
-      totalPemasukanLain: totalIncomeOther,
-      labaKotor: grossProfit,
+      totalBebanNonOperasional: bebanNonOperasional,
+      totalPemasukanLain: pendapatanLain,
+      labaKotor: labaKotor,
       labaBersih: netTotal,
+      // Rincian Credit/Debit. inventori/campuran/tidakDikenali TIDAK
+      // pernah jadi input labaBersih - hanya untuk rekonsiliasi.
+      rincianCreditDebit: {
+        inventori: inventori,
+        campuran: campuran,
+        tidakDikenali: tidakDikenali,
+        kolomJenisHilang: kolomJenisHilang,
+        gagalDibaca: cdGagalDibaca
+      },
+      perluTindakLanjut: perluTindakLanjut,
       topProducts: topProducts.slice(0, 5),
       topProductName: topProduct ? topProduct.nama : '',
       topProductQty: topProduct ? topProduct.qty : 0,
@@ -1777,18 +1846,82 @@ function addCreditDebit(token, type, data) {
   });
 }
 
+// ------------------------------------------------------------
+// PETA KOLOM CREDIT/DEBIT - DICARI DARI NAMA HEADER, BUKAN INDEX
+// ------------------------------------------------------------
+// Bukti lapangan (2026-09-30, kueri per kolom huruf pada gviz):
+//   PROD 17nWhZx... -> select A..G ada, select H..J = "NO_COLUMN".
+//                     Kolom G berheader "Jenis" (Bahan Baku / Kemasan /
+//                     Biaya Operasional).
+//   DEV  1CVrF7B3... -> hanya A..F. TIDAK ADA kolom "Jenis" sama sekali.
+//
+// Karena itu index kolom TIDAK boleh dikunci. Kalau dikunci ke 6, di DEV
+// setiap baris akan terbaca "jenis kosong" -> semua baris jadi tidak
+// dikenal -> Biaya = 0 -> Laba Bersih overstate sebesar SELURUH total
+// CREDIT tanpa satu pun error yang terlihat. Peta kolom dibaca dari baris
+// header tiap kali.
+var CD_JENIS_HEADERS = ['jenis', 'jenis biaya', 'jenis transaksi', 'kategori jenis'];
+var CD_TANGGAL_HEADERS = ['tanggal', 'tgl', 'date'];
+var CD_TIPE_HEADERS = ['tipe', 'type'];
+var CD_NOMINAL_HEADERS = ['nominal', 'jumlah', 'nilai'];
+
+// Cocokkan nama header. Tahap 1: persis. Tahap 2: substring (mis. header
+// "Metode Pembayaran" vs pilihan "metode"). Kembalikan -1 bila tidak ada.
+function _cariKolomCd(headerRow, pilihan) {
+  var row = headerRow || [];
+  var h, k, label;
+  for (h = 0; h < row.length; h++) {
+    label = String(row[h] === undefined || row[h] === null ? '' : row[h]).trim().toLowerCase();
+    if (!label) continue;
+    for (k = 0; k < pilihan.length; k++) {
+      if (label === pilihan[k]) return h;
+    }
+  }
+  for (h = 0; h < row.length; h++) {
+    label = String(row[h] === undefined || row[h] === null ? '' : row[h]).trim().toLowerCase();
+    if (!label) continue;
+    for (k = 0; k < pilihan.length; k++) {
+      if (label.indexOf(pilihan[k]) >= 0) return h;
+    }
+  }
+  return -1;
+}
+
+function _petaKolomCd(headerRow) {
+  return {
+    tanggal: _cariKolomCd(headerRow, CD_TANGGAL_HEADERS),
+    tipe: _cariKolomCd(headerRow, CD_TIPE_HEADERS),
+    kategori: _cariKolomCd(headerRow, ['kategori']),
+    deskripsi: _cariKolomCd(headerRow, ['deskripsi', 'keterangan', 'catatan']),
+    metode: _cariKolomCd(headerRow, ['metode pembayaran', 'metode', 'pembayaran']),
+    nominal: _cariKolomCd(headerRow, CD_NOMINAL_HEADERS),
+    jenis: _cariKolomCd(headerRow, CD_JENIS_HEADERS)
+  };
+}
+
+// Ambil satu sel: pakai kolom hasil deteksi; kalau tidak ada, pakai posisi
+// lama sebagai jaring pengaman (hanya untuk kolom lama yang selalu ada).
+function _selCd(row, idx, fallbackIdx) {
+  if (idx >= 0) return row[idx];
+  if (fallbackIdx >= 0) return row[fallbackIdx];
+  return '';
+}
+
 function _readCreditDebitItems(ss, startDate, endDate) {
   var sheet = ss.getSheetByName('Credit/Debit');
   if (!sheet) return [];
 
   var values = sheet.getDataRange().getValues();
+  if (!values || !values.length) return [];
+
   var startKey = _normDateKey(startDate);
   var endKey = _normDateKey(endDate);
+  var peta = _petaKolomCd(values[0]);
   var items = [];
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
-    var rowKey = _parseSheetDateKey(row[0]);
+    var rowKey = _parseSheetDateKey(_selCd(row, peta.tanggal, 0));
     if (!rowKey) continue;
 
     if (startKey && rowKey < startKey) continue;
@@ -1796,15 +1929,168 @@ function _readCreditDebitItems(ss, startDate, endDate) {
 
     items.push({
       tanggal: rowKey,
-      tipe: String(row[1] || ''),
-      kategori: String(row[2] || ''),
-      deskripsi: String(row[3] || ''),
-      metodePembayaran: String(row[4] || ''),
-      nominal: _num(row[5])
+      tipe: String(_selCd(row, peta.tipe, 1) || ''),
+      kategori: String(_selCd(row, peta.kategori, 2) || ''),
+      deskripsi: String(_selCd(row, peta.deskripsi, 3) || ''),
+      metodePembayaran: String(_selCd(row, peta.metode, 4) || ''),
+      nominal: _num(_selCd(row, peta.nominal, 5)),
+      jenis: String(_selCd(row, peta.jenis, 6) || ''),
+      // PENTING: bila sheet tidak punya kolom Jenis, ini harus TERLIHAT di
+      // dashboard sebagai peringatan, bukan Resultan diam-diam nol.
+      jenisTerdeteksi: peta.jenis !== -1
     });
   }
 
   return items;
+}
+
+// ============================================================
+// KPI CREDIT/DEBIT - NORMALISASI, KLASIFIKASI, AGREGASI
+// ============================================================
+//
+// RUMUS KPI (keputusan pemilik usaha, 2026-09-30)
+//   Penjualan Bersih   = Gross Sales        (tidak ada diskon/refund di sistem)
+//   HPP                = SUM(HPP satuan x qty terjual)   (dari Penjualan)
+//   Laba Kotor         = Penjualan Bersih - HPP
+//   Pendapatan Lain    = Tipe DEBIT  dengan Jenis PENDAPATAN_LAIN
+//   Biaya Operasional  = Tipe CREDIT dengan Jenis BIAYA_OPERASIONAL
+//   Beban Non-Oper.    = Tipe CREDIT dengan Jenis NON_OPERASIONAL
+//   Laba Bersih        = Penjualan Bersih - HPP
+//                        + Pendapatan Lain - Biaya Operasional - Beban Non-Operasional
+//
+// TIGA BUCKET YANG SENGAJA TIDAK MASUK RUMUS:
+//   BAHAN_BAKU / KEMASAN -> INVENTORI. Sudah tercakup di HPP produk terjual
+//     (sudah dikonfirmasi pemilik usaha). Kalau ikut dikurangi lagi, laba
+//     dobel hapus sebesar total pembelian bahan baku + kemasan periode itu.
+//   CAMPURAN             -> belum bisa dipecah per item, nominal tidak
+//     terbagi. Tidak boleh diasumsikan masuk kategori manapun.
+//   TIDAK_DIKENAL        -> Jenis kosong / nilai lama ("operasional") yang
+//     tidak punyapadanan di skema baru. Dilaporkan eksplisit ke dashboard.
+//
+// Normalisasi nilai Jenis: tahan huruf besar/kecil, spasi berlebih, dan
+// tanda hubung. "Bahan baku" / "BAHAN_BAKU" / "Bahan  Baku" -> "BAHAN_BAKU".
+// Penting: spasi diubah jadi underscore, BUKAN dihapus. Menghapus spasi
+// menghasilkan "BIAYAOPERASIONAL" yang tidak sama sekali dengan
+// "BIAYA_OPERASIONAL" sehingga tidak ada baris yang cocok.
+function _normJenisCd(v) {
+  if (v === undefined || v === null) return '';
+  return String(v).trim().toUpperCase().replace(/[\s\-]+/g, '_');
+}
+
+// Peran satu baris Credit/Debit terhadap Laba Bersih.
+// Tipe dicek lebih dulu supaya pasangan yang tidak logis (mis. DEBIT +
+// "Bahan Baku") jatuh ke TIDAK_DIKENAL, bukan tersedot ke bucket lain.
+function _peranBarisCd(jenis, tipe) {
+  var j = _normJenisCd(jenis);
+  var t = String(tipe === undefined || tipe === null ? '' : tipe).trim().toUpperCase();
+
+  if (t === 'CREDIT' && j === 'BIAYA_OPERASIONAL') return 'BIAYA_OPERASIONAL';
+  if (t === 'CREDIT' && j === 'NON_OPERASIONAL') return 'NON_OPERASIONAL';
+  if (t === 'DEBIT' && j === 'PENDAPATAN_LAIN') return 'PENDAPATAN_LAIN';
+  if (t === 'CREDIT' && (j === 'BAHAN_BAKU' || j === 'KEMASAN')) return 'INVENTORI';
+  if (t === 'CREDIT' && j === 'CAMPURAN') return 'CAMPURAN';
+  return 'TIDAK_DIKENAL';
+}
+
+function _alasanBarisCd(jenis, tipe) {
+  var j = _normJenisCd(jenis);
+  var t = String(tipe === undefined || tipe === null ? '' : tipe).trim().toUpperCase();
+  if (j === '') return 'JENIS_KOSONG';
+  if (j === 'CAMPURAN') return 'CAMPURAN';
+  return 'JENIS_TIDAK_DIKENAL';
+}
+
+// Tanggal item sudah berupa key "YYYY-MM-DD" dari _readCreditDebitItems.
+// Guard ini hanya untuk data yang datang dari sumber lain.
+function _tanggalKeyCd(v) {
+  if (v === undefined || v === null || v === '') return '';
+  if (v instanceof Date) {
+    var m = v.getMonth() + 1, d = v.getDate();
+    return v.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
+  }
+  return String(v);
+}
+
+// Agregasi Credit/Debit untuk periode terpilih DAN periode pembanding.
+// Dua periode dihitung dari satu kali baca sheet lalu dipartisi per baris,
+// sehingga badge delta tidak butuh round-trip tambahan.
+function _agregasiKpiCd(cdItems, startKey, endKey, prevStartKey, prevEndKey) {
+  var a = {
+    biayaOperasional: 0,
+    bebanNonOperasional: 0,
+    pendapatanLain: 0,
+    inventori: 0,
+    campuran: 0,
+    tidakDikenali: 0,
+    tidakDikenaliDetail: [],
+    kolomJenisHilang: false,
+    prevBiayaOperasional: 0,
+    prevBebanNonOperasional: 0,
+    prevPendapatanLain: 0
+  };
+  if (!Array.isArray(cdItems)) return a;
+
+  for (var i = 0; i < cdItems.length; i++) {
+    var it = cdItems[i];
+    if (!it) continue;
+    if (it.jenisTerdeteksi === false) a.kolomJenisHilang = true;
+
+    var tgl = _tanggalKeyCd(it.tanggal);
+    if (!tgl) continue;
+
+    var inCur = (!startKey || tgl >= String(startKey)) && (!endKey || tgl <= String(endKey));
+    var inPrev = !!prevStartKey && tgl >= String(prevStartKey) && tgl <= String(prevEndKey);
+
+    var peran = _peranBarisCd(it.jenis, it.tipe);
+    var v = _num(it.nominal);
+
+    if (peran === 'BIAYA_OPERASIONAL') {
+      if (inCur) a.biayaOperasional += v;
+      if (inPrev) a.prevBiayaOperasional += v;
+    } else if (peran === 'NON_OPERASIONAL') {
+      if (inCur) a.bebanNonOperasional += v;
+      if (inPrev) a.prevBebanNonOperasional += v;
+    } else if (peran === 'PENDAPATAN_LAIN') {
+      if (inCur) a.pendapatanLain += v;
+      if (inPrev) a.prevPendapatanLain += v;
+    } else if (peran === 'INVENTORI') {
+      // HAPUS dari rumus. Disimpan hanya untuk laporan/audit.
+      if (inCur) a.inventori += v;
+    } else if (peran === 'CAMPURAN') {
+      if (inCur) a.campuran += v;
+    } else {
+      if (!inCur) continue;
+      a.tidakDikenali += v;
+      a.tidakDikenaliDetail.push({
+        tanggal: tgl,
+        tipe: String(it.tipe || ''),
+        kategori: String(it.kategori || ''),
+        deskripsi: String(it.deskripsi || ''),
+        metodePembayaran: String(it.metodePembayaran || ''),
+        nominal: v,
+        jenis: String(it.jenis || ''),
+        alasan: _alasanBarisCd(it.jenis, it.tipe)
+      });
+    }
+  }
+
+  return a;
+}
+
+// Penjualan bersih = gross sales. Tidak ada diskon/refund terpisah di sistem.
+function penjualanBersih(v) {
+  return _num(v);
+}
+
+// Laba Bersih dalam satu tempat supaya rumus tidak tersebar di beberapa
+// baris (risiko periode pembanding memakai rumus berbeda).
+function _labaBersihFrom(o) {
+  o = o || {};
+  return penjualanBersih(o.omsetKotor)
+    - _num(o.totalHPP)
+    + _num(o.pendapatanLain)
+    - _num(o.biayaOperasional)
+    - _num(o.bebanNonOperasional);
 }
 
 function getCreditDebitByRange(token, startDate, endDate) {

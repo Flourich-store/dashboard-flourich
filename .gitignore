@@ -1,0 +1,47 @@
+# Snapshot data produksi - JANGAN pernah di-commit.
+# tests/fixtures/ berisi transaksi asli (Penjualan, Credit/Debit, Produk)
+# dari spreadsheet Flourich. Repo ini PUBLIK (github.com/Flourich-store/
+# dashboard-flourich) dan GitHub Pages-nya aktif, jadi file di sini hanya
+# boleh ada di komputer pemilik usaha.
+#
+# Berkas tetap dipakai tes regresi lokal. Kalau repo di-clone di komputer lain,
+# tes yang butuh fixture akan gagal dengan pesan "fixture tidak ditemukan" -
+# itu disengaja, bukan bug. Ambil ulang snapshot dari spreadsheet, jangan
+# dari riwayat git.
+tests/fixtures/
+
+# Skrip audit/cari-perbaikan yang isinya diturunkan dari data produksi
+# (nominal, tanggal, kategori, nama produk). Tetap dipakai di komputer
+# pemilik usaha, tidak boleh masuk repo publik.
+# Nama aslinya dipindah ke *.lokal.mjs supaya salinan dengan nama
+# *.test.mjs bisa dipakai gerbang dan bebas data asli.
+tests/*.lokal.mjs
+tests/TEMUAN-AUDIT-JENIS.md
+
+# Skrip turunan data produksi - JANGAN di-commit.
+# Daftar ini dihasilkan oleh:
+#   node tests/audit-data-tertanam.mjs --json | (lihat tests/pilah-commit.mjs)
+# Isinya memuat nominal, tanggal, kategori, atau nama produk asli.
+# Tetap dipakai di komputer pemilik usaha.
+tests/audit-data-tertanam.mjs
+tests/audit-jenis-live.mjs
+tests/audit-jenis-mislain.mjs
+tests/audit-jenis.mjs
+tests/bandingkan-fixture.mjs
+tests/bandingkan-hpp-belanja.mjs
+tests/bukti-baris-6-14-20-79.mjs
+tests/bukti-kolom-modal.mjs
+tests/bukti-kpi.mjs
+tests/bukti-tiga-sel.mjs
+tests/cek-ekspektasi-test.mjs
+tests/cek-fixture-remap.mjs
+tests/hitung-kpi-final.mjs
+tests/hitung-kpi-produksi.mjs
+tests/konsekuensi-baris-6-14.mjs
+tests/konsekuensi-tiga-sel.mjs
+tests/lokasi-perbaikan-cd.mjs
+tests/sinkron-fixture-final.mjs
+tests/verifikasi-akhir.mjs
+
+# Berkas sementara deploy.mjs
+DashboardStandalone.autodeploy.backup.html
