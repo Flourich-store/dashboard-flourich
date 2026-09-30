@@ -23,6 +23,8 @@ Atau per berkas, mis. `node tests/p2-nilai-stok.test.mjs`.
 | `pos-adapter.test.mjs` | Adapter POS→v2: deteksi baris gaya-POS, konversi 13 kolom, peta kanonik nama (Semangci→Semangka Leci), idempoten, HPP master vs katalog |
 | `pos-laporan.test.mjs` | `getReportByDateRange` membaca baris v2 + baris gaya-POS belumlah terkonversi: omset, laba (HPP via kunci kanonik), qty, metode kosong, chart |
 | `p2-nilai-stok.test.mjs` | Nilai Stok dihitung identik oleh `getProdukList` dan `getNilaiStok` (keduanya memakai `_hitungNilaiStok`) |
+| `kpi-credit-debit.test.mjs` | KPI Credit/Debit: `_readCreditDebitItems` benar-benar mengembalikan array, deteksi kolom Jenis lewat header (bukan index), normalisasi + matriks klasifikasi baris, agregasi per periode, rumus Laba Bersih, sheet tanpa kolom Jenis tidak diam-diam jadi nol, parsing tanggal |
+| `panel-kpi-cd.test.mjs` | Panel peringatan Credit/Debit di `DashboardStandalone.html`: muncul di dua tempat, hanya tampil kalau ada masalah, teks menyebut jumlah + nominal + dampak, `resetPeringatanKpiCd` mengosongkan semua, gagal baca tidak menulis "Rp0", isi baris di-escape |
 | `perf-p1.test.mjs` | Invarian performa klien: satu panggilan `getProdukList` per muat tab Produk, tidak ada panggilan `getNilaiStok` susulan,respons basi dikenali |
 | `mutasi-perf12.mjs` | Uji mutasi: assertion `perf-p1` benar-benar menangkap pelanggaran, bukan hanya lulus diam-diam |
 | `login-theme.test.mjs` | Kartu login memakai token warna tema terang/gelap, bukan warna hardcoded |
@@ -35,6 +37,49 @@ Atau per berkas, mis. `node tests/p2-nilai-stok.test.mjs`.
 
 `lib/jalur.mjs` berisi pemuat lokasi berkas, supaya setiap tes tahu di mana
 `Code.gs` dan `DashboardStandalone.html` tanpa harus diberi path manual.
+
+## Data produksi tidak boleh masuk repo
+
+Repo ini **publik** (`github.com/Flourich-store/dashboard-flourich`, GitHub
+Pages aktif). Jadi dua aturan berlaku untuk folder `tests/`:
+
+1. **Snapshot spreadsheet tidak boleh di-commit.** `tests/fixtures/` ada di
+   `.gitignore`. Tes yang membutuhkannya hanya jalan di komputer pemilik
+   usaha. Kalau repo di-clone di komputer lain, tes itu gagal dengan pesan
+   "fixture tidak ditemukan" - itu disengaja, bukan bug.
+2. **Nilai transaksi tidak boleh ditulis langsung di skrip tes.** Karena itu
+   `kpi-credit-debit.test.mjs` dan `panel-kpi-cd.test.mjs` dirakit dari
+   **data karangan**: tahun fiktif 2024, kategori fiktif, dan setiap nominal
+   berakhiran angka bukan nol (`...137`, `...213`, `...417`). Semua nilai
+   rupiah di sheet produksi adalah kelipatan 1.000, jadi bentuk itu secara
+   struktural tidak mungkin sama dengan transaksi mana pun.
+
+Yang tetap hidup di komputer pemilik usaha tapi tidak ter-commit:
+
+| Pola | Isinya |
+| --- | --- |
+| `tests/fixtures/*.csv` | snapshot mentah dari spreadsheet |
+| `tests/*.lokal.mjs` | tes yang datanya diturunkan dari snapshot produksi (angka asli) |
+| `tests/TEMUAN-AUDIT-JENIS.md` | catatan temuan audit |
+| daftar panjang di `.gitignore` | skrip hitung/cari-perbaikan yang isinya turunan data produksi |
+
+Dua alat bantu audits-nya sendiri tidak ikut ter-commit karena pola
+pencariannya memuat angka asli: `audit-data-tertanam.mjs` dan
+`pilah-commit.mjs`. `bukti-sintetis.lokal.mjs` membuktikannya dengan
+mencocokkan tiap sel dari ketiga snapshot ke isi dua tes sintetis:
+
+```
+node tests/bukti-sintetis.lokal.mjs
+```
+
+Hasilnya: **0 tanggal transaksi, 0 nominal transaksi** yang cocok. Yang
+cocok hanya kosakata skema (`CREDIT`, `Bahan Baku`, `Kemasan`, `Biaya
+Operasional`, `operasional`) yang definisinya sudah ada di `Code.gs` yang
+ter-push ke repo.
+
+Menambah tes baru ke daftar `CEK` di `jalankan-semua.mjs`? Jangan pernah
+membuatnya membaca `tests/fixtures/` - gerbang harus tetap hijau di
+komputer mana pun.
 
 ## Bug nyata yang dicegah oleh cek ini
 

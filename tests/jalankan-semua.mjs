@@ -5,6 +5,11 @@
 //
 // KODE KELUAR: 0 bila semua lulus, 1 bila ada yang gagal. Semua tes di folder
 // ini sengaja tidak memakai framework: cukup `node <file>` tanpa dependensi.
+//
+// PENTING: gerbang ini harus tetap hijau di komputer mana pun tanpa perlu
+// snapshot produksi. Repo ini publik dan tests/fixtures/ di-gitignore, jadi
+// tidak ada tes di daftar CEK yang boleh membaca fixture. Tes yang memakai
+// data produksi ada di *.lokal.mjs dan dijalankan terpisah.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -18,6 +23,8 @@ const CEK = [
   { nama: 'pos-adapter',          file: 'pos-adapter.test.mjs',          soal: 'adapter POS->v2: deteksi, konversi, peta kanonik nama' },
   { nama: 'pos-laporan',          file: 'pos-laporan.test.mjs',          soal: 'laporan membaca baris v2 + gaya-POS dengan benar' },
   { nama: 'p2-nilai-stok',        file: 'p2-nilai-stok.test.mjs',        soal: 'Nilai Stok identik antara getProdukList dan getNilaiStok' },
+  { nama: 'kpi-credit-debit',     file: 'kpi-credit-debit.test.mjs',     soal: 'KPI Credit/Debit: kolom Jenis, klasifikasi, Laba Bersih (data karangan)' },
+  { nama: 'panel-kpi-cd',         file: 'panel-kpi-cd.test.mjs',         soal: 'panel peringatan baris Credit/Debit belum terkategori di dashboard' },
   { nama: 'perf-p1',              file: 'perf-p1.test.mjs',              soal: 'invariant performa frontend (satu panggilan per muat)' },
   { nama: 'login-theme',          file: 'login-theme.test.mjs',          soal: 'warna kartu login ikut tema terang/gelap' },
   { nama: 'responsive-mobile',    file: 'responsive-mobile.test.mjs',    soal: 'tata letak layar kecil' },
