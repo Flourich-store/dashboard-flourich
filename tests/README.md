@@ -62,20 +62,39 @@ Yang tetap hidup di komputer pemilik usaha tapi tidak ter-commit:
 | `tests/*.lokal.mjs` | tes yang datanya diturunkan dari snapshot produksi (angka asli) |
 | `tests/TEMUAN-AUDIT-JENIS.md` | catatan temuan audit |
 | daftar panjang di `.gitignore` | skrip hitung/cari-perbaikan yang isinya turunan data produksi |
+| `tests/audit-data-tertanam.mjs` | pemindai data bisnis; pola lawful-nya sendiri memuat angka asli |
 
-Dua alat bantu audits-nya sendiri tidak ikut ter-commit karena pola
-pencariannya memuat angka asli: `audit-data-tertanam.mjs` dan
-`pilah-commit.mjs`. `bukti-sintetis.lokal.mjs` membuktikannya dengan
-mencocokkan tiap sel dari ketiga snapshot ke isi dua tes sintetis:
+### Skrip diagnosis yang ter-commit tapi butuh fixture
+
+Keempat skrip berikut ikut ter-commit karena isinya bersih, tapi karena
+membaca `tests/fixtures/` mereka tidak bisa jalan di clone baru. Itu sebabnya
+mereka **tidak** didaftarkan di `CEK` pada `jalankan-semua.mjs`.
+
+| Berkas | Gunanya |
+| --- | --- |
+| `cari-cd.mjs` | Cari baris Credit/Debit yang memuat `<kata-kunci>`, lalu dump kolom lengkap. Kata kunci diambil dari argumen CLI dan **tidak pernah ditulis di dalam berkasnya** - kalau ditulis, nilai produksi ikut ter-push. |
+| `cek-ukuran-fixture.mjs` | Mengukur fixture: ukuran, jumlah baris, dan apakah isi hasil parse kembali sama persis. |
+| `diagnosa-indeks-cd.mjs` | Memetakan indeks kolom Credit/Debit lalu memeriksa apakah pembacaan di `Code.gs` cocok dengan header sebenarnya. |
+| `pilah-commit.mjs` | Menggolongkan skrip `tests/` menjadi AMAN / SUDAH TER-PUSH / RAHASIA. |
+
+`bukti-sintetis.lokal.mjs` dan `cek-sebelum-push.lokal.mjs` membuktikannya
+dengan mencocokkan isi skrip ke setiap sel dari ketiga snapshot:
 
 ```
+node tests/cek-sebelum-push.lokal.mjs                    # menyapu seluruh diff
+node tests/cek-sebelum-push.lokal.mjs -- tests/a.mjs     # menyapu berkas tertentu
 node tests/bukti-sintetis.lokal.mjs
 ```
 
 Hasilnya: **0 tanggal transaksi, 0 nominal transaksi** yang cocok. Yang
-cocok hanya kosakata skema (`CREDIT`, `Bahan Baku`, `Kemasan`, `Biaya
-Operasional`, `operasional`) yang definisinya sudah ada di `Code.gs` yang
-ter-push ke repo.
+cocok hanya kosakata skema (`CREDIT`, `Produk`) yang definisinya sudah ada
+di `Code.gs` yang ter-push ke repo.
+
+`cek-sebelum-push.lokal.mjs` wajib punya kontrol negatif sebelum dipakai
+menyimpulkan "bersih" - jalankan terhadap `origin/main` yang isinya sudah
+diketahui bocor, dan pastikan skrip itu melaporkan jumlah yang bukan 0. `git diff`
+buta terhadap berkas untracked, jadi skrip bisa membaca berkas langsung
+dengan mode `-- <berkas>`.
 
 Menambah tes baru ke daftar `CEK` di `jalankan-semua.mjs`? Jangan pernah
 membuatnya membaca `tests/fixtures/` - gerbang harus tetap hijau di
