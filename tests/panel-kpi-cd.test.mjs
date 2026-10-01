@@ -37,7 +37,8 @@ function benar(v, pesan) { if (!v) throw new Error(pesan || 'harus bernilai true
 // DOM palsu: hanya 7 elemen yang dipakai panel, tidak perlu realistis
 // ---------------------------------------------------------------
 const ID = ['kpiCdPeringatan', 'kpiCdPeringatanJudul', 'kpiCdPeringatanTeks',
-  'kpiCdRincian', 'kpiCdRincianJudul', 'kpiCdRincianTbody', 'kpiCdRincianFoot'];
+  'kpiCdRincian', 'kpiCdRincianJudul', 'kpiCdRincianTbody', 'kpiCdRincianFoot',
+  'kpiCdRincianTbody-paginasi'];
 function elemenPalsu() {
   return { _html: '', _text: '', hidden: true,
     set innerHTML(v) { this._html = String(v); }, get innerHTML() { return this._html; },
@@ -66,8 +67,18 @@ function muatPanel() {
     .find((b) => b.includes('function renderPeringatanKpiCd'));
   if (!blok) throw new Error('blok script yang memuat renderPeringatanKpiCd tidak ada');
 
-  const konstanta = blok.slice(blok.indexOf('var ALASAN_CD'), blok.indexOf('var ALASAN_CD'))
-    + blok.slice(blok.indexOf('var ALASAN_CD'), blok.indexOf('\n', blok.indexOf('var BATAS_RINCIAN_CD')));
+  // Potong satu deklarasi var utuh (dari penanda sampai akhir baris `sampai`).
+  const potongVar = (penanda, sampai) => {
+    const i = blok.indexOf(penanda);
+    if (i < 0) throw new Error('deklarasi tidak ada di HTML: ' + penanda);
+    const j = blok.indexOf('\n', blok.indexOf(sampai, i));
+    if (j < 0) throw new Error('batas deklarasi tidak ditemukan: ' + sampai);
+    return blok.slice(i, j + 1);
+  };
+
+  const konstanta =
+    potongVar('var PAGINASI_BARIS_PER_HALAMAN', 'var paginasiState') + '\n'
+    + potongVar('var ALASAN_CD', 'var BATAS_RINCIAN_CD');
 
   const dom = {};
   ID.forEach((id) => { dom[id] = elemenPalsu(); });
@@ -84,6 +95,15 @@ function muatPanel() {
     // escapeHtml ASLI dari HTML, bukan stub: supaya tes ini benar-benar
     // membuktikan markup di data tidak lolos jadi HTML.
     + potongFungsi(blok, 'function escapeHtml') + '\n'
+    // Helper paginasi ikut dimuat: renderPeringatanKpiCd mengisi rinciannya
+    // lewat paginasiSet, dan reset-nya lewat isiTbody.
+    + potongFungsi(blok, 'function isiTbody') + '\n'
+    + potongFungsi(blok, 'function paginasiSet') + '\n'
+    + potongFungsi(blok, 'function paginasiRender') + '\n'
+    + potongFungsi(blok, 'function paginasiKe') + '\n'
+    + potongFungsi(blok, 'function paginasiLangkah') + '\n'
+    + potongFungsi(blok, 'function paginasiKontrol') + '\n'
+    + potongFungsi(blok, 'function barisRincian') + '\n'
     + potongFungsi(blok, 'function renderPeringatanKpiCd') + '\n'
     + potongFungsi(blok, 'function resetPeringatanKpiCd'), ctx, { filename: 'panel-cd.js' });
   return { ctx, dom };

@@ -25,6 +25,7 @@ const CEK = [
   { nama: 'p2-nilai-stok',        file: 'p2-nilai-stok.test.mjs',        soal: 'Nilai Stok identik antara getProdukList dan getNilaiStok' },
   { nama: 'kpi-credit-debit',     file: 'kpi-credit-debit.test.mjs',     soal: 'KPI Credit/Debit: kolom Jenis, klasifikasi, Laba Bersih (data karangan)' },
   { nama: 'panel-kpi-cd',         file: 'panel-kpi-cd.test.mjs',         soal: 'panel peringatan baris Credit/Debit belum terkategori di dashboard' },
+  { nama: 'paginasi',             file: 'paginasi.test.mjs',             soal: 'paginasi tabel: 20 baris/halaman, reset saat filter berubah (data karangan)' },
   { nama: 'perf-p1',              file: 'perf-p1.test.mjs',              soal: 'invariant performa frontend (satu panggilan per muat)' },
   { nama: 'login-theme',          file: 'login-theme.test.mjs',          soal: 'warna kartu login ikut tema terang/gelap' },
   { nama: 'responsive-mobile',    file: 'responsive-mobile.test.mjs',    soal: 'tata letak layar kecil' },

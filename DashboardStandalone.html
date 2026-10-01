@@ -3407,9 +3407,89 @@
       font-weight: 700;
       white-space: nowrap;
     }
+
+    /* ============================================================
+       PAGINASI TABEL
+       Sifatnya murni tampilan: data di memori tetap utuh, yang dipotong
+       hanyalah baris yang dirender ke DOM. Export CSV membaca dari
+       memori, jadi tidak pernah terbatas halaman aktif.
+
+       WARNA: semua lewat variabel tema (--text-primary, --bg-surface,
+       dst). JANGAN menaruh hex/rgb() di sini - begitulah bug theming
+       yang dulu membuat tombol tampak bening di mode gelap.
+       ============================================================ */
+    .paginasi {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-sm);
+    }
+    /* Total baris muat satu halaman -> wadah dibiarkan benar-benar kosong,
+       lalu bungkusnya sembunyi sendiri. Jangan diisi spasi atau komentar,
+       aturan :empty tidak akan cocok. */
+    .paginasi:empty { display: none; }
+
+    .paginasi--dalam {
+      /* varian untuk dipasang di dalam kartu yang sudah punya bingkai */
+      margin-top: 0;
+      padding: 9px 12px;
+      background: transparent;
+      border: 0;
+      border-top: 1px solid var(--border-color);
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .paginasi-info { white-space: nowrap; }
+    .paginasi-grup {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .paginasi-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .paginasi-btn:hover:not(:disabled) {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+    .paginasi-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .paginasi-btn:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px var(--focus-glow);
+    }
+    .paginasi-halaman {
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
     @media (max-width: 640px) {
       .cd-warn { padding: 10px 12px; }
       .cd-warn-text { font-size: 0.82rem; }
+      /* kontrol tetap terlihat di layar ponsel - dibungkus, bukan disembunyikan */
+      .paginasi { justify-content: center; gap: 8px; }
+      .paginasi-info { width: 100%; text-align: center; }
     }
   </style>
 
@@ -3727,6 +3807,10 @@
             </tbody>
           </table>
         </div>
+        <!-- Kontrol halaman. Sengaja di LUAR .table-responsive (yang punya
+             overflow-x:auto): kalau di dalam, di layar kecil kontrol ikut
+             bergeser mengikuti scroll horizontal tabel dan bisa lenyap. -->
+        <div class="paginasi" id="cdTbody-paginasi"></div>
 
         <!-- Rincian baris yang kolom Jenisnya tidak bisa dipetakan ke
              kategori mana pun. Diisi dari laporan periode Overview; kalau
@@ -3755,6 +3839,8 @@
               </table>
             </div>
             <div class="cd-warn-foot" id="kpiCdRincianFoot"></div>
+            <!-- varian --dalam: kartu ini sudah punya bingkai sendiri -->
+            <div class="paginasi paginasi--dalam" id="kpiCdRincianTbody-paginasi"></div>
           </div>
         </div>
       </section>
@@ -3794,6 +3880,8 @@
             </tbody>
           </table>
         </div>
+        <!-- di luar .table-responsive, lihat catatan di tab Catatan Keuangan -->
+        <div class="paginasi" id="tabelData-paginasi"></div>
       </section>
 
       <section id="section-produk" class="content-section">
@@ -4914,7 +5002,7 @@
       reportLoading = true;
       setButtonsDisabled(true);
 
-      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
+      isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
       document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
 
       safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
@@ -4931,7 +5019,7 @@
           updateKPI(res);
         } else {
           showToast(res.message || 'Gagal memuat laporan', 'error');
-          document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
+          isiTbody('tabelData', '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>');
           // Jangan biarkan peringatan periode lama tetap tampil setelah gagal muat.
           resetPeringatanKpiCd();
         }
@@ -4941,37 +5029,143 @@
       });
     }
 
-    function renderReport(res) {
-      var tbody = document.getElementById('tabelData');
-      var data = res.data || [];
+    // ============================================================
+    // PAGINASI TABEL
+    // ============================================================
+    // Sifatnya MURNI tampilan. Data di memori selalu diambil utuh; yang
+    // dipotong hanya baris yang dirender ke DOM. Karena export CSV membaca
+    // dari memori (bukan dari baris tampil), ia tetap mengeluarkan seluruh
+    // baris terfilter - paginasi tidak pernah memotongnya.
+    //
+    // paginasiSet SELALU mengembalikan halaman ke 1. Itu yang menjamin
+    // klik "Tampilkan" dengan filter baru tidak meninggalkan user di
+    // halaman terakhir milik filter sebelumnya.
+    var PAGINASI_BARIS_PER_HALAMAN = 20;
+    var paginasiState = {};
 
-      if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tidak ada data untuk ditampilkan.</td></tr>';
+    // Ditulis langsung ke tbody TANPA paginasi: untuk pesan loading, kosong,
+    // error, dan reset. Turut membuang state + panel kontrol, supaya tombol
+    // halaman dari render sebelumnya tidak tertinggal menempel di samping
+    // pesan "Gagal memuat data".
+    function isiTbody(tbodyId, html) {
+      var el = document.getElementById(tbodyId);
+      if (el) el.innerHTML = html;
+      var panel = document.getElementById(tbodyId + '-paginasi');
+      if (panel) panel.innerHTML = '';
+      delete paginasiState[tbodyId];
+    }
+
+    // opsional.kosong = markup yang ditulis ke tbody bila data kosong.
+    function paginasiSet(tbodyId, data, renderBaris, opsional) {
+      paginasiState[tbodyId] = {
+        data: data || [],
+        renderBaris: renderBaris,
+        kosong: (opsional && opsional.kosong) || '',
+        halaman: 1,                       // selalu kembali ke awal
+        batas: PAGINASI_BARIS_PER_HALAMAN
+      };
+      paginasiRender(tbodyId);
+    }
+
+    function paginasiRender(tbodyId) {
+      var st = paginasiState[tbodyId];
+      var tbody = document.getElementById(tbodyId);
+      if (!st || !tbody) return;
+      var panel = document.getElementById(tbodyId + '-paginasi');
+
+      var total = st.data.length;
+      // Muat satu halaman -> tidak ada kendali yang perlu ditampilkan.
+      if (total <= st.batas) {
+        tbody.innerHTML = total === 0
+          ? st.kosong
+          : st.data.map(st.renderBaris).join('');
+        if (panel) panel.innerHTML = '';
         return;
       }
 
-      var html = '';
-      for (var i = 0; i < data.length; i++) {
-        var row = data[i];
-        var metRaw = String(row.metode || '').trim();
-        var isQris = metRaw.toUpperCase().indexOf('QR') !== -1;
-        var isCash = metRaw.toUpperCase() === 'CASH';
-        // Metode kosong = tidak tercatat oleh POS: tampil netral, jangan dipaksa Cash.
-        var mBadge = isQris
-          ? '<span class="badge badge-qris"><i class="fa-solid fa-qrcode"></i> QRIS</span>'
-          : (isCash
-            ? '<span class="badge badge-cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>'
-            : '<span class="badge badge-cash"><i class="fa-solid fa-circle-question"></i> -</span>');
-        html += '<tr>' +
-          '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
-          '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
-          '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
-          '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
-          '<td><b style="color:var(--text-primary);">' + formatIDR(row.total || 0) + '</b></td>' +
-          '<td>' + mBadge + '</td>' +
-          '</tr>';
+      var totalHalaman = Math.ceil(total / st.batas);
+      if (st.halaman > totalHalaman) st.halaman = totalHalaman;
+      if (st.halaman < 1) st.halaman = 1;
+
+      var mulai = (st.halaman - 1) * st.batas;
+      var irisan = st.data.slice(mulai, mulai + st.batas);
+      tbody.innerHTML = irisan.map(st.renderBaris).join('');
+      if (panel) {
+        panel.innerHTML = paginasiKontrol(
+          tbodyId, st.halaman, totalHalaman, mulai, irisan.length, total);
       }
-      tbody.innerHTML = html;
+    }
+
+    // Dipanggil dari panel kontrol yang sudah ada (bukan tombol statis di
+    // dalam baris), jadi aman dipakai untuk tabel dengan jumlah baris apa
+    // pun - tidak peduli ada dua puluh lima atau puluhan ribu baris.
+    function paginasiKe(tbodyId, halaman) {
+      var st = paginasiState[tbodyId];
+      if (!st) return;
+      var n = parseInt(halaman, 10);
+      if (!isFinite(n)) n = 1;
+      // Dijepit ke rentang yang sah sebagai jaring pengaman. Pemanggil
+      // internal bisa membawa nomor halaman yang sudah basi (misal saat
+      // dataset berubah), dan angka cacat harus jatuh ke halaman pertama.
+      var totalHalaman = Math.max(1, Math.ceil(st.data.length / st.batas));
+      st.halaman = Math.min(totalHalaman, Math.max(1, n));
+      paginasiRender(tbodyId);
+    }
+
+    function paginasiLangkah(tbodyId, delta) {
+      var st = paginasiState[tbodyId];
+      if (!st) return;
+      paginasiKe(tbodyId, st.halaman + delta);
+    }
+
+    function paginasiKontrol(tbodyId, halaman, totalHalaman, mulai, jumlah, total) {
+      var awal = halaman <= 1 ? ' disabled' : '';
+      var akhir = halaman >= totalHalaman ? ' disabled' : '';
+      // Ringkasan dihitung dari data di MEMORI (total), bukan dari baris
+      // yang sedang tampil di layar.
+      var html = '<div class="paginasi-info">Menampilkan ' + (mulai + 1) +
+        '&#8211;' + (mulai + jumlah) + ' dari ' + total + ' baris</div>';
+
+      // Sederhana saja: Sebelumnya - halaman - Selanjutnya. Tanpa lompat
+      // manual, tanpa tombol ke awal/akhir: lebih mudah dipahami dan selalu
+      // muat satu baris.
+      html += '<div class="paginasi-grup">' +
+        '<button type="button" class="paginasi-btn"' + awal +
+        ' onclick="paginasiLangkah(\'' + tbodyId + '\',-1)">Sebelumnya</button>' +
+        '<span class="paginasi-halaman">Halaman ' + halaman + ' / ' + totalHalaman + '</span>' +
+        '<button type="button" class="paginasi-btn"' + akhir +
+        ' onclick="paginasiLangkah(\'' + tbodyId + '\',1)">Selanjutnya</button>' +
+        '</div>';
+
+      return html;
+    }
+
+    // Satu baris tabel penjualan. Pemisahan dari renderReport supaya bisa
+    // diserahkan ke paginasiSet: hanya halaman aktif yang dipanggil.
+    function barisPenjualan(row) {
+      var metRaw = String(row.metode || '').trim();
+      var isQris = metRaw.toUpperCase().indexOf('QR') !== -1;
+      var isCash = metRaw.toUpperCase() === 'CASH';
+      // Metode kosong = tidak tercatat oleh POS: tampil netral, jangan dipaksa Cash.
+      var mBadge = isQris
+        ? '<span class="badge badge-qris"><i class="fa-solid fa-qrcode"></i> QRIS</span>'
+        : (isCash
+          ? '<span class="badge badge-cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>'
+          : '<span class="badge badge-cash"><i class="fa-solid fa-circle-question"></i> -</span>');
+      return '<tr>' +
+        '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+        '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
+        '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
+        '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
+        '<td><b style="color:var(--text-primary);">' + formatIDR(row.total || 0) + '</b></td>' +
+        '<td>' + mBadge + '</td>' +
+        '</tr>';
+    }
+
+    function renderReport(res) {
+      paginasiSet('tabelData', res.data || [], barisPenjualan, {
+        kosong: '<tr><td colspan="6" class="empty-text">Tidak ada data untuk ditampilkan.</td></tr>'
+      });
     }
 
     function loadSalesByDateRange() {
@@ -4998,14 +5192,13 @@
         return;
       }
 
-      var tbody = document.getElementById('tabelData');
-      tbody.innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>';
+      isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
       safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
           renderReport(res);
         } else {
-          tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data penjualan</td></tr>';
+          isiTbody('tabelData', '<tr><td colspan="6" class="empty-text">Gagal memuat data penjualan</td></tr>');
           showToast((res && res.message) || 'Gagal memuat data penjualan', 'error');
         }
       });
@@ -5015,7 +5208,7 @@
       var today = getTodayISO();
       document.getElementById('salesStartDate').value = today;
       document.getElementById('salesEndDate').value = today;
-      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode tanggal dan klik "Tampilkan"</td></tr>';
+      isiTbody('tabelData', '<tr><td colspan="6" class="empty-text">Pilih periode tanggal dan klik "Tampilkan"</td></tr>');
     }
 
     function renderTopProducts(topProducts) {
@@ -5289,7 +5482,7 @@
       if (breakdown) {
         // Rincian per baris tidak bisa ditampilkan kalau yang terjadi adalah
         // kegagalan baca / kolom hilang - bukan daftar baris tertentu.
-        rincianTbody.innerHTML = '';
+        isiTbody('kpiCdRincianTbody', '');
         rincianFoot.innerHTML = '';
         rincian.hidden = true;
         rincianJudul.textContent = 'Rincian baris belum terkategori';
@@ -5299,22 +5492,7 @@
       // --- Rincian per baris ---
       if (baris.length) {
         var tampil = baris.slice(0, BATAS_RINCIAN_CD);
-        var html = '';
-        for (var i = 0; i < tampil.length; i++) {
-          var b = tampil[i];
-          var jenisTxt = String(b.jenis || '').trim();
-          var alasan = ALASAN_CD[b.alasan] || String(b.alasan || 'Tidak diketahui');
-          html += '<tr>' +
-            '<td>' + escapeHtml(b.tanggal || '-') + '</td>' +
-            '<td>' + escapeHtml(b.tipe || '-') + '</td>' +
-            '<td>' + escapeHtml(b.kategori || '-') + '</td>' +
-            '<td>' + escapeHtml(b.deskripsi || '-') + '</td>' +
-            '<td class="hide-mobile">' + escapeHtml(jenisTxt || '(kosong)') + '</td>' +
-            '<td><b>' + formatIDR(b.nominal || 0) + '</b></td>' +
-            '<td><span class="cd-alasan">' + escapeHtml(alasan) + '</span></td>' +
-            '</tr>';
-        }
-        rincianTbody.innerHTML = html;
+        paginasiSet('kpiCdRincianTbody', tampil, barisRincian);
         rincianJudul.textContent = baris.length + ' baris belum terkategori - total ' +
           formatIDR(belumMasuk) + ' belum masuk Laba Bersih';
         var sisanya = baris.length - tampil.length;
@@ -5328,11 +5506,27 @@
       } else {
         // Kosongkan juga judulnya, bukan hanya tbody/foot: kalau panel suatu
         // saat dibuka tanpa render baru, teks periode lama akan tampil.
-        rincianTbody.innerHTML = '';
+        isiTbody('kpiCdRincianTbody', '');
         rincianFoot.innerHTML = '';
         rincian.hidden = true;
         rincianJudul.textContent = 'Rincian baris belum terkategori';
       }
+    }
+
+    // Satu baris rincian Credit/Debit - dipisah dari renderPeringatanKpiCd
+    // supaya bisa diserahkan ke paginasiSet.
+    function barisRincian(b) {
+      var jenisTxt = String(b.jenis || '').trim();
+      var alasan = ALASAN_CD[b.alasan] || String(b.alasan || 'Tidak diketahui');
+      return '<tr>' +
+        '<td>' + escapeHtml(b.tanggal || '-') + '</td>' +
+        '<td>' + escapeHtml(b.tipe || '-') + '</td>' +
+        '<td>' + escapeHtml(b.kategori || '-') + '</td>' +
+        '<td>' + escapeHtml(b.deskripsi || '-') + '</td>' +
+        '<td class="hide-mobile">' + escapeHtml(jenisTxt || '(kosong)') + '</td>' +
+        '<td><b>' + formatIDR(b.nominal || 0) + '</b></td>' +
+        '<td><span class="cd-alasan">' + escapeHtml(alasan) + '</span></td>' +
+        '</tr>';
     }
 
     function resetPeringatanKpiCd() {
@@ -5341,14 +5535,14 @@
       var teks = document.getElementById('kpiCdPeringatanTeks');
       var rincian = document.getElementById('kpiCdRincian');
       var rincianJudul = document.getElementById('kpiCdRincianJudul');
-      var tbody = document.getElementById('kpiCdRincianTbody');
       var foot = document.getElementById('kpiCdRincianFoot');
       if (kotak) kotak.hidden = true;
       if (judul) judul.innerHTML = 'Baris Credit/Debit belum terkategori';
       if (teks) teks.innerHTML = '';
       if (rincian) rincian.hidden = true;
       if (rincianJudul) rincianJudul.textContent = 'Rincian baris belum terkategori';
-      if (tbody) tbody.innerHTML = '';
+      // isiTbody juga membuang kontrol halamannya.
+      isiTbody('kpiCdRincianTbody', '');
       if (foot) foot.innerHTML = '';
     }
 
@@ -6016,7 +6210,7 @@
         return;
       }
 
-      document.getElementById('cdTbody').innerHTML = '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
+      isiTbody('cdTbody', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>');
 
       safeGoogleRun('getCreditDebitByRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
@@ -6024,31 +6218,31 @@
           renderCreditDebit(cachedCD);
         } else {
           showToast(res.message || 'Gagal memuat data keuangan', 'error');
-          document.getElementById('cdTbody').innerHTML = '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>';
+          isiTbody('cdTbody', '<tr><td colspan="6" class="empty-text">Gagal memuat data</td></tr>');
         }
       });
     }
 
-    function renderCreditDebit(data) {
-      const tbody = document.getElementById('cdTbody');
-      if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-text">Tidak ada data pada periode ini</td></tr>';
-        return;
-      }
+    // Satu baris tabel Credit/Debit - dipisah supaya bisa diserahkan ke
+    // paginasiSet (hanya halaman aktif yang dirender).
+    function barisCreditDebit(row) {
+      var isCredit = String(row.tipe || '').toUpperCase() === 'CREDIT';
+      var badgeClass = isCredit ? 'badge badge-credit' : 'badge badge-debit';
+      var nominalClass = isCredit ? 'nominal-credit' : 'nominal-debit';
+      return '<tr>' +
+        '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+        '<td><span class="' + badgeClass + '">' + escapeHtml(row.tipe || 'DEBIT') + '</span></td>' +
+        '<td>' + escapeHtml(row.kategori || '-') + '</td>' +
+        '<td>' + escapeHtml(row.deskripsi || '-') + '</td>' +
+        '<td>' + escapeHtml(row.metodePembayaran || '-') + '</td>' +
+        '<td class="' + nominalClass + '" style="font-weight:800;">' + formatIDR(row.nominal || 0) + '</td>' +
+        '</tr>';
+    }
 
-      tbody.innerHTML = data.map(function (row) {
-        var isCredit = String(row.tipe || '').toUpperCase() === 'CREDIT';
-        var badgeClass = isCredit ? 'badge badge-credit' : 'badge badge-debit';
-        var nominalClass = isCredit ? 'nominal-credit' : 'nominal-debit';
-        return '<tr>' +
-          '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
-          '<td><span class="' + badgeClass + '">' + escapeHtml(row.tipe || 'DEBIT') + '</span></td>' +
-          '<td>' + escapeHtml(row.kategori || '-') + '</td>' +
-          '<td>' + escapeHtml(row.deskripsi || '-') + '</td>' +
-          '<td>' + escapeHtml(row.metodePembayaran || '-') + '</td>' +
-          '<td class="' + nominalClass + '" style="font-weight:800;">' + formatIDR(row.nominal || 0) + '</td>' +
-          '</tr>';
-      }).join('');
+    function renderCreditDebit(data) {
+      paginasiSet('cdTbody', data || [], barisCreditDebit, {
+        kosong: '<tr><td colspan="6" class="empty-text">Tidak ada data pada periode ini</td></tr>'
+      });
     }
 
     function aksiAddCreditDebit() {
@@ -6106,12 +6300,12 @@
       document.getElementById("cdEndDate").value = "";
 
       cachedCD = [];
-      document.getElementById("cdTbody").innerHTML =
+      isiTbody('cdTbody',
         `<tr>
           <td colspan="6" class="empty-text">
             Pilih periode dan klik "Tampilkan"
           </td>
-        </tr>`;
+        </tr>`);
     }
 
     // ============================================================
@@ -6604,7 +6798,7 @@
       resetPeringatanKpiCd();
       var chips = document.querySelectorAll('#heroPresets .chip');
       for (var ci = 0; ci < chips.length; ci++) chips[ci].classList.remove('chip-active');
-      document.getElementById('tabelData').innerHTML = '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>';
+      isiTbody('tabelData', '<tr><td colspan="6" class="empty-text">Pilih periode dan klik "Tampilkan"</td></tr>');
       document.getElementById('topProductsBody').innerHTML = '<div class="rank-empty">Pilih periode dan klik "Tampilkan"</div>';
       document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
       trendRows = [];
