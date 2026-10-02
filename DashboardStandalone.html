@@ -5443,6 +5443,15 @@
       var r = (res && res.rincianCreditDebit) || {};
       var baris = (res && res.perluTindakLanjut) || [];
       var belumMasuk = Number(r.tidakDikenali || 0);
+      var pendanaanModal = Number(r.pendanaanModal || 0);
+      // Catatan pendanaan: baris "Uang Modal" / "Pengembalian uang modal"
+      // sudah diklasifikasi di backend (PENDANAAN_MODAL) dan sengaja TIDAK
+      // dihitung sebagai Biaya Operasional. Nominalnya ditampilkan netral
+      // supaya tetap terlihat, bukan hilang diam-diam, tanpa terkesan laba
+      // terselubung atau bermasalah.
+      var catatanPendanaan = pendanaanModal > 0
+        ? '<b>' + formatIDR(pendanaanModal) + '</b> tercatat sebagai <b>Pengembalian uang modal</b> (pendanaan pemilik). Sengaja TIDAK dihitung sebagai Biaya Operasional, jadi tidak memengaruhi Laba Bersih.'
+        : '';
 
       // Kasus gagal baca / kolom Jenis hilang: ini kondisi breakdown, bukan
       // "semua beres". Nominal tidak bisa dihitung sama sekali.
@@ -5465,6 +5474,7 @@
             'Bahan Baku / Kemasan / Pendapatan Lain / Campuran), lalu muat ulang laporan.';
         }
         kotak.hidden = false;
+        if (catatanPendanaan) teks.innerHTML += '<br>' + catatanPendanaan;
       } else if (baris.length) {
         judul.innerHTML = baris.length + ' baris Credit/Debit belum terkategori';
         teks.innerHTML = '<b>' + formatIDR(belumMasuk) + '</b> belum masuk Laba Bersih ' +
@@ -5472,12 +5482,13 @@
           'Baris ini tidak diasumsikan masuk kategori mana pun - ' +
           'lihat rinciannya di tab <b>Catatan Keuangan</b>.';
         kotak.hidden = false;
+        if (catatanPendanaan) teks.innerHTML += '<br>' + catatanPendanaan;
       } else {
-        // Semua baris punya Jenis yang dikenali: sembunyikan, jangan
-        // menampilkan peringatan palsu.
-        kotak.hidden = true;
-        judul.innerHTML = 'Baris Credit/Debit belum terkategori';
-        teks.innerHTML = '';
+        // Semua baris punya Jenis yang dikenali. Kalau ada catatan
+        // pendanaan modal, tampilkan netral; kalau tidak, sembunyikan.
+        kotak.hidden = !catatanPendanaan;
+        judul.innerHTML = catatanPendanaan ? 'Catatan Credit/Debit periode ini' : 'Baris Credit/Debit belum terkategori';
+        teks.innerHTML = catatanPendanaan;
       }
       if (breakdown) {
         // Rincian per baris tidak bisa ditampilkan kalau yang terjadi adalah

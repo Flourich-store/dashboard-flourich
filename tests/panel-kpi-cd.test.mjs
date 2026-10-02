@@ -273,6 +273,44 @@ uji('jumlah baris yang ditampilkan = jumlah baris bermasalah', () => {
   eq(TOTAL_MASALAH, banyak.reduce((s, b) => s + b.nominal, 0), 'total nominal payload harus cocok dengan isi baris');
 });
 
+// ---------------------------------------------------------------
+// Pendanaan modal: baris "Uang Modal" / "Pengembalian uang modal"
+// sudah diklasifikasi di backend (PENDANAAN_MODAL). Panel harus
+// menampilkannya sebagai CATATAN NETRAL (nominalnya tetap terlihat,
+// jangan hilang diam-diam) - bukan peringatan "belum terkategori".
+uji('catatan pendanaan modal: tampil netral tanpa baris bermasalah', () => {
+  const { ctx, dom } = muatPanel();
+  ctx.renderPeringatanKpiCd({
+    rincianCreditDebit: { tidakDikenali: 0, pendanaanModal: 3600137, kolomJenisHilang: false, gagalDibaca: false },
+    perluTindakLanjut: [],
+  });
+  benar(dom.kpiCdPeringatan.hidden === false, 'catatan pendanaan harus tampil');
+  benar(dom.kpiCdPeringatanJudul.innerHTML.includes('Catatan'), 'judul harus netral: ' + dom.kpiCdPeringatanJudul.innerHTML);
+  benar(!dom.kpiCdPeringatanJudul.innerHTML.includes('belum terkategori'), 'judul tidak boleh jadi peringatan: ' + dom.kpiCdPeringatanJudul.innerHTML);
+  benar(dom.kpiCdPeringatanTeks.innerHTML.includes('Rp3.600.137'), 'nominal pendanaan tidak disebut');
+  benar(dom.kpiCdPeringatanTeks.innerHTML.includes('TIDAK dihitung'), 'penjelasan tidak dihitung sebagai biaya tidak ada');
+  benar(dom.kpiCdRincian.hidden === true, 'tabel rincian baris bermasalah tidak boleh tampil');
+  eq(dom.kpiCdRincianTbody.innerHTML, '', 'tbody harus kosong');
+});
+
+uji('catatan pendanaan modal menyatu dengan peringatan baris bermasalah', () => {
+  const { ctx, dom } = muatPanel();
+  const payload = JSON.parse(JSON.stringify(PAYLOAD_KARANGAN));
+  payload.rincianCreditDebit.pendanaanModal = 900013;
+  ctx.renderPeringatanKpiCd(payload);
+  const t = dom.kpiCdPeringatanTeks.innerHTML;
+  benar(t.includes('Rp43.800'), 'peringatan utama hilang: ' + t);
+  benar(t.includes('Rp900.013'), 'catatan pendanaan tidak menyatu: ' + t);
+  benar(dom.kpiCdPeringatanJudul.innerHTML.includes('4 baris'), 'judul peringatan utama berubah: ' + dom.kpiCdPeringatanJudul.innerHTML);
+});
+
+uji('tanpa pendanaan: perilaku lama dipertahankan (panel disembunyikan)', () => {
+  const { ctx, dom } = muatPanel();
+  ctx.renderPeringatanKpiCd({ rincianCreditDebit: { tidakDikenali: 0, kolomJenisHilang: false, gagalDibaca: false }, perluTindakLanjut: [] });
+  benar(dom.kpiCdPeringatan.hidden === true, 'panel tidak boleh tampil tanpa alasan');
+  eq(dom.kpiCdPeringatanJudul.innerHTML, 'Baris Credit/Debit belum terkategori', 'judul default berubah');
+});
+
 // ---------- ringkasan ----------
 console.log('');
 if (gagal.length) {

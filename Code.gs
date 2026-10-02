@@ -902,6 +902,7 @@ function getReportByDateRange(token, startDate, endDate) {
     var pendapatanLain = 0;
     var inventori = 0;
     var campuran = 0;
+    var pendanaanModal = 0;
     var tidakDikenali = 0;
     var perluTindakLanjut = [];
     var kolomJenisHilang = false;
@@ -916,6 +917,7 @@ function getReportByDateRange(token, startDate, endDate) {
       pendapatanLain = aggCd.pendapatanLain;
       inventori = aggCd.inventori;
       campuran = aggCd.campuran;
+      pendanaanModal = aggCd.pendanaanModal;
       tidakDikenali = aggCd.tidakDikenali;
       perluTindakLanjut = aggCd.tidakDikenaliDetail;
       kolomJenisHilang = aggCd.kolomJenisHilang;
@@ -991,6 +993,7 @@ function getReportByDateRange(token, startDate, endDate) {
       rincianCreditDebit: {
         inventori: inventori,
         campuran: campuran,
+        pendanaanModal: pendanaanModal,
         tidakDikenali: tidakDikenali,
         kolomJenisHilang: kolomJenisHilang,
         gagalDibaca: cdGagalDibaca
@@ -1958,12 +1961,15 @@ function _readCreditDebitItems(ss, startDate, endDate) {
 //   Laba Bersih        = Penjualan Bersih - HPP
 //                        + Pendapatan Lain - Biaya Operasional - Beban Non-Operasional
 //
-// TIGA BUCKET YANG SENGAJA TIDAK MASUK RUMUS:
+// EMPAT BUCKET YANG SENGAJA TIDAK MASUK RUMUS:
 //   BAHAN_BAKU / KEMASAN -> INVENTORI. Sudah tercakup di HPP produk terjual
 //     (sudah dikonfirmasi pemilik usaha). Kalau ikut dikurangi lagi, laba
 //     dobel hapus sebesar total pembelian bahan baku + kemasan periode itu.
 //   CAMPURAN             -> belum bisa dipecah per item, nominal tidak
 //     terbagi. Tidak boleh diasumsikan masuk kategori manapun.
+//   PENDANAAN_MODAL      -> CREDIT berlabel "Uang Modal" / "Pengembalian uang
+//     modal" (keputusan pemilik 2026-10-02): dana kembali ke pemilik
+//     (drawings), bukan beban usaha. Dilaporkan terpisah di dashboard.
 //   TIDAK_DIKENAL        -> Jenis kosong / nilai lama ("operasional") yang
 //     tidak punyapadanan di skema baru. Dilaporkan eksplisit ke dashboard.
 //
@@ -1988,6 +1994,9 @@ function _peranBarisCd(jenis, tipe) {
   if (t === 'CREDIT' && j === 'NON_OPERASIONAL') return 'NON_OPERASIONAL';
   if (t === 'DEBIT' && j === 'PENDAPATAN_LAIN') return 'PENDAPATAN_LAIN';
   if (t === 'CREDIT' && (j === 'BAHAN_BAKU' || j === 'KEMASAN')) return 'INVENTORI';
+  // Uang Modal / Pengembalian uang modal = dana kembali ke pemilik
+  // (drawings), bukan beban usaha. Lengkapnya lihat komentar RUMUS KPI.
+  if (t === 'CREDIT' && (j === 'UANG_MODAL' || j === 'PENGEMBALIAN_UANG_MODAL' || j === 'PENGEMBALIAN_MODAL')) return 'PENDANAAN_MODAL';
   if (t === 'CREDIT' && j === 'CAMPURAN') return 'CAMPURAN';
   return 'TIDAK_DIKENAL';
 }
@@ -2020,6 +2029,7 @@ function _agregasiKpiCd(cdItems, startKey, endKey, prevStartKey, prevEndKey) {
     bebanNonOperasional: 0,
     pendapatanLain: 0,
     inventori: 0,
+    pendanaanModal: 0,
     campuran: 0,
     tidakDikenali: 0,
     tidakDikenaliDetail: [],
@@ -2056,6 +2066,9 @@ function _agregasiKpiCd(cdItems, startKey, endKey, prevStartKey, prevEndKey) {
     } else if (peran === 'INVENTORI') {
       // HAPUS dari rumus. Disimpan hanya untuk laporan/audit.
       if (inCur) a.inventori += v;
+    } else if (peran === 'PENDANAAN_MODAL') {
+      // Pendanaan pemilik bukan beban - disimpan hanya untuk rekonsiliasi.
+      if (inCur) a.pendanaanModal += v;
     } else if (peran === 'CAMPURAN') {
       if (inCur) a.campuran += v;
     } else {

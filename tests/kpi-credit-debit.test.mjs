@@ -264,6 +264,12 @@ const MATRIX = [
   ['DEBIT', '', 'TIDAK_DIKENAL', 'DEBIT tanpa jenis tidak boleh jadi pendapatan lain'],
   ['DEBIT', 'NON_OPERASIONAL', 'TIDAK_DIKENAL', 'hanya DEBIT+PENDAPATAN_LAIN yang jadi pendapatan lain'],
   ['CREDIT', 'PENDAPATAN_LAIN', 'TIDAK_DIKENAL', 'CREDIT bukan pendapatan lain'],
+  ['CREDIT', 'Uang Modal', 'PENDANAAN_MODAL', 'pengembalian modal pemilik, bukan beban usaha'],
+  ['CREDIT', 'uang modal', 'PENDANAAN_MODAL', 'variasi huruf kecil'],
+  ['CREDIT', 'Pengembalian uang modal', 'PENDANAAN_MODAL', 'varian label "pengembalian"'],
+  ['CREDIT', 'UANG_MODAL', 'PENDANAAN_MODAL', 'sudah underscore'],
+  ['DEBIT', 'Uang Modal', 'TIDAK_DIKENAL', 'DEBIT + uang modal tidak boleh jadi apa pun'],
+  ['CREDIT', 'Modal Usaha', 'TIDAK_DIKENAL', 'label lain tetap tidak dikenal (konservatif)'],
 ];
 for (const [tipe, jenis, harap, alasan] of MATRIX) {
   uji(tipe + ' + "' + jenis + '" -> ' + harap, () => eq(peran(jenis, tipe), harap, alasan));
@@ -548,6 +554,58 @@ uji('tanggal tidak terbaca tetap dilewati, bukan jadi tanggal palsu', () => {
 uji('tanggal tiap baris karangan terbaca sesuai yang ditulis', () => {
   eq(itemsRapi[0].tanggal, '2024-03-05', 'baris pertama');
   eq(itemsRapi[BARIS_CD.length - 1].tanggal, '2024-08-08', 'baris terakhir');
+});
+
+// =====================================================================
+// BAGIAN 8 - PENDANAAN MODAL ("Uang Modal") TIDAK MASUK PENGELUARAN
+// =====================================================================
+// Kasus nyata di sheet produksi: pemilik mencatat "Pengembalian uang modal"
+// sebagai CREDIT berlabel Jenis "Uang Modal". Itu dana yang kembali ke
+// pemilik (drawings), BUKAN biaya operasional - kalau ikut dikurangkan,
+// Laba Bersih tertekan tanpa ada pengeluaran usaha yang sebenarnya.
+// Sebelum ada peran PENDANAAN_MODAL, baris ini jatuh ke TIDAK_DIKENAL:
+// rumusnya benar (tidak dihitung), tapi panel dashboard meneriakkan
+// "baris belum terkategori" seolah ada data yang salah.
+const BARIS_MODAL = [
+  ['9/6/2024', 'CREDIT', 'Modal Ari', 'Karangan pengembalian 1', 'Transfer', 900137, 'Uang Modal'],
+  ['9/7/2024', 'CREDIT', 'Modal Rian', 'Karangan pengembalian 2', 'Transfer', 900413, 'Uang Modal'],
+  ['9/8/2024', 'CREDIT', 'Sewa', 'Karangan sewa', 'Tunai', 300113, 'Biaya Operasional'],
+];
+const itemsModal = BARIS_MODAL.map((r) => ({
+  tanggal: tglKeyLokal(r[0]),
+  tipe: r[1], kategori: r[2], deskripsi: r[3],
+  metodePembayaran: r[4], nominal: rupiah(r[5]), jenis: r[6],
+}));
+
+console.log('');
+console.log('-- PENDANAAN MODAL (Uang Modal) --');
+
+uji('Uang Modal masuk bucket pendanaanModal, bukan biayaOperasional', () => {
+  const a = agregasi(itemsModal, AWAL, AKHIR);
+  eq(a.pendanaanModal, 1800550, 'dua baris Uang Modal');
+  eq(a.biayaOperasional, 300113, 'hanya baris berlabel Biaya Operasional');
+  eq(a.tidakDikenali, 0, 'tidak ada baris yang jatuh ke tak dikenal');
+  eq(a.tidakDikenaliDetail.length, 0, 'tidak ada baris perlu tindak lanjut');
+});
+
+uji('rentang tanggal membatasi pendanaanModal seperti bucket lain', () => {
+  const a = agregasi(itemsModal, '2024-09-01', '2024-09-07');
+  eq(a.pendanaanModal, 1800550, 'dua baris 6-7 Sep masuk');
+  eq(a.biayaOperasional, 0, 'sewa 8 Sep di luar rentang');
+});
+
+uji('pendanaanModal tidak memengaruhi Laba Bersih', () => {
+  const a = agregasi(itemsModal, AWAL, AKHIR);
+  eq(labaBersih({ omsetKotor: 2000113, totalHPP: 800417, pendapatanLain: 0, biayaOperasional: a.biayaOperasional, bebanNonOperasional: 0 }), 899583, '2.000.113 - 800.417 - 300.113');
+  eq(labaBersih({ omsetKotor: 2000113, totalHPP: 800417, pendapatanLain: 0, biayaOperasional: a.biayaOperasional + a.pendanaanModal, bebanNonOperasional: 0 }), -900967, 'kalau pendanaan ikut dikurangkan laba berubah - itu bug yang dilarang');
+});
+
+uji('rekonsiliasi: pendanaanModal dihitung tepat satu kali', () => {
+  const a = agregasi(itemsModal, AWAL, AKHIR);
+  const jumlah = a.biayaOperasional + a.bebanNonOperasional + a.pendapatanLain
+    + a.inventori + a.campuran + a.tidakDikenali + a.pendanaanModal;
+  eq(jumlah, 2100663, '900.137 + 900.413 + 300.113');
+  eq(jumlah, BARIS_MODAL.reduce((s, r) => s + r[5], 0), 'harus sama dengan penjumlahan nominal di data karangan');
 });
 
 // ---------- ringkasan ----------
