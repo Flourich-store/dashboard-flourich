@@ -2878,6 +2878,36 @@
       }
       .btn-bar { grid-template-columns: 1fr; }
       table { min-width: 480px; }
+      /* Dua tabel uang utama WAJIB muat lebar layar: di ponsel tanpa
+         indikasi scrollbar, kolom paling kanan (Total / Nominal - justru
+         angka yang paling penting) hilang di luar pandangan (laporan
+         pemilik, layar 390px: tabel 480px dalam wadah 312px). Tabel lain
+         (produk/bahan/modal) tetap boleh scroll horizontal. */
+      .tabel-penjualan,
+      .tabel-keuangan { min-width: 0; }
+      /* Penjualan: kolom Harga tersembunyi <=600px -> 5 kolom tampil.
+         Produk menyerap sisa lebar (33%). */
+      .tabel-penjualan th:nth-child(1), .tabel-penjualan td:nth-child(1) { width: 17%; }
+      .tabel-penjualan th:nth-child(4), .tabel-penjualan td:nth-child(4) { width: 10%; }
+      .tabel-penjualan th:nth-child(5), .tabel-penjualan td:nth-child(5) { width: 23%; }
+      .tabel-penjualan th:nth-child(6), .tabel-penjualan td:nth-child(6) { width: 17%; }
+      /* Badge metode dirampingkan + tanpa ikon supaya muat di kolom 17%. */
+      .tabel-penjualan .badge { padding: 2px 7px; font-size: 10px; gap: 3px; }
+      .tabel-penjualan .badge i { display: none; }
+      /* Keuangan: kolom Metode (QR/Cash - info tersier) disembunyikan agar
+         Deskripsi dan Nominal tetap terbaca; Tipe tetap tampil sebagai badge. */
+      .tabel-keuangan th:nth-child(5), .tabel-keuangan td:nth-child(5) { display: none; }
+      .tabel-keuangan th:nth-child(1), .tabel-keuangan td:nth-child(1) { width: 17%; }
+      .tabel-keuangan th:nth-child(2), .tabel-keuangan td:nth-child(2) { width: 17%; }
+      .tabel-keuangan th:nth-child(3), .tabel-keuangan td:nth-child(3) { width: 18%; }
+      .tabel-keuangan th:nth-child(6), .tabel-keuangan td:nth-child(6) { width: 24%; }
+      .tabel-keuangan .badge { padding: 2px 6px; font-size: 9px; }
+      /* Header & sel lebih rapat: uppercase 11px + letter-spacing 0.6px
+         memakan lebar yang dibutuhkan data (header "TANGGAL" saja ±62px,
+         lebih lebar dari isi selnya). */
+      .tabel-penjualan th, .tabel-penjualan td,
+      .tabel-keuangan th, .tabel-keuangan td { padding: 8px 4px; }
+      .tabel-penjualan th, .tabel-keuangan th { font-size: 10px; letter-spacing: 0; text-transform: none; }
     }
 
     @media (max-width: 600px) {
@@ -3490,6 +3520,25 @@
       /* kontrol tetap terlihat di layar ponsel - dibungkus, bukan disembunyikan */
       .paginasi { justify-content: center; gap: 8px; }
       .paginasi-info { width: 100%; text-align: center; }
+      /* Tombol + nomor halaman harus muat SATU baris: kalau wrap, tombol
+         "Selanjutnya" jatuh sendirian ke baris kedua rata kanan dan terlihat
+         seperti rusak (laporan pemilik, layar 390px). */
+      .paginasi-grup { justify-content: center; flex-wrap: nowrap; gap: 6px; }
+      .paginasi-btn { padding: 10px 9px; font-size: 0.78rem; min-height: 44px; }
+      .paginasi-halaman { font-size: 0.78rem; }
+    }
+
+    /* Layar sempit (<=360px): teks tombol dirampingkan lagi supaya trio
+       Sebelumnya - Halaman - Selanjutnya tetap satu baris, tidak meluber
+       keluar kartu. */
+    @media (max-width: 360px) {
+      .paginasi-grup { gap: 4px; }
+      .paginasi-btn { padding: 10px 6px; font-size: 0.72rem; }
+      .paginasi-halaman { font-size: 0.72rem; }
+      /* Layar sangat sempit: sel tabel dua tabel uang dirampingkan sekali
+         lagi supaya angka (Total/Nominal) tidak terpotong satu digit. */
+      .tabel-penjualan th, .tabel-penjualan td,
+      .tabel-keuangan th, .tabel-keuangan td { padding: 8px 3px; font-size: 10.5px; }
     }
   </style>
 
@@ -3789,7 +3838,7 @@
           </div>
         </div>
         <div class="table-responsive">
-          <table>
+          <table class="tabel-keuangan">
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -3862,7 +3911,7 @@
           </div>
         </div>
         <div class="table-responsive">
-          <table>
+          <table class="tabel-penjualan">
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -5142,6 +5191,22 @@
 
     // Satu baris tabel penjualan. Pemisahan dari renderReport supaya bisa
     // diserahkan ke paginasiSet: hanya halaman aktif yang dipanggil.
+    // Tanggal pendek di layar kecil: ISO "2026-09-27" memakan ±80px dan
+    // membuat kolom Nama/Total sesak di ponsel. Pada <=480px ditampilkan
+    // "27 Sep" (murni tampilan - data di memori/sheet tetap ISO utuh).
+    // Parsing pakai string, bukan new Date(), supaya bebas jebakan zona
+    // waktu (UTC midnight bisa mundur sehari di zona negatif).
+    var BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    function tanggalTampil(iso) {
+      var s = String(iso || '');
+      var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (!m) return s;
+      if (window.matchMedia && window.matchMedia('(max-width: 480px)').matches) {
+        return parseInt(m[3], 10) + ' ' + BULAN_PENDEK[parseInt(m[2], 10) - 1];
+      }
+      return s;
+    }
+
     function barisPenjualan(row) {
       var metRaw = String(row.metode || '').trim();
       var isQris = metRaw.toUpperCase().indexOf('QR') !== -1;
@@ -5153,7 +5218,7 @@
           ? '<span class="badge badge-cash"><i class="fa-solid fa-money-bill-wave"></i> Cash</span>'
           : '<span class="badge badge-cash"><i class="fa-solid fa-circle-question"></i> -</span>');
       return '<tr>' +
-        '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+        '<td>' + escapeHtml(tanggalTampil(row.tanggal) || '-') + '</td>' +
         '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
         '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
         '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
@@ -6241,7 +6306,7 @@
       var badgeClass = isCredit ? 'badge badge-credit' : 'badge badge-debit';
       var nominalClass = isCredit ? 'nominal-credit' : 'nominal-debit';
       return '<tr>' +
-        '<td>' + escapeHtml(row.tanggal || '-') + '</td>' +
+        '<td>' + escapeHtml(tanggalTampil(row.tanggal) || '-') + '</td>' +
         '<td><span class="' + badgeClass + '">' + escapeHtml(row.tipe || 'DEBIT') + '</span></td>' +
         '<td>' + escapeHtml(row.kategori || '-') + '</td>' +
         '<td>' + escapeHtml(row.deskripsi || '-') + '</td>' +
