@@ -2878,13 +2878,16 @@
       }
       .btn-bar { grid-template-columns: 1fr; }
       table { min-width: 480px; }
-      /* Dua tabel uang utama WAJIB muat lebar layar: di ponsel tanpa
-         indikasi scrollbar, kolom paling kanan (Total / Nominal - justru
-         angka yang paling penting) hilang di luar pandangan (laporan
-         pemilik, layar 390px: tabel 480px dalam wadah 312px). Tabel lain
-         (produk/bahan/modal) tetap boleh scroll horizontal. */
+      /* Tiga tabel utama WAJIB muat lebar layar: di ponsel tanpa
+         indikasi scrollbar, kolom paling kanan (Total / Nominal / Harga
+         - justru angka yang paling penting) hilang di luar pandangan
+         (laporan pemilik, layar 390px: tabel 480px dalam wadah 312px).
+         Tabel di dalam MODAL (produk/atur stok) tetap boleh scroll
+         horizontal: 6 kolom + tombol aksi tak mungkin muat, dan
+         bottom-sheet modal memang punya ruang + affordance scroll. */
       .tabel-penjualan,
-      .tabel-keuangan { min-width: 0; }
+      .tabel-keuangan,
+      .tabel-produk { min-width: 0; }
       /* Penjualan: kolom Harga tersembunyi <=600px -> 5 kolom tampil.
          Produk menyerap sisa lebar (33%). */
       .tabel-penjualan th:nth-child(1), .tabel-penjualan td:nth-child(1) { width: 17%; }
@@ -2902,12 +2905,28 @@
       .tabel-keuangan th:nth-child(3), .tabel-keuangan td:nth-child(3) { width: 18%; }
       .tabel-keuangan th:nth-child(6), .tabel-keuangan td:nth-child(6) { width: 24%; }
       .tabel-keuangan .badge { padding: 2px 6px; font-size: 9px; }
+      /* Produk (tab Produk): 5 kolom dipecah % agar HPP & Harga selalu
+         terlihat tanpa scroll (temuan audit 390px: tabel 480px dalam
+         wadah 312px, kolom HPP+Harga mulai di x=327 - di luar layar).
+         Lebar disetel dari hasil pengukuran: "Rp 6.000" butuh 58px
+         (HPP 22% = 62px konten), "Rp 15.000" butuh 55px (Harga 21%),
+         "PRD-001" butuh 48px (ID 19% = 51px konten), badge stok 26px
+         (Stok 11%). Nama produk panjang dipangkas ellipsis - pola yang
+         sama dengan kolom Produk di tabel Penjualan. */
+      .tabel-produk th:nth-child(1), .tabel-produk td:nth-child(1) { width: 19%; }
+      .tabel-produk th:nth-child(2), .tabel-produk td:nth-child(2) { width: 27%; }
+      .tabel-produk th:nth-child(3), .tabel-produk td:nth-child(3) { width: 11%; }
+      .tabel-produk th:nth-child(4), .tabel-produk td:nth-child(4) { width: 22%; }
+      .tabel-produk th:nth-child(5), .tabel-produk td:nth-child(5) { width: 21%; }
+      .tabel-produk .stock-badge { min-width: 0; padding: 2px 6px; font-size: 10px; }
       /* Header & sel lebih rapat: uppercase 11px + letter-spacing 0.6px
          memakan lebar yang dibutuhkan data (header "TANGGAL" saja ±62px,
          lebih lebar dari isi selnya). */
       .tabel-penjualan th, .tabel-penjualan td,
-      .tabel-keuangan th, .tabel-keuangan td { padding: 8px 4px; }
-      .tabel-penjualan th, .tabel-keuangan th { font-size: 10px; letter-spacing: 0; text-transform: none; }
+      .tabel-keuangan th, .tabel-keuangan td,
+      .tabel-produk th, .tabel-produk td { padding: 8px 4px; }
+      .tabel-penjualan th, .tabel-keuangan th, .tabel-produk th
+      { font-size: 10px; letter-spacing: 0; text-transform: none; }
     }
 
     @media (max-width: 600px) {
@@ -3535,10 +3554,11 @@
       .paginasi-grup { gap: 4px; }
       .paginasi-btn { padding: 10px 6px; font-size: 0.72rem; }
       .paginasi-halaman { font-size: 0.72rem; }
-      /* Layar sangat sempit: sel tabel dua tabel uang dirampingkan sekali
-         lagi supaya angka (Total/Nominal) tidak terpotong satu digit. */
+      /* Layar sangat sempit: sel ketiga tabel utama dirampingkan sekali
+         lagi supaya angka (Total/Nominal/Harga) tidak terpotong satu digit. */
       .tabel-penjualan th, .tabel-penjualan td,
-      .tabel-keuangan th, .tabel-keuangan td { padding: 8px 3px; font-size: 10.5px; }
+      .tabel-keuangan th, .tabel-keuangan td,
+      .tabel-produk th, .tabel-produk td { padding: 8px 3px; font-size: 10.5px; }
     }
   </style>
 
@@ -3946,7 +3966,7 @@
           </select>
         </div>
         <div class="table-responsive">
-          <table>
+          <table class="tabel-produk">
             <thead>
             <tr>
               <th>ID Produk</th>
