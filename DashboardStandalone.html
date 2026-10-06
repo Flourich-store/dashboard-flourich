@@ -2900,9 +2900,12 @@
       /* Keuangan: kolom Metode (QR/Cash - info tersier) disembunyikan agar
          Deskripsi dan Nominal tetap terbaca; Tipe tetap tampil sebagai badge. */
       .tabel-keuangan th:nth-child(5), .tabel-keuangan td:nth-child(5) { display: none; }
-      .tabel-keuangan th:nth-child(1), .tabel-keuangan td:nth-child(1) { width: 17%; }
+      .tabel-keuangan th:nth-child(1), .tabel-keuangan td:nth-child(1) { width: 16%; }
       .tabel-keuangan th:nth-child(2), .tabel-keuangan td:nth-child(2) { width: 17%; }
-      .tabel-keuangan th:nth-child(3), .tabel-keuangan td:nth-child(3) { width: 18%; }
+      .tabel-keuangan th:nth-child(3), .tabel-keuangan td:nth-child(3) { width: 17%; }
+      /* Deskripsi diberi porsi terbesar (26%) supaya melipat cukup 2-3
+         baris untuk deskripsi realistis, bukan menara 10 baris. */
+      .tabel-keuangan th:nth-child(4), .tabel-keuangan td:nth-child(4) { width: 26%; }
       .tabel-keuangan th:nth-child(6), .tabel-keuangan td:nth-child(6) { width: 24%; }
       .tabel-keuangan .badge { padding: 2px 6px; font-size: 9px; }
       /* Produk (tab Produk): 5 kolom dipecah % agar HPP & Harga selalu
@@ -2919,6 +2922,27 @@
       .tabel-produk th:nth-child(4), .tabel-produk td:nth-child(4) { width: 22%; }
       .tabel-produk th:nth-child(5), .tabel-produk td:nth-child(5) { width: 21%; }
       .tabel-produk .stock-badge { min-width: 0; padding: 2px 6px; font-size: 10px; }
+      /* Permintaan pemilik (390px): hasil filter TIDAK BOLEH lagi ada yang
+         terpotong "..." - tabel harus bisa digeser (swipe) kalau isinya
+         butuh ruang. Tiga langkah:
+         1. table-layout auto: lebar minimal kolom mengikuti ISI, jadi
+            kolom tanggal/angka (Total/Nominal/HPP/Harga) tidak pernah
+            dipangkas Chrome (layout fixed memangkas, auto tidak).
+         2. Kolom teks panjang (Produk/Kategori/Deskripsi) melipat 2 baris
+            alih-alih dipangkas ellipsis -> tabel tetap ramping dan angka
+            penting tetap terlihat tanpa perlu digeser.
+         3. Bila ada isi yang benar-benar tak bisa menyusut (mis. nama
+            tanpa spasi yang sangat panjang), tabel melebar melebihi
+            layar dan wadah .table-responsive (overflow-x:auto) bisa
+            digeser jari kanan-kiri sampai kolom terakhir terbaca. */
+      .tabel-penjualan,
+      .tabel-keuangan,
+      .tabel-produk { table-layout: auto; }
+      .tabel-penjualan td:nth-child(2),
+      .tabel-keuangan td:nth-child(3),
+      .tabel-keuangan td:nth-child(4),
+      .tabel-produk td:nth-child(2)
+      { white-space: normal; overflow-wrap: break-word; }
       /* Header & sel lebih rapat: uppercase 11px + letter-spacing 0.6px
          memakan lebar yang dibutuhkan data (header "TANGGAL" saja ±62px,
          lebih lebar dari isi selnya). */
