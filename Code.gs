@@ -725,8 +725,16 @@ function getReportByDateRange(token, startDate, endDate) {
     var headerLower = header.map(function(h) { return String(h || '').toLowerCase(); });
 
     var idxTx = -1, idxTgl = -1, idxProduk = -1, idxJumlah = -1, idxHarga = -1;
-    var idxTotalHarga = -1, idxMetode = -1, idxHPP = -1, idxLaba = -1, idxVolume = -1;
+    var idxTotalHarga = -1, idxMetode = -1, idxLaba = -1, idxVolume = -1;
     var idxHppSatuan = -1;
+    var idxHPP = -1; // hanya untuk fallback legacy sheet tanpa kolom Modal
+    // Kolom Modal dibaca via DUA index terpisah, bukan satu idxHPP untuk dua
+    // kolom sekaligus.
+    // Sebelumnya 'if (h.includes("modal")) idxHPP = hIdx' menerima keduanya,
+    // jadi kolom yang terbaca murni tergantung urutan kolom di-sheet:
+    // header "Revisi Modal" (selalu paling kanan) menimpa "Modal" klasik.
+    var idxModal = -1;      // header persis "modal"
+    var idxRevisi = -1;     // header persis "revisi modal"
 
     for (var hIdx = 0; hIdx < headerLower.length; hIdx++) {
       var h = headerLower[hIdx];
@@ -738,12 +746,19 @@ function getReportByDateRange(token, startDate, endDate) {
       if (h.includes('total') && h.includes('harga')) idxTotalHarga = hIdx;
       if (h.includes('metode') || h.includes('pembayaran')) idxMetode = hIdx;
       if (h.includes('hpp') && h.includes('satuan')) idxHppSatuan = hIdx;
-      // Kolom Modal (HPP penjualan baris lama): cari eksplisit, JANGAN sampai
-      // tertimpa 'HPP Satuan' atau 'Biaya Operasional' yang juga mengandung
-      // kata hpp/biaya — sebelumnya idxHPP mendarat di kolom Biaya (selalu 0)
-      // sehingga Modal historis diabaikan dari perhitungan.
-      if (h.includes('modal')) idxHPP = hIdx;
-      if ((h.includes('hpp') || h.includes('biaya')) && !h.includes('satuan') && idxHPP === -1) idxHPP = hIdx;
+      // Kolom Modal dari sheet Penjualan: "Modal" (baris lama) dan "Revisi
+      // Modal" (hasil backfill) dipetakan terpisah lalu digabung dengan
+      // prioritas Revisi, fallback Modal klasik. Jangan kembali ke satu
+      // matcher 'includes("modal")' — itu membuat pemilihan kolom bergantung
+      // pada urutan header sheet (last-write-wins).
+      if (h === 'modal') idxModal = hIdx;
+      if (h === 'revisi modal') idxRevisi = hIdx;
+      // Fallback legacy (sheet TIDAK punya kolom Modal sama sekali): pakai
+      // kolom hpp/biaya pertama yang bukan HPP Satuan. Karena sudah di-guard
+      // dgn kedua matcher persis di atas, aturan ini tidak bisa menimpa
+      // "Modal"/"Revisi Modal" lagi.
+      if ((h.includes('hpp') || h.includes('biaya')) && !h.includes('satuan')
+        && idxModal === -1 && idxRevisi === -1) idxHPP = hIdx;
       if (h.includes('laba') || h.includes('bersih')) idxLaba = hIdx;
       if (h.includes('volume')) idxVolume = hIdx;
     }
@@ -753,6 +768,10 @@ function getReportByDateRange(token, startDate, endDate) {
     if (idxTgl === -1) idxTgl = 1;
     if (idxProduk === -1) idxProduk = 2;
     if (idxJumlah === -1) idxJumlah = 4;
+
+    // idxModal/idxRevisi TIDAK dipasangkan fallback posisi: dua-duanya -1
+    // berarti sheet tidak punya kolom modal -> rowHPP = 0 dan rantai fallback
+    // HPP di bawah (HPP Satuan > master > tabel referensi) yang menangani.
     if (idxTotalHarga === -1) idxTotalHarga = 6;
     if (idxMetode === -1) idxMetode = 7;
     if (idxLaba === -1) idxLaba = 9;
@@ -781,7 +800,11 @@ function getReportByDateRange(token, startDate, endDate) {
       var tanggalCell = row[idxTgl];
       var namaProduk = String(row[idxProduk] || '').trim();
       var metode = String(row[idxMetode] || '').trim();
-      var rowHPP = idxHPP !== -1 ? _num(row[idxHPP]) : 0;
+      // Prioritas HPP baris: Revisi Modal (backfill) dulu, fallback Modal
+      // klasik. Kosong/nol keduanya -> 0, ditangani rantai fallback di bawah.
+      var rowHPP = idxRevisi !== -1 && _num(row[idxRevisi]) > 0 ? _num(row[idxRevisi])
+        : (idxModal !== -1 ? _num(row[idxModal]) : 0);
+      if (rowHPP === 0 && idxHPP !== -1) rowHPP = _num(row[idxHPP]);
       var rowVol = (pj.idxVolume !== -1) ? _num(row[pj.idxVolume]) : 0;
       var rowHppSat = (pj.idxHppSat !== -1) ? _num(row[pj.idxHppSat]) : 0;
       var jumlahRaw = _num(row[idxJumlah]);

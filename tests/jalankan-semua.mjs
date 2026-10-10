@@ -24,6 +24,7 @@ const CEK = [
   { nama: 'pos-laporan',          file: 'pos-laporan.test.mjs',          soal: 'laporan membaca baris v2 + gaya-POS dengan benar' },
   { nama: 'p2-nilai-stok',        file: 'p2-nilai-stok.test.mjs',        soal: 'Nilai Stok identik antara getProdukList dan getNilaiStok' },
   { nama: 'kpi-credit-debit',     file: 'kpi-credit-debit.test.mjs',     soal: 'KPI Credit/Debit: kolom Jenis, klasifikasi, Laba Bersih (data karangan)' },
+  { nama: 'modal-mapping',        file: 'modal-mapping.test.mjs',        soal: 'pemetaan Modal vs Revisi Modal: prioritas Revisi, fallback Modal, tak tergantung urutan header (data karangan)' },
   { nama: 'panel-kpi-cd',         file: 'panel-kpi-cd.test.mjs',         soal: 'panel peringatan baris Credit/Debit belum terkategori di dashboard' },
   { nama: 'paginasi',             file: 'paginasi.test.mjs',             soal: 'paginasi tabel: 20 baris/halaman, reset saat filter berubah (data karangan)' },
   { nama: 'perf-p1',              file: 'perf-p1.test.mjs',              soal: 'invariant performa frontend (satu panggilan per muat)' },
