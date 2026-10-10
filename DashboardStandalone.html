@@ -1761,6 +1761,14 @@
       box-shadow: 0 0 0 3px var(--focus-glow);
     }
 
+    /* Penanda field wajib yang belum diisi (mis. Jenis saat Simpan ditekan).
+       Dipasang/dilepas oleh aksiAddCreditDebit dan onchange select-nya. */
+    input.field-error,
+    select.field-error {
+      border-color: var(--coral);
+      box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.18);
+    }
+
     /* BUTTONS */
     .btn {
       cursor: pointer;
@@ -4171,9 +4179,20 @@
         </div>
         <div class="filter-group">
           <label>Tipe</label>
-          <select id="cdTipeInp">
+          <select id="cdTipeInp" onchange="isiOpsiJenisCd()">
             <option value="CREDIT">Pengeluaran (Credit)</option>
             <option value="DEBIT">Pemasukan (Debit)</option>
+          </select>
+        </div>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group" style="flex:3;">
+          <label>Jenis</label>
+          <!-- Opsi diisi dari server (CD_JENIS_VALID di Code.gs). Dilarang
+               menulis <option> berisi label Jenis di berkas ini: daftarnya
+               harus tetap satu sumber dengan validasi server. -->
+          <select id="cdJenisInp" onchange="this.classList.remove('field-error')">
+            <option value="">Pilih Jenis</option>
           </select>
         </div>
       </div>
@@ -4368,6 +4387,8 @@
       } else if (modalId === 'modalPengeluaran') {
         var dateEl = document.getElementById('cdTanggalInp');
         if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
+        // Opsi Jenis datang dari server; muat sekali, ulangi bila gagal.
+        muatOpsiJenisCd();
       } else if (modalId === 'modalPenjualan') {
         var dateEl = document.getElementById('inTanggal');
         if (dateEl && !dateEl.value) dateEl.value = getTodayISO();
@@ -6365,6 +6386,49 @@
       });
     }
 
+    // ------------------------------------------------------------
+    // OPSI JENIS - diambil dari server, bukan ditulis ulang di HTML
+    // ------------------------------------------------------------
+    // Sumbernya CD_JENIS_VALID di Code.gs. Dengan cara ini form dan
+    // validasi server mustahil memakai daftar yang berbeda.
+    var cdJenisOpsi = null;
+
+    function muatOpsiJenisCd() {
+      if (cdJenisOpsi) return; // sudah termuat sekali per sesi
+      safeGoogleRun('getCreditDebitJenisOptions', [getToken()], function (res) {
+        if (res && res.status === 'success' && res.data) {
+          cdJenisOpsi = res.data;
+          isiOpsiJenisCd();
+        }
+        // Gagal biarkan kosong: percobaan berikutnya jalan saat modal
+        // dibuka lagi, dan Simpan tetap ditolak (bukan menulis Jenis salah).
+      });
+    }
+
+    function isiOpsiJenisCd() {
+      var sel = document.getElementById('cdJenisInp');
+      if (!sel || !cdJenisOpsi) return;
+      var tipe = String(document.getElementById('cdTipeInp').value || '').toUpperCase();
+      var daftar = cdJenisOpsi[tipe] || [];
+      var sebelum = sel.value;
+
+      while (sel.firstChild) sel.removeChild(sel.firstChild);
+      var kosong = document.createElement('option');
+      kosong.value = '';
+      kosong.textContent = 'Pilih Jenis';
+      sel.appendChild(kosong);
+
+      for (var i = 0; i < daftar.length; i++) {
+        var o = document.createElement('option');
+        o.value = daftar[i];
+        o.textContent = daftar[i];
+        sel.appendChild(o);
+      }
+      // Pertahankan pilihan lama hanya bila masih sah untuk tipe ini;
+      // kalau tidak, kembali kosong (tanpa default diam-diam).
+      sel.value = (sebelum && daftar.indexOf(sebelum) >= 0) ? sebelum : '';
+    }
+
     function aksiAddCreditDebit() {
       const data = {
         token: getToken(),
@@ -6373,6 +6437,7 @@
         kategori: document.getElementById('cdKategoriInp').value.trim(),
         deskripsi: document.getElementById('cdDeskripsiInp').value.trim(),
         metodePembayaran: document.getElementById('cdMetodePembayaranInp').value,
+        jenis: document.getElementById('cdJenisInp').value,
         nominal: Number(document.getElementById('cdNominalInp').value) || 0
       };
 
@@ -6380,6 +6445,12 @@
       if (!data.kategori) return showToast('Kategori wajib diisi!', 'error');
       if (!data.deskripsi) return showToast('Deskripsi wajib diisi!', 'error');
       if (data.nominal <= 0) return showToast('Nominal harus lebih dari 0!', 'error');
+      if (!data.jenis) {
+        var jenEl = document.getElementById('cdJenisInp');
+        jenEl.classList.add('field-error');
+        jenEl.focus();
+        return showToast('Jenis wajib dipilih', 'error');
+      }
 
       safeGoogleRun('addCreditDebit', [getToken(), data.tipe, data], function (res) {
         if (res && res.status === 'success') {
@@ -6409,6 +6480,14 @@
       document.getElementById('cdDeskripsiInp').value = '';
       document.getElementById('cdMetodePembayaranInp').value = 'Cash';
       document.getElementById('cdNominalInp').value = '';
+      // Opsi Jenis mengikuti tipe; reset juga tanda error, supaya sisa
+      // pilihan tidak bocor ke catatan berikutnya.
+      isiOpsiJenisCd();
+      var jenEl = document.getElementById('cdJenisInp');
+      if (jenEl) {
+        jenEl.value = '';
+        jenEl.classList.remove('field-error');
+      }
     }
 
     function loadPengeluaranCRUD() {

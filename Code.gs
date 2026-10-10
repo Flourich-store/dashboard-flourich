@@ -1854,10 +1854,21 @@ function addCreditDebit(token, type, data) {
     var deskripsi = String(data.deskripsi || '').trim();
     var metodePembayaran = String(data.metodePembayaran || data.paymentMethod || 'Cash').trim();
     var nominal = Number(data.nominal || 0);
+    var jenisMentah = String(data.jenis === undefined || data.jenis === null ? '' : data.jenis).trim();
 
     if (!kategori) return { status: 'error', message: 'Kategori wajib diisi' };
     if (!deskripsi) return { status: 'error', message: 'Deskripsi wajib diisi' };
     if (isNaN(nominal) || nominal <= 0) return { status: 'error', message: 'Nominal harus angka > 0' };
+    if (!jenisMentah) return { status: 'error', message: 'Jenis wajib diisi' };
+
+    var jenisLabel = _labelJenisCd(tipeVal, jenisMentah);
+    if (!jenisLabel) {
+      return {
+        status: 'error',
+        message: 'Jenis "' + jenisMentah + '" tidak valid untuk tipe ' + tipeVal +
+          '. Pilihan yang boleh: ' + CD_JENIS_VALID[tipeVal].join(', ') + '.'
+      };
+    }
 
     var paymentMethod = metodePembayaran.toUpperCase();
     if (paymentMethod === 'QRIS' || paymentMethod === 'QR' || paymentMethod === 'TRANSFER') {
@@ -1866,7 +1877,48 @@ function addCreditDebit(token, type, data) {
       paymentMethod = 'Cash';
     }
 
-    sheet.appendRow([tanggal, tipeVal, kategori, deskripsi, paymentMethod, nominal]);
+    // Tulis berdasar NAMA HEADER, bukan index kolom. Posisi kolom boleh
+    // berubah di sheet, nilai tetap mendarat di kolom yang benar. Bila ada
+    // kolom yang tidak ditemukan: balas error dan TIDAK menulis apa pun,
+    // supaya baris setengah jadi (tanpa Jenis, atau Jenis di kolom salah)
+    // tidak pernah terjadi.
+    var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] || [];
+    var peta = _petaKolomCd(headerRow);
+    var kunci = ['tanggal', 'tipe', 'kategori', 'deskripsi', 'metode', 'nominal', 'jenis'];
+    var namaKolom = {
+      tanggal: 'Tanggal', tipe: 'Tipe', kategori: 'Kategori', deskripsi: 'Deskripsi',
+      metode: 'Metode Pembayaran', nominal: 'Nominal', jenis: 'Jenis'
+    };
+    var hilang = [];
+    var i;
+    for (i = 0; i < kunci.length; i++) {
+      if (peta[kunci[i]] < 0) hilang.push(namaKolom[kunci[i]]);
+    }
+    if (hilang.length) {
+      return {
+        status: 'error',
+        message: 'Kolom ' + hilang.join(', ') + ' tidak ditemukan pada baris header ' +
+          'sheet Credit/Debit. Catatan TIDAK disimpan supaya tidak ada data tertulis parsial.'
+      };
+    }
+
+    var lebar = 0;
+    for (i = 0; i < kunci.length; i++) {
+      if (peta[kunci[i]] + 1 > lebar) lebar = peta[kunci[i]] + 1;
+    }
+    var baris = [];
+    for (i = 0; i < lebar; i++) baris.push('');
+
+    baris[peta.tanggal] = tanggal;
+    baris[peta.tipe] = tipeVal;
+    baris[peta.kategori] = kategori;
+    baris[peta.deskripsi] = deskripsi;
+    baris[peta.metode] = paymentMethod;
+    baris[peta.nominal] = nominal;
+    baris[peta.jenis] = jenisLabel; // label kanonik, bukan teks mentah user
+
+    // SATU setValues = all-or-nothing.
+    sheet.getRange(sheet.getLastRow() + 1, 1, 1, lebar).setValues([baris]);
 
     return { status: 'success', message: 'Catatan keuangan berhasil disimpan' };
   });
@@ -1890,6 +1942,55 @@ var CD_JENIS_HEADERS = ['jenis', 'jenis biaya', 'jenis transaksi', 'kategori jen
 var CD_TANGGAL_HEADERS = ['tanggal', 'tgl', 'date'];
 var CD_TIPE_HEADERS = ['tipe', 'type'];
 var CD_NOMINAL_HEADERS = ['nominal', 'jumlah', 'nilai'];
+
+// ============================================================
+// DAFTAR JENIS YANG VALID - SUMBER TUNGGAL
+// ============================================================
+// Konstanta SATU INI dipakai bersama tiga tempat supaya tidak bisa berbeda:
+//   1. validasi server di addCreditDebit,
+//   2. form dashboard lewat getCreditDebitJenisOptions (HTML dilarang
+//      menyalin daftar ini menjadi <option> hard-coded),
+//   3. pemasangan dropdown validasi data di kolom Jenis sheet.
+// Menambah label di sini otomatis membuka pilihan di form dan di validasi
+// server; daftar untuk Google Sheets harus ikut diperbarui (tests/
+// add-credit-debit.test.mjs mencetaknya dari konstanta ini).
+//
+// CATATAN: daftar ini hanya untuk input BARU. Label lama yang tidak ada di
+// sini ("Campuran", "Pengembalian uang modal", "operasional") TETAP
+// dikenali _peranBarisCd untuk baris yang sudah ada di sheet.
+var CD_JENIS_VALID = {
+  CREDIT: ['Bahan Baku', 'Kemasan', 'Biaya Operasional', 'Non Operasional', 'Uang Modal'],
+  DEBIT: ['Pendapatan Lain']
+};
+
+// Kembalikan label KANONIK bila jenis valid untuk tipe itu, atau '' bila
+// tidak. Pencocokan PERSIS setelah trim: label yang sampai ke sheet selalu
+// identik dengan daftar validasi, tanpa perubahan huruf besar/kecil atau
+// tanda hubung di tengah jalan.
+function _labelJenisCd(tipe, jenis) {
+  var t = String(tipe === undefined || tipe === null ? '' : tipe).trim().toUpperCase();
+  if (t !== 'CREDIT' && t !== 'DEBIT') return '';
+  var j = String(jenis === undefined || jenis === null ? '' : jenis).trim();
+  if (!j) return '';
+  var daftar = CD_JENIS_VALID[t];
+  var i = daftar.indexOf(j);
+  return i < 0 ? '' : daftar[i];
+}
+
+// Daftar Jenis untuk form dashboard. Bukan data usaha, jadi cukup login
+// biasa (bukan SUPER_ADMIN).
+function getCreditDebitJenisOptions(token) {
+  return _guardToken(function () {
+    _verifyToken(token, false);
+    return {
+      status: 'success',
+      data: {
+        CREDIT: CD_JENIS_VALID.CREDIT.slice(),
+        DEBIT: CD_JENIS_VALID.DEBIT.slice()
+      }
+    };
+  });
+}
 
 // Cocokkan nama header. Tahap 1: persis. Tahap 2: substring (mis. header
 // "Metode Pembayaran" vs pilihan "metode"). Kembalikan -1 bila tidak ada.
