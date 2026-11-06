@@ -1871,6 +1871,8 @@
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
+      /* Geser tabel tidak boleh merembet ke halaman (nyaman di layar sentuh). */
+      overscroll-behavior-x: contain;
       margin-top: 14px;
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -1878,10 +1880,14 @@
       box-shadow: var(--shadow-sm);
     }
 
+    /* Tabel mengikuti ISI, bukan dibagi rata. Sebelumnya layout fixed
+       membagi kolom sama lebar lalu memangkas teks dengan "..."; sekarang
+       kolom selebar isinya dan bila totalnya melebihi layar, wadah
+       .table-responsive yang digeser kanan-kiri. */
     table {
-      width: 100%;
-      min-width: auto;
-      table-layout: fixed;
+      width: max-content;
+      min-width: 100%;
+      table-layout: auto;
       border-collapse: collapse;
     }
 
@@ -1891,9 +1897,23 @@
       padding: 12px 10px;
       border-bottom: 1px solid var(--border);
       font-size: 12.5px;
+      vertical-align: top;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    }
+
+    /* Kolom teks panjang dibatasi supaya tabel tidak melebar ekstrem.
+       Angka & tanggal tetap nowrap di atas agar tidak melipat. */
+    .tabel-penjualan td:nth-child(2),
+    .tabel-produk td:nth-child(2),
+    .tabel-keuangan td:nth-child(3),
+    .tabel-keuangan td:nth-child(4),
+    .cd-warn-detail-body td:nth-child(4),
+    .cd-warn-detail-body td:nth-child(7) {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      width: 220px;
+      min-width: 140px;
+      max-width: 220px;
     }
 
     th {
@@ -2774,7 +2794,6 @@
       .kpi-card:hover { transform: none; }
       .btn-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .table-responsive { border-radius: 12px; }
-      table { min-width: 520px; }
       .chart-box { padding: 12px; }
       #chartKategori { height: 280px !important; }
       .btn, .btn-primary, .btn-secondary { min-height: 44px; }
@@ -2806,11 +2825,8 @@
       .login-sub { margin-bottom: 12px; font-size: 13px; }
     }
 
-    @media (max-width: 500px) {
-      .hide-mobile {
-        display: none !important;
-      }
-    }
+    /* Semua kolom tabel kini selalu tampil: tidak ada lagi aturan
+       hide-mobile. Tabel digeser horizontal lewat .table-responsive. */
 
     /* ============================================================
        AUDIT SENTUH MOBILE: touch target minimal 44x44px (Apple HIG /
@@ -2885,75 +2901,11 @@
         font-size: 11px;
       }
       .btn-bar { grid-template-columns: 1fr; }
-      table { min-width: 480px; }
-      /* Tiga tabel utama WAJIB muat lebar layar: di ponsel tanpa
-         indikasi scrollbar, kolom paling kanan (Total / Nominal / Harga
-         - justru angka yang paling penting) hilang di luar pandangan
-         (laporan pemilik, layar 390px: tabel 480px dalam wadah 312px).
-         Tabel di dalam MODAL (produk/atur stok) tetap boleh scroll
-         horizontal: 6 kolom + tombol aksi tak mungkin muat, dan
-         bottom-sheet modal memang punya ruang + affordance scroll. */
-      .tabel-penjualan,
-      .tabel-keuangan,
-      .tabel-produk { min-width: 0; }
-      /* Penjualan: kolom Harga tersembunyi <=600px -> 5 kolom tampil.
-         Produk menyerap sisa lebar (33%). */
-      .tabel-penjualan th:nth-child(1), .tabel-penjualan td:nth-child(1) { width: 17%; }
-      .tabel-penjualan th:nth-child(4), .tabel-penjualan td:nth-child(4) { width: 10%; }
-      .tabel-penjualan th:nth-child(5), .tabel-penjualan td:nth-child(5) { width: 23%; }
-      .tabel-penjualan th:nth-child(6), .tabel-penjualan td:nth-child(6) { width: 17%; }
-      /* Badge metode dirampingkan + tanpa ikon supaya muat di kolom 17%. */
-      .tabel-penjualan .badge { padding: 2px 7px; font-size: 10px; gap: 3px; }
-      .tabel-penjualan .badge i { display: none; }
-      /* Keuangan: kolom Metode (QR/Cash - info tersier) disembunyikan agar
-         Deskripsi dan Nominal tetap terbaca; Tipe tetap tampil sebagai badge. */
-      .tabel-keuangan th:nth-child(5), .tabel-keuangan td:nth-child(5) { display: none; }
-      .tabel-keuangan th:nth-child(1), .tabel-keuangan td:nth-child(1) { width: 16%; }
-      .tabel-keuangan th:nth-child(2), .tabel-keuangan td:nth-child(2) { width: 17%; }
-      .tabel-keuangan th:nth-child(3), .tabel-keuangan td:nth-child(3) { width: 17%; }
-      /* Deskripsi diberi porsi terbesar (26%) supaya melipat cukup 2-3
-         baris untuk deskripsi realistis, bukan menara 10 baris. */
-      .tabel-keuangan th:nth-child(4), .tabel-keuangan td:nth-child(4) { width: 26%; }
-      .tabel-keuangan th:nth-child(6), .tabel-keuangan td:nth-child(6) { width: 24%; }
-      .tabel-keuangan .badge { padding: 2px 6px; font-size: 9px; }
-      /* Produk (tab Produk): 5 kolom dipecah % agar HPP & Harga selalu
-         terlihat tanpa scroll (temuan audit 390px: tabel 480px dalam
-         wadah 312px, kolom HPP+Harga mulai di x=327 - di luar layar).
-         Lebar disetel dari hasil pengukuran: "Rp 6.000" butuh 58px
-         (HPP 22% = 62px konten), "Rp 15.000" butuh 55px (Harga 21%),
-         "PRD-001" butuh 48px (ID 19% = 51px konten), badge stok 26px
-         (Stok 11%). Nama produk panjang dipangkas ellipsis - pola yang
-         sama dengan kolom Produk di tabel Penjualan. */
-      .tabel-produk th:nth-child(1), .tabel-produk td:nth-child(1) { width: 19%; }
-      .tabel-produk th:nth-child(2), .tabel-produk td:nth-child(2) { width: 27%; }
-      .tabel-produk th:nth-child(3), .tabel-produk td:nth-child(3) { width: 11%; }
-      .tabel-produk th:nth-child(4), .tabel-produk td:nth-child(4) { width: 22%; }
-      .tabel-produk th:nth-child(5), .tabel-produk td:nth-child(5) { width: 21%; }
-      .tabel-produk .stock-badge { min-width: 0; padding: 2px 6px; font-size: 10px; }
-      /* Permintaan pemilik (390px): hasil filter TIDAK BOLEH lagi ada yang
-         terpotong "..." - tabel harus bisa digeser (swipe) kalau isinya
-         butuh ruang. Tiga langkah:
-         1. table-layout auto: lebar minimal kolom mengikuti ISI, jadi
-            kolom tanggal/angka (Total/Nominal/HPP/Harga) tidak pernah
-            dipangkas Chrome (layout fixed memangkas, auto tidak).
-         2. Kolom teks panjang (Produk/Kategori/Deskripsi) melipat 2 baris
-            alih-alih dipangkas ellipsis -> tabel tetap ramping dan angka
-            penting tetap terlihat tanpa perlu digeser.
-         3. Bila ada isi yang benar-benar tak bisa menyusut (mis. nama
-            tanpa spasi yang sangat panjang), tabel melebar melebihi
-            layar dan wadah .table-responsive (overflow-x:auto) bisa
-            digeser jari kanan-kiri sampai kolom terakhir terbaca. */
-      .tabel-penjualan,
-      .tabel-keuangan,
-      .tabel-produk { table-layout: auto; }
-      .tabel-penjualan td:nth-child(2),
-      .tabel-keuangan td:nth-child(3),
-      .tabel-keuangan td:nth-child(4),
-      .tabel-produk td:nth-child(2)
-      { white-space: normal; overflow-wrap: break-word; }
-      /* Header & sel lebih rapat: uppercase 11px + letter-spacing 0.6px
-         memakan lebar yang dibutuhkan data (header "TANGGAL" saja ±62px,
-         lebih lebar dari isi selnya). */
+      /* Tabel TIDAK lagi dipaksa muat layar dan TIDAK ada kolom yang
+         disembunyikan: lebar mengikuti isi, dan .table-responsive bisa
+         digeser kanan-kiri bila kolomnya melebihi layar (lihat aturan dasar
+         tabel di bagian TABLES). Di sini hanya dirapatkan agar lebih banyak
+         kolom terlihat sekaligus. */
       .tabel-penjualan th, .tabel-penjualan td,
       .tabel-keuangan th, .tabel-keuangan td,
       .tabel-produk th, .tabel-produk td { padding: 8px 4px; }
@@ -2963,9 +2915,6 @@
 
     @media (max-width: 600px) {
       .hide-on-mobile {
-        display: none !important;
-      }
-      .hide-mobile {
         display: none !important;
       }
     }
@@ -3470,7 +3419,7 @@
       overflow: hidden;
       background: var(--card-bg, var(--bg-surface));
     }
-    .cd-warn-detail-body table { margin: 0; width: 100%; }
+    .cd-warn-detail-body table { margin: 0; width: max-content; min-width: 100%; }
     .cd-warn-foot {
       padding: 8px 12px;
       font-size: 0.78rem;
@@ -3931,7 +3880,7 @@
                     <th>Tipe</th>
                     <th>Kategori</th>
                     <th>Deskripsi</th>
-                    <th class="hide-mobile">Jenis</th>
+                    <th>Jenis</th>
                     <th>Nominal</th>
                     <th>Alasan</th>
                   </tr>
@@ -3968,7 +3917,7 @@
               <tr>
                 <th>Tanggal</th>
                 <th>Produk</th>
-                <th class="hide-mobile">Harga</th>
+                <th>Harga</th>
                 <th>Qty</th>
                 <th>Total</th>
                 <th>Metode</th>
@@ -5285,7 +5234,7 @@
       return '<tr>' +
         '<td>' + escapeHtml(tanggalTampil(row.tanggal) || '-') + '</td>' +
         '<td><b>' + escapeHtml(row.namaProduk || '-') + '</b></td>' +
-        '<td class="hide-mobile">' + formatIDR(row.harga || 0) + '</td>' +
+        '<td>' + formatIDR(row.harga || 0) + '</td>' +
         '<td><b style="color:var(--primary);">' + Number(row.jumlah || 0) + '</b></td>' +
         '<td><b style="color:var(--text-primary);">' + formatIDR(row.total || 0) + '</b></td>' +
         '<td>' + mBadge + '</td>' +
@@ -5664,7 +5613,7 @@
         '<td>' + escapeHtml(b.tipe || '-') + '</td>' +
         '<td>' + escapeHtml(b.kategori || '-') + '</td>' +
         '<td>' + escapeHtml(b.deskripsi || '-') + '</td>' +
-        '<td class="hide-mobile">' + escapeHtml(jenisTxt || '(kosong)') + '</td>' +
+        '<td>' + escapeHtml(jenisTxt || '(kosong)') + '</td>' +
         '<td><b>' + formatIDR(b.nominal || 0) + '</b></td>' +
         '<td><span class="cd-alasan">' + escapeHtml(alasan) + '</span></td>' +
         '</tr>';
