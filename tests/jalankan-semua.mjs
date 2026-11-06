@@ -33,6 +33,7 @@ const CEK = [
   { nama: 'login-theme',          file: 'login-theme.test.mjs',          soal: 'warna kartu login ikut tema terang/gelap' },
   { nama: 'responsive-mobile',    file: 'responsive-mobile.test.mjs',    soal: 'tata letak layar kecil' },
   { nama: 'tabel-geser',          file: 'tabel-geser.test.mjs',          soal: 'tabel ikut isi, tanpa potong "...", bisa digeser horizontal' },
+  { nama: 'favicon',              file: 'favicon.test.mjs',              soal: 'favicon logo Flourich ter-embed di 3 halaman (PNG 192x192)' },
   { nama: 'mutasi-perf12',        file: 'mutasi-perf12.mjs',             soal: 'assertion perf benar-benar menangkap pelanggaran' },
   { nama: 'cek-statis',           file: 'cek-statis.mjs',                soal: 'sintaks blok script + daftar nama fungsi' },
   { nama: 'sapaan-komentar',      file: 'sapaan-komentar.mjs',           soal: 'kode yang tertelan komentar' },
