@@ -22,6 +22,7 @@ const CEK = [
   { nama: 'add-penjualan',        file: 'add-penjualan.test.mjs',        soal: 'addPenjualan: baris tersimpan, HPP, qty 0 ditolak (Code.gs:960)' },
   { nama: 'pos-adapter',          file: 'pos-adapter.test.mjs',          soal: 'adapter POS->v2: deteksi, konversi, peta kanonik nama' },
   { nama: 'pos-laporan',          file: 'pos-laporan.test.mjs',          soal: 'laporan membaca baris v2 + gaya-POS dengan benar' },
+  { nama: 'pos-multiitem',        file: 'pos-multiitem.test.mjs',        soal: 'checkout multi-item: ID di baris pertama / kosong tetap tercatat semua' },
   { nama: 'p2-nilai-stok',        file: 'p2-nilai-stok.test.mjs',        soal: 'Nilai Stok identik antara getProdukList dan getNilaiStok' },
   { nama: 'kpi-credit-debit',     file: 'kpi-credit-debit.test.mjs',     soal: 'KPI Credit/Debit: kolom Jenis, klasifikasi, Laba Bersih (data karangan)' },
   { nama: 'add-credit-debit',     file: 'add-credit-debit.test.mjs',     soal: 'addCreditDebit: kolom Jenis wajib, tulis berbasis nama header (data karangan)' },

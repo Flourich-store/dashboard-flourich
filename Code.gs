@@ -791,6 +791,10 @@ function getReportByDateRange(token, startDate, endDate) {
     var productMap = {}, chartMap = { 'Cash': 0, 'QRIS': 0 }, detailData = [];
     var txCount = 0, grossTotal = 0, totalHPP = 0, totalQtyTerjual = 0;
     var seenTx = {};
+    // ID transaksi terakhir yang tidak kosong + tanggalnya. Dipakai untuk
+    // mewarisi ID ke baris lanjutan checkout multi-item (lihat guard di bawah).
+    var idTerakhir = '';
+    var tanggalIdTerakhir = '';
     var masterHppMap = _readMasterHppMap(ss);
 
     for (var i = 1; i < values.length; i++) {
@@ -842,9 +846,21 @@ function getReportByDateRange(token, startDate, endDate) {
 
       // Skip baris rusak: Jumlah 0/teks membuat pembagian harga menghasilkan
       // Infinity/NaN yang meng-null-kan seluruh respons transport GAS.
-      if (!idTx || !namaProduk || jumlah <= 0) continue;
+      //
+      // ID Transaksi TIDAK lagi jadi syarat sah baris. Checkout kasir
+      // multi-item boleh menulis ID hanya di baris pertama (atau sel ID
+      // digabung), sehingga baris item ke-2..n ber-ID kosong. Dulu baris itu
+      // dibuang -> omset, qty, dan detail satu checkout menyusut jadi 1 item.
+      // Sekarang baris lanjutan mewarisi ID transaksi terakhir di atasnya.
+      if (!namaProduk || jumlah <= 0) continue;
       var rowKey = _parseSheetDateKey(tanggalCell);
       if (!rowKey) continue;
+      // ID hanya diwarisi dalam tanggal yang sama: satu checkout tidak pernah
+      // melewati pergantian hari, jadi baris tanpa ID di hari lain tidak boleh
+      // menempel ke transaksi sebelumnya.
+      var idTxBaris = String(idTx || '').trim();
+      if (idTxBaris) { idTerakhir = idTxBaris; tanggalIdTerakhir = rowKey; }
+      var idWarisan = (idTerakhir && tanggalIdTerakhir === rowKey) ? idTerakhir : '';
       if (startKey && rowKey < startKey) {
         // Baris sebelum periode terpilih tapi masuk periode pembanding
         // tetap dihitung omsetnya untuk badge naik/turun di hero.
@@ -856,8 +872,11 @@ function getReportByDateRange(token, startDate, endDate) {
       }
       if (endKey && rowKey > endKey) continue;
 
-      // Total transaksi = jumlah ID transaksi UNIK (bukan baris)
-      var txKey = String(idTx || '').trim();
+      // Total transaksi = jumlah ID transaksi UNIK (bukan baris).
+      // Urutan fallback: ID baris sendiri -> ID terakhir yang sah -> kunci
+      // sintetis per baris, supaya baris tanpa ID sama sekali tetap terhitung
+      // dan omset tidak pernah diam-diam jadi nol.
+      var txKey = idTxBaris || idWarisan || ('__tanpa_id__' + i);
       if (!seenTx[txKey]) { seenTx[txKey] = true; txCount++; }
       totalQtyTerjual += jumlah;
       grossTotal += totalHarga;
