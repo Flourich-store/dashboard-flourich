@@ -186,12 +186,34 @@
       window.location.hash = view === 'dashboard' ? 'dashboard' : 'beranda';
     }
 
+    function syncThemeToFrames() {
+      var isDark = document.documentElement.classList.contains('theme-dark');
+      var landingFrame = document.getElementById('landing-frame');
+      if (landingFrame && landingFrame.contentWindow) {
+        try { landingFrame.contentWindow.postMessage({ type: 'flourich-theme', isDark: isDark }, '*'); } catch (e) {}
+      }
+      var dashFrame = document.getElementById('dashboard-frame');
+      if (dashFrame && dashFrame.contentWindow) {
+        try { dashFrame.contentWindow.postMessage({ type: 'flourich-theme', isDark: isDark }, '*'); } catch (e) {}
+      }
+    }
+
     window.addEventListener('message', function (event) {
       if (event.data && event.data.type === 'flourich-theme') {
         var isDark = !!event.data.isDark;
         document.documentElement.classList.toggle('theme-dark', isDark);
         document.documentElement.classList.toggle('dark-mode', isDark);
         document.body.classList.toggle('dark-mode', isDark);
+        try { localStorage.setItem('dash_theme', isDark ? 'dark' : 'light'); } catch (e) {}
+
+        var landingFrame = document.getElementById('landing-frame');
+        if (landingFrame && landingFrame.contentWindow && event.source !== landingFrame.contentWindow) {
+          try { landingFrame.contentWindow.postMessage({ type: 'flourich-theme', isDark: isDark }, '*'); } catch (e) {}
+        }
+        var dashFrame = document.getElementById('dashboard-frame');
+        if (dashFrame && dashFrame.contentWindow && event.source !== dashFrame.contentWindow) {
+          try { dashFrame.contentWindow.postMessage({ type: 'flourich-theme', isDark: isDark }, '*'); } catch (e) {}
+        }
       }
       if (event.data && event.data.type === 'flourich-landing') {
         switchView('landing');
@@ -204,9 +226,18 @@
         switchView('dashboard');
       }
     });
-    window.addEventListener('load', function () { updateViewState(false); });
-    window.addEventListener('hashchange', function () { updateViewState(false); });
-    window.addEventListener('popstate', function () { updateViewState(false); });
+    window.addEventListener('load', function () {
+      updateViewState(false);
+      syncThemeToFrames();
+    });
+    window.addEventListener('hashchange', function () {
+      updateViewState(false);
+      syncThemeToFrames();
+    });
+    window.addEventListener('popstate', function () {
+      updateViewState(false);
+      syncThemeToFrames();
+    });
     updateViewState(false);
   </script>
 </body>

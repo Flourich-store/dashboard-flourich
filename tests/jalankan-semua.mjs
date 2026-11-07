@@ -37,6 +37,7 @@ const CEK = [
   { nama: 'pull-refresh',         file: 'pull-refresh.test.mjs',         soal: 'tarik layar untuk menyegarkan: ambang 70 px, muat ulang lewat top frame' },
   { nama: 'navigasi-landing',     file: 'navigasi-landing.test.mjs',     soal: 'tombol Kembali ke Landing Page benar-benar pindah (tanpa duplikat fungsi)' },
   { nama: 'tombol-landing',       file: 'tombol-landing.test.mjs',       soal: 'tombol Masuk ke Dashboard bisa diklik (dekorasi tidak menutupi)' },
+  { nama: 'tema-landing',         file: 'tema-landing.test.mjs',         soal: 'sinkronisasi tema landing page dengan dashboard (terang & gelap)' },
   { nama: 'mutasi-perf12',        file: 'mutasi-perf12.mjs',             soal: 'assertion perf benar-benar menangkap pelanggaran' },
   { nama: 'cek-statis',           file: 'cek-statis.mjs',                soal: 'sintaks blok script + daftar nama fungsi' },
   { nama: 'sapaan-komentar',      file: 'sapaan-komentar.mjs',           soal: 'kode yang tertelan komentar' },
