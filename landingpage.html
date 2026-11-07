@@ -79,6 +79,9 @@ button{font-family:inherit}
 .hero::before{
   content:"";position:absolute;width:420px;height:420px;border:1px solid rgba(5,150,105,.08);
   border-radius:50%;right:-190px;top:80px;
+  /* Dekorasi saja. Tanpa ini kotaknya menutupi tombol "Masuk ke Dashboard"
+     di layar HP dan membuat tombol tidak bisa ditekan. */
+  pointer-events:none;
 }
 .hero-grid{display:grid;grid-template-columns:1fr 1.05fr;align-items:center;gap:70px}
 .eyebrow{
@@ -173,7 +176,7 @@ button{font-family:inherit}
   color:#fff;border-radius:24px;padding:48px 52px;display:flex;align-items:center;
   justify-content:space-between;gap:30px
 }
-.cta::after{content:"";position:absolute;width:300px;height:300px;border:1px solid rgba(255,255,255,.1);border-radius:50%;right:-100px;top:-140px}
+.cta::after{content:"";position:absolute;width:300px;height:300px;border:1px solid rgba(255,255,255,.1);border-radius:50%;right:-100px;top:-140px;pointer-events:none}
 .cta h2{font-size:29px;letter-spacing:-1px}
 .cta p{font-size:12px;line-height:1.7;opacity:.82;margin-top:9px;max-width:620px}
 .cta .btn{background:#fff;color:var(--primary-dark);position:relative;z-index:1}

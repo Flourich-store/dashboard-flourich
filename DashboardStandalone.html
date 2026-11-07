@@ -2116,6 +2116,56 @@
       border-color: rgba(5, 150, 105, 0.35);
     }
 
+    /* Kartu login + tautan "Kembali" di bawahnya. Tautan sengaja kecil dan
+       transparan: ini navigasi, bukan aksi utama, jadi tidak boleh terlihat
+       sebesar tombol "Masuk". */
+    .login-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 380px;
+      margin: auto;
+    }
+
+    /* Margin auto lama pada kartu (media mobile) dipindah ke .login-stack
+       supaya kartu dan tautan tetap satu grup yang terpusat. */
+    .login-stack > .login-card { margin: 0; }
+
+    .login-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 44px;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 999px;
+      background: none;
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+      transition: color 0.18s ease, background-color 0.18s ease;
+    }
+
+    .login-back i { font-size: 11px; }
+
+    .login-back:hover {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .login-back:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    html.theme-dark .login-back { color: #94a3b8; }
+    html.theme-dark .login-back:hover { color: #34d399; background: rgba(52, 211, 153, 0.1); }
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -2375,6 +2425,60 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+
+    /* TARIK UNTUK MENYEGARKAN (pull-to-refresh)
+       Chrome mematikan gestur refresh bawaan di halaman ini karena scroll-nya
+       ada di .app-shell. Indikator ini muncul hanya saat layar ditarik ke
+       bawah dari posisi paling atas. pointer-events:none supaya tidak pernah
+       menghalangi klik/sentuhan ke isi dashboard. */
+    .pull-refresh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      padding-top: calc(8px + env(safe-area-inset-top, 0px));
+      z-index: 99998;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-56px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    .pull-refresh.show {
+      opacity: 1;
+      transform: translateY(calc(var(--pull-jarak, 0px) - 56px));
+      transition: none;
+    }
+
+    .pull-refresh-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .pull-refresh-pill i {
+      color: var(--primary);
+      transition: transform 0.18s ease;
+    }
+
+    .pull-refresh.siap .pull-refresh-pill i {
+      transform: rotate(180deg);
+    }
+
+    .pull-refresh.memuat .pull-refresh-pill i {
+      animation: spin 0.8s linear infinite;
     }
 
     .loading-text {
@@ -3590,6 +3694,7 @@
   <div id="runtimeError" role="alert" style="display:none;position:fixed;top:12px;left:12px;right:12px;z-index:100000;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font:13px Arial,sans-serif;"></div>
 
   <section id="loginPage" class="login-wrapper" aria-label="Login dashboard">
+    <div class="login-stack">
     <form id="loginForm" class="login-card" onsubmit="handleLogin(event)">
       <img class="logo-login" src="https://lh3.googleusercontent.com/d/1kbCU9E4sSQTdBylR24DFnRvsX1cAT-vG" alt="Flourich">
       <h1 class="login-title">Masuk ke Dashboard</h1>
@@ -3608,11 +3713,14 @@
       <button id="btnLogin" class="btn-primary btn" type="submit" style="width:100%; margin-top:16px;">
         <i class="fa-solid fa-right-to-bracket"></i> Masuk
       </button>
-      <button id="loginLandingButton" class="btn btn-secondary" type="button" onclick="goToLandingPage()" style="width:100%; margin-top:10px;">
-        <i class="fa-solid fa-arrow-left"></i> Kembali ke Landing Page
-      </button>
       <div id="loginError" class="login-hint" style="display:none; color:#b91c1c; background:#fef2f2;" role="alert"></div>
     </form>
+    <!-- Navigasi, bukan aksi utama: kecil dan di luar kartu supaya tidak
+         bersaing dengan tombol "Masuk". -->
+    <button id="loginLandingButton" class="login-back" type="button" onclick="goToLandingPage()">
+      <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Kembali ke Landing Page
+    </button>
+    </div>
   </section>
 
   <div id="appShell" class="app-shell" style="display:none;">
@@ -4246,6 +4354,14 @@
     <div id="loadingText" class="loading-text">Memuat...</div>
   </div>
 
+  <!-- Indikator tarik untuk menyegarkan (mobile) -->
+  <div id="pullRefresh" class="pull-refresh" aria-hidden="true">
+    <div class="pull-refresh-pill">
+      <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+      <span id="pullRefreshText">Tarik untuk menyegarkan</span>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
     // ============================================================
@@ -4704,6 +4820,12 @@
     }
 
     function goToLandingPage() {
+      // Harus lewat frame PALING ATAS: halaman ini berjalan di dalam beberapa
+      // iframe Apps Script (userCodeAppPanel -> userHtmlFrame), jadi
+      // window.parent bukan halaman induk yang sebenarnya. Versi lama memakai
+      // postMessage ke window.parent dan pesannya hilang, sehingga tombol
+      // "Kembali ke Landing Page" tampak mati. Di GitHub Pages, pindah ke URL
+      // ini hanya perubahan hash, jadi SPA langsung berganti ke landing.
       window.top.location.href = 'https://flourich-store.github.io/dashboard-flourich/#beranda';
     }
 
@@ -6847,6 +6969,176 @@
       }, 600);
     }
 
+    // ============================================================
+    // TARIK UNTUK MENYEGARKAN (pull-to-refresh)
+    // ============================================================
+    // Chrome mematikan gestur refresh bawaan karena scroll dashboard ada di
+    // .app-shell, bukan di dokumen. Gestur ini hanya aktif saat wadah gulir
+    // berada di posisi paling atas, jadi scroll biasa tidak terganggu.
+    var PULL_AMBANG = 70;  // px tarik minimum supaya halaman dimuat ulang
+    var PULL_MAKS = 96;    // batas jarak visual indikator
+    var pullMulaiY = 0;
+    var pullJarak = 0;
+    var pullAktif = false;
+    var pullSedangMemuat = false;
+    var pullUrlAplikasi = null; // cache di memori saja, tidak ditulis ke storage
+
+    // Hitung jarak tarik yang ditampilkan dan apakah sudah melewati ambang.
+    function hitungTarikSegarkan(deltaY, ambang) {
+      var batas = typeof ambang === 'number' ? ambang : PULL_AMBANG;
+      var jarak = Math.max(0, Number(deltaY) || 0);
+      if (jarak > PULL_MAKS) jarak = PULL_MAKS;
+      return { jarak: jarak, siap: jarak >= batas };
+    }
+
+    function wadahGulir() {
+      var shell = document.getElementById('appShell');
+      if (!shell) return null;
+      var cs = window.getComputedStyle(shell);
+      if (cs.overflowY === 'auto' || cs.overflowY === 'scroll') return shell;
+      return null;
+    }
+
+    function posisiGulirAtas() {
+      var wadah = wadahGulir();
+      if (wadah) return wadah.scrollTop <= 0;
+      var doc = document.documentElement;
+      return (window.pageYOffset || doc.scrollTop || document.body.scrollTop || 0) <= 0;
+    }
+
+    function bolehTarikSegarkan() {
+      if (pullSedangMemuat) return false;
+      var login = document.getElementById('loginPage');
+      if (login && window.getComputedStyle(login).display !== 'none') return false;
+      var shell = document.getElementById('appShell');
+      if (shell && window.getComputedStyle(shell).display === 'none') return false;
+      var modal = document.querySelectorAll('.modal');
+      for (var i = 0; i < modal.length; i++) {
+        if (window.getComputedStyle(modal[i]).display !== 'none') return false;
+      }
+      return posisiGulirAtas();
+    }
+
+    function tampilkanIndikatorTarik(hasil, sedangMemuat) {
+      var el = document.getElementById('pullRefresh');
+      var teks = document.getElementById('pullRefreshText');
+      if (!el) return;
+      el.style.setProperty('--pull-jarak', hasil.jarak + 'px');
+      el.classList.add('show');
+      el.classList.toggle('siap', !!hasil.siap);
+      if (sedangMemuat) {
+        el.classList.add('memuat');
+        if (teks) teks.textContent = 'Menyegarkan...';
+        return;
+      }
+      el.classList.remove('memuat');
+      if (teks) teks.textContent = hasil.siap ? 'Lepaskan untuk menyegarkan' : 'Tarik untuk menyegarkan';
+    }
+
+    function sembunyikanIndikatorTarik() {
+      var el = document.getElementById('pullRefresh');
+      if (el) {
+        el.classList.remove('show', 'siap', 'memuat');
+        el.style.setProperty('--pull-jarak', '0px');
+      }
+      var teks = document.getElementById('pullRefreshText');
+      if (teks) teks.textContent = 'Tarik untuk menyegarkan';
+      pullJarak = 0;
+    }
+
+    function mulaiTarik(event) {
+      if (!bolehTarikSegarkan()) return;
+      if (!event.touches || event.touches.length !== 1) return;
+      if (!posisiGulirAtas()) return;
+      pullMulaiY = event.touches[0].clientY;
+      pullJarak = 0;
+      pullAktif = true;
+    }
+
+    function gerakTarik(event) {
+      if (!pullAktif) return;
+      if (!event.touches || event.touches.length !== 1) {
+        pullAktif = false;
+        sembunyikanIndikatorTarik();
+        return;
+      }
+      // Bila posisi sudah tidak di atas (mis. sambil menggulir), batalkan.
+      if (!posisiGulirAtas()) {
+        pullAktif = false;
+        sembunyikanIndikatorTarik();
+        return;
+      }
+      var delta = event.touches[0].clientY - pullMulaiY;
+      if (delta <= 0) {
+        pullJarak = 0;
+        sembunyikanIndikatorTarik();
+        return;
+      }
+      if (event.cancelable) event.preventDefault();
+      var hasil = hitungTarikSegarkan(delta);
+      pullJarak = hasil.jarak;
+      tampilkanIndikatorTarik(hasil, false);
+    }
+
+    function lepasTarik() {
+      if (!pullAktif) return;
+      pullAktif = false;
+      if (pullJarak >= PULL_AMBANG) {
+        muatUlangAplikasi();
+        return;
+      }
+      sembunyikanIndikatorTarik();
+    }
+
+    function muatUlangAplikasi() {
+      if (pullSedangMemuat) return;
+      pullSedangMemuat = true;
+      tampilkanIndikatorTarik({ jarak: PULL_AMBANG, siap: true }, true);
+
+      var pakai = function (url) {
+        if (!url) {
+          pullSedangMemuat = false;
+          sembunyikanIndikatorTarik();
+          if (typeof showToast === 'function') {
+            showToast('Gagal menyegarkan. Periksa koneksi lalu coba lagi.', 'error');
+          }
+          return;
+        }
+        pullUrlAplikasi = url;
+        try {
+          // location.reload() di dalam iframe membuat dashboard kosong
+          // (/blank). Arahkan frame paling atas ke URL aplikasi; sesi login
+          // dipulihkan dari sessionStorage oleh restoreSessionIfValid().
+          window.top.location.href = url;
+        } catch (e) {
+          window.location.href = url;
+        }
+      };
+
+      if (pullUrlAplikasi) { pakai(pullUrlAplikasi); return; }
+      if (typeof google === 'undefined' || !google.script || !google.script.run) { pakai(null); return; }
+      try {
+        google.script.run
+          .withSuccessHandler(function (url) { pakai(url || null); })
+          .withFailureHandler(function () { pakai(null); })
+          .getAppUrl('dashboard');
+      } catch (e) {
+        pakai(null);
+      }
+    }
+
+    function pasangTarikSegarkan() {
+      document.addEventListener('touchstart', mulaiTarik, { passive: true });
+      // passive:false wajib: supaya preventDefault() bekerja dan gestur tidak
+      // berubah menjadi scroll saat indikator sedang ditarik.
+      document.addEventListener('touchmove', gerakTarik, { passive: false });
+      document.addEventListener('touchend', lepasTarik, { passive: true });
+      document.addEventListener('touchcancel', function () {
+        pullAktif = false;
+        sembunyikanIndikatorTarik();
+      }, { passive: true });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
       runSafely('preloadCharts', preloadCharts);
       runSafely('initPenjualanCalc', initPenjualanCalc);
@@ -6854,6 +7146,7 @@
       runSafely('bindSidebarNavigation', bindSidebarNavigation);
       runSafely('bindBottomNav', bindBottomNav);
       runSafely('restoreSidebarCollapse', restoreSidebarCollapse);
+      runSafely('pasangTarikSegarkan', pasangTarikSegarkan);
 
       runSafely('restoreSessionIfValid', restoreSessionIfValid);
       bindSessionActivity();
@@ -6977,15 +7270,6 @@
   </script>
 
   <script>
-    // ============ NAVIGATION TO LANDING PAGE ============
-    function goToLandingPage() {
-      if (window.parent && window.parent !== window) {
-        try { window.parent.postMessage({ type: 'flourich-landing' }, '*'); } catch (e) {}
-      } else {
-        window.location.hash = 'beranda';
-      }
-    }
-
     // ============ TOGGLE TEMA LIGHT/DARK ============
     function applyThemeThemeIcons() {
       var isDark = document.documentElement.classList.contains('theme-dark');

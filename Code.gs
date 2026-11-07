@@ -553,6 +553,25 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
+// URL web app yang sedang berjalan. Halaman dashboard tidak bisa membaca URL
+// ini sendiri karena berjalan di iframe beda origin (googleusercontent.com),
+// jadi nilainya dipakai untuk "tarik untuk menyegarkan" (muat ulang frame
+// paling atas). Parameter page wajib disertakan: getUrl() hanya memberi
+// alamat /exec tanpa query, sehingga tanpa ini refresh akan mendarat di
+// landing page, bukan dashboard. Selalu mengembalikan string.
+function getAppUrl(page) {
+  try {
+    var url = ScriptApp.getService().getUrl() || '';
+    if (!url) return '';
+    if (page) {
+      url += (url.indexOf('?') === -1 ? '?' : '&') + 'page=' + encodeURIComponent(String(page));
+    }
+    return url;
+  } catch (e) {
+    return '';
+  }
+}
+
 // ============================================================
 // AUTHENTICATION
 // ============================================================
