@@ -4543,14 +4543,15 @@
     // SESSION & CONTROL
     // ============================================================
     function initDashboardData() {
-      var savedStart = localStorage.getItem('startDate');
-      var savedEnd = localStorage.getItem('endDate');
+      // SAAT LOGIN: jangan memuat filter dari localStorage secara otomatis.
+      // Ini supaya dashboard selalu tampil data penuh setelah login,
+      // dan user yang ingin filtering harus memilih periode melalui "Tampilkan".
       var today = getTodayISO();
 
       var startEl = document.getElementById('startDate');
       var endEl = document.getElementById('endDate');
-      if (startEl) startEl.value = savedStart || today;
-      if (endEl) endEl.value = savedEnd || today;
+      if (startEl) startEl.value = today;
+      if (endEl) endEl.value = today;
 
       // Filter periode TIDAK dijalankan otomatis saat dashboard dibuka.
       // Data laporan baru dimuat setelah user menekan tombol "Tampilkan".
