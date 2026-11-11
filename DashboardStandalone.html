@@ -4381,6 +4381,11 @@
     var reportCache = null;         // { start, end, res, dipakai: { sectionId: true } }
     var produkSudahDimuat = false;  // Produk dimuat saat tabnya dibuka, sekali/sesi
     var bahanSudahDimuat = false;   // Bahan dimuat saat tabnya dibuka, sekali/sesi
+    // Tab Penjualan & Grafik memakai perilaku yang sama dengan Overview:
+    // saat pertama dibuka tampilkan SEMUA data, filter tanggal baru berlaku
+    // setelah user memilih periode lalu menekan "Tampilkan".
+    var salesTabAutoLoaded = false;
+    var chartTabAutoLoaded = false;
     var lastChartData = [];
     var trendRows = [];    // data transaksi laporan terakhir (untuk sparkline hero)
     var trendMode = 'all'; // 'all' | 'cash' | 'qris'
@@ -4543,18 +4548,18 @@
     // SESSION & CONTROL
     // ============================================================
     function initDashboardData() {
-      // SAAT LOGIN: jangan memuat filter dari localStorage secara otomatis.
-      // Ini supaya dashboard selalu tampil data penuh setelah login,
-      // dan user yang ingin filtering harus memilih periode melalui "Tampilkan".
-      var today = getTodayISO();
-
+      // SAAT LOGIN: tampilkan SEMUA data (tanpa filter tanggal).
+      // Input periode dikosongkan; begitu user mengisi tanggal lalu menekan
+      // "Tampilkan", barulah laporan disaring per tanggal.
       var startEl = document.getElementById('startDate');
       var endEl = document.getElementById('endDate');
-      if (startEl) startEl.value = today;
-      if (endEl) endEl.value = today;
+      if (startEl) startEl.value = '';
+      if (endEl) endEl.value = '';
+      localStorage.removeItem('startDate');
+      localStorage.removeItem('endDate');
 
-      // Filter periode TIDAK dijalankan otomatis saat dashboard dibuka.
-      // Data laporan baru dimuat setelah user menekan tombol "Tampilkan".
+      // Muat seluruh data sekali di awal supaya dashboard tidak kosong.
+      // (Filter tanggal hanya aktif setelah user memilih periode sendiri.)
       //
       // PERFORMA: Produk & Bahan TIDAK lagi dimuat di jalur login. Masing-masing
       // satu panggilan server (±1,7-2,2 detik) dan round-trip di Apps Script
@@ -4564,8 +4569,8 @@
       // sebelum diklik — dan prefetch itu mengalah bila laporan sedang dimuat.
       jadwalkanPrefetchProdukBahan();
       bindStokBahanEvents();
-      showEmptyPeriodState();
       preloadCharts();
+      loadReport(true);
     }
 
     var SESSION_TIMEOUT_MS = 30 * 60 * 1000;
@@ -5167,27 +5172,44 @@
       setTimeout(jalankan, 2000);
     }
 
-    function loadReport() {
+    // tanpaFilter=true (atau kedua input tanggal kosong) => muat SEMUA data.
+    // Setelah login dashboard memanggil loadReport(true); filter tanggal baru
+    // berlaku ketika user mengisi periode lalu menekan "Tampilkan".
+    function loadReport(tanpaFilter) {
       if (reportLoading) {
         showToast('Laporan sedang dimuat, tunggu sebentar...', 'error');
         return;
       }
 
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
+      var start = document.getElementById('startDate').value;
+      var end = document.getElementById('endDate').value;
+      var semuaData = tanpaFilter === true || (!start && !end);
 
-      if (!start || !end) {
-        showToast('Pilih periode tanggal terlebih dahulu!', 'error');
-        return;
+      if (semuaData) {
+        start = '';
+        end = '';
+        localStorage.removeItem('startDate');
+        localStorage.removeItem('endDate');
+      } else {
+        if (!start || !end) {
+          showToast('Isi Periode Mulai dan Periode Selesai, atau kosongkan keduanya untuk melihat semua data.', 'error');
+          return;
+        }
+        if (start > end) {
+          showToast('Periode Mulai tidak boleh lebih besar dari Periode Selesai!', 'error');
+          return;
+        }
+        localStorage.setItem('startDate', start);
+        localStorage.setItem('endDate', end);
       }
-      if (start > end) {
-        showToast('Periode Mulai tidak boleh lebih besar dari Periode Selesai!', 'error');
-        return;
-      }
-      localStorage.setItem('startDate', start);
-      localStorage.setItem('endDate', end);
 
       reportLoading = true;
+      var hintMuat = document.getElementById('heroPeriodHint');
+      if (hintMuat) {
+        hintMuat.innerHTML = semuaData
+          ? 'Memuat <b>semua data</b>...'
+          : 'Memuat periode <b>' + escapeHtml(start) + '</b> - <b>' + escapeHtml(end) + '</b>...';
+      }
       setButtonsDisabled(true);
 
       isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
@@ -5372,16 +5394,30 @@
       });
     }
 
-    function loadSalesByDateRange() {
-      var start = document.getElementById('salesStartDate').value;
-      var end = document.getElementById('salesEndDate').value;
-      if (!start || !end) {
-        showToast('Pilih start date dan end date terlebih dahulu!', 'error');
-        return;
-      }
-      if (start > end) {
-        showToast('Start date tidak boleh lebih besar dari end date!', 'error');
-        return;
+    // tanpaFilter=true (atau kedua tanggal kosong) => semua data penjualan.
+    // Perilaku sama dengan tab Overview: data penuh dulu, filter setelah user
+    // memilih Start Date & End Date lalu menekan "Tampilkan".
+    function loadSalesByDateRange(tanpaFilter) {
+      var startEl = document.getElementById('salesStartDate');
+      var endEl = document.getElementById('salesEndDate');
+      var start = startEl ? startEl.value : '';
+      var end = endEl ? endEl.value : '';
+      var semuaData = tanpaFilter === true || (!start && !end);
+
+      if (semuaData) {
+        start = '';
+        end = '';
+        if (startEl) startEl.value = '';
+        if (endEl) endEl.value = '';
+      } else {
+        if (!start || !end) {
+          showToast('Isi Start Date dan End Date, atau kosongkan keduanya untuk melihat semua data.', 'error');
+          return;
+        }
+        if (start > end) {
+          showToast('Start date tidak boleh lebih besar dari end date!', 'error');
+          return;
+        }
       }
 
       // PERFORMA: periode ini mungkin sudah dimuat di tab Overview. Pakai cache
@@ -5409,10 +5445,10 @@
     }
 
     function resetSalesFilters() {
-      var today = getTodayISO();
-      document.getElementById('salesStartDate').value = today;
-      document.getElementById('salesEndDate').value = today;
-      isiTbody('tabelData', '<tr><td colspan="6" class="empty-text">Pilih periode tanggal dan klik "Tampilkan"</td></tr>');
+      // Reset = kembali ke semua data, bukan layar kosong.
+      document.getElementById('salesStartDate').value = '';
+      document.getElementById('salesEndDate').value = '';
+      loadSalesByDateRange(true);
     }
 
     function renderTopProducts(topProducts) {
@@ -5607,7 +5643,11 @@
       var start = document.getElementById('startDate').value;
       var end = document.getElementById('endDate').value;
       var hint = document.getElementById('heroPeriodHint');
-      if (hint) hint.innerHTML = 'Periode&nbsp;<b>' + escapeHtml(start || end || '...') + '</b>&nbsp;–&nbsp;<b>' + escapeHtml(end || start || '...') + '</b>';
+      if (hint) {
+        hint.innerHTML = (!start && !end)
+          ? 'Menampilkan <b>semua data</b>&nbsp;— isi periode untuk memfilter'
+          : 'Periode&nbsp;<b>' + escapeHtml(start || end || '...') + '</b>&nbsp;–&nbsp;<b>' + escapeHtml(end || start || '...') + '</b>';
+      }
       renderPeringatanKpiCd(res);
     }
 
@@ -6012,16 +6052,28 @@
       }
     }
 
-    function loadChartByDateRange() {
-      var start = document.getElementById('chartStartDate').value;
-      var end = document.getElementById('chartEndDate').value;
-      if (!start || !end) {
-        showToast('Pilih start date dan end date terlebih dahulu!', 'error');
-        return;
-      }
-      if (start > end) {
-        showToast('Start date tidak boleh lebih besar dari end date!', 'error');
-        return;
+    // tanpaFilter=true (atau kedua tanggal kosong) => grafik semua data.
+    function loadChartByDateRange(tanpaFilter) {
+      var startEl = document.getElementById('chartStartDate');
+      var endEl = document.getElementById('chartEndDate');
+      var start = startEl ? startEl.value : '';
+      var end = endEl ? endEl.value : '';
+      var semuaData = tanpaFilter === true || (!start && !end);
+
+      if (semuaData) {
+        start = '';
+        end = '';
+        if (startEl) startEl.value = '';
+        if (endEl) endEl.value = '';
+      } else {
+        if (!start || !end) {
+          showToast('Isi Start Date dan End Date, atau kosongkan keduanya untuk melihat semua data.', 'error');
+          return;
+        }
+        if (start > end) {
+          showToast('Start date tidak boleh lebih besar dari end date!', 'error');
+          return;
+        }
       }
 
       // PERFORMA: periode ini mungkin sudah dimuat di tab Overview. Pakai cache
@@ -6049,11 +6101,10 @@
     }
 
     function resetChartFilters() {
-      var today = getTodayISO();
-      document.getElementById('chartStartDate').value = today;
-      document.getElementById('chartEndDate').value = today;
-      document.getElementById('chartKategori').innerHTML = '<div class="empty-text" style="padding:60px;text-align:center;">Pilih periode dan klik "Tampilkan"</div>';
-      document.getElementById('chartTotalOmset').textContent = '';
+      // Reset = kembali ke grafik semua data, bukan layar kosong.
+      document.getElementById('chartStartDate').value = '';
+      document.getElementById('chartEndDate').value = '';
+      loadChartByDateRange(true);
     }
 
     // ============================================================
@@ -6920,6 +6971,17 @@
         // produk/bahan yang tidak ada hubungannya dengan halaman yang dilihat.
         if (targetId === 'section-produk') muatProdukSekali();
         if (targetId === 'section-bahan') muatBahanSekali();
+
+        // Semua data dulu (sekali per sesi); klik "Tampilkan" berikutnya
+        // memuat ulang sesuai periode yang dipilih user.
+        if (targetId === 'section-penjualan' && !salesTabAutoLoaded) {
+          salesTabAutoLoaded = true;
+          loadSalesByDateRange(true);
+        }
+        if (targetId === 'section-chart' && !chartTabAutoLoaded) {
+          chartTabAutoLoaded = true;
+          loadChartByDateRange(true);
+        }
       }
 
       navItems.forEach(function (navItem) {
@@ -7262,7 +7324,8 @@
       document.getElementById('endDate').value = '';
       localStorage.removeItem('startDate');
       localStorage.removeItem('endDate');
-      showEmptyPeriodState();
+      // Reset = kembali ke tampilan semua data, bukan layar kosong.
+      loadReport(true);
     }
 
     window.resetPengeluaranFilters = function () {

@@ -1320,6 +1320,15 @@ function _bootstrapSinkronPos(ss) {
       ScriptApp.newTrigger('sinkronBarisPosOnChange').forSpreadsheet(ss).onChange().create();
       Logger.log('Bootstrap: trigger sinkronBarisPosOnChange terpasang');
     }
+    // PERFORMA: doGet memanggil fungsi ini SETIAP kali dashboard dibuka, dan
+    // reparasi + konversi membaca seluruh sheet Penjualan sebelum halaman login
+    // sempat tampil. Cukup jalankan sekali per 6 jam; baris POS baru tetap
+    // ditangani trigger onChange, dan tombol buka dashboard tidak lagi
+    // menunggu migrasi yang biasanya tidak mengubah apa pun.
+    var props = PropertiesService.getScriptProperties();
+    var terakhir = Number(props.getProperty('BOOTSTRAP_POS_AT') || 0);
+    if (terakhir && (Date.now() - terakhir) < 6 * 60 * 60 * 1000) return;
+    props.setProperty('BOOTSTRAP_POS_AT', String(Date.now()));
     _reparasiMetodePosKosong(ss);
     var hasil = _konversiBarisPosDiSheet(ss);
     if (hasil && hasil.dikonversi > 0) Logger.log('Bootstrap: ' + hasil.dikonversi + ' baris POS dikonversi ke v2');

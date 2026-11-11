@@ -30,6 +30,7 @@ const CEK = [
   { nama: 'panel-kpi-cd',         file: 'panel-kpi-cd.test.mjs',         soal: 'panel peringatan baris Credit/Debit belum terkategori di dashboard' },
   { nama: 'paginasi',             file: 'paginasi.test.mjs',             soal: 'paginasi tabel: 20 baris/halaman, reset saat filter berubah (data karangan)' },
   { nama: 'perf-p1',              file: 'perf-p1.test.mjs',              soal: 'invariant performa frontend (satu panggilan per muat)' },
+  { nama: 'semua-data',           file: 'semua-data.test.mjs',           soal: 'login = semua data, filter aktif setelah tanggal dipilih (Overview/Penjualan/Grafik)' },
   { nama: 'login-theme',          file: 'login-theme.test.mjs',          soal: 'warna kartu login ikut tema terang/gelap' },
   { nama: 'responsive-mobile',    file: 'responsive-mobile.test.mjs',    soal: 'tata letak layar kecil' },
   { nama: 'tabel-geser',          file: 'tabel-geser.test.mjs',          soal: 'tabel ikut isi, tanpa potong "...", bisa digeser horizontal' },
