@@ -214,6 +214,11 @@ uji('resetFilters()/resetSalesFilters()/resetChartFilters() memuat semua data', 
   }
 });
 
+uji('input periode tab Penjualan/Grafik tidak diisi tanggal hari ini saat init', () => {
+  benar(!/(chartStartEl|chartEndEl|salesStartEl|salesEndEl)\.value\s*=\s*today/.test(html),
+    'input periode tab Grafik/Penjualan harus dibiarkan kosong (kosong = semua data)');
+});
+
 // ---------- 6. Tab Penjualan & Grafik auto-load semua data ------------------
 uji('activateSection(): tab Penjualan/Grafik memuat semua data sekali saat dibuka', () => {
   const b = potongFungsi(html, 'function activateSection');

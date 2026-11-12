@@ -4575,8 +4575,60 @@
 
     var SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
-    function setSessionExpiry() {
-      sessionStorage.setItem('dash_session_expiry', String(Date.now() + SESSION_TIMEOUT_MS));
+    // Sesi login dibaca dari sessionStorage (cepat, per-tab) DAN dicadangkan ke
+    // localStorage supaya refresh browser biasa tidak memaksa login ulang:
+    // saat halaman dimuat ulang, iframe Apps Script dibuat ulang dan
+    // sessionStorage-nya bisa kosong, sedangkan localStorage tetap ada.
+    // Keduanya memakai masa berlaku yang sama; sesi yang kedaluwarsa DIHAPUS
+    // saat dibaca, bukan dipakai. Token tetap dicabut di server saat logout.
+    var SESSION_STORE_KEY = 'dash_session_persist';
+    var SESSION_PERSIST_MIN_MS = 60 * 1000; // batas tulis ulang (dipanggil dari mousemove/scroll)
+    var lastPersistAt = 0;
+
+    function simpanSesiPersisten(username, role, token, expiryMs) {
+      try {
+        localStorage.setItem(SESSION_STORE_KEY, JSON.stringify({
+          username: String(username || ''),
+          role: String(role || ''),
+          token: String(token || ''),
+          expiry: Number(expiryMs) || 0
+        }));
+        lastPersistAt = Date.now();
+      } catch (e) {
+        // localStorage penuh/diblokir (mis. mode privat): sesi tab tetap jalan.
+      }
+    }
+
+    function bacaSesiPersisten() {
+      try {
+        var mentah = localStorage.getItem(SESSION_STORE_KEY);
+        if (!mentah) return null;
+        var data = JSON.parse(mentah);
+        if (!data || !data.username || !data.role || !data.token) { hapusSesiPersisten(); return null; }
+        var expiryMs = Number(data.expiry);
+        if (!isFinite(expiryMs) || expiryMs <= Date.now()) { hapusSesiPersisten(); return null; }
+        return { username: String(data.username), role: String(data.role), token: String(data.token), expiry: expiryMs };
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function hapusSesiPersisten() {
+      try { localStorage.removeItem(SESSION_STORE_KEY); } catch (e) { }
+      lastPersistAt = 0;
+    }
+
+    // paksa=true melewati batas tulis 60 detik: dipakai saat tab ditinggalkan
+    // atau ditutup, ketika keadaan terakhir justru wajib tersimpan.
+    function setSessionExpiry(paksa) {
+      var expiryMs = Date.now() + SESSION_TIMEOUT_MS;
+      sessionStorage.setItem('dash_session_expiry', String(expiryMs));
+      // Tulis ulang localStorage sesekali saja: fungsi ini dipanggil juga dari
+      // mousemove/scroll, dan menulis token tiap gerakan mouse itu sia-sia.
+      if (paksa !== true && lastPersistAt && (Date.now() - lastPersistAt) < SESSION_PERSIST_MIN_MS) return;
+      var username = sessionStorage.getItem('dash_username');
+      if (!username) return;
+      simpanSesiPersisten(username, sessionStorage.getItem('dash_role'), sessionStorage.getItem('dash_token'), expiryMs);
     }
 
     function clearSessionState() {
@@ -4584,6 +4636,7 @@
       sessionStorage.removeItem('dash_role');
       sessionStorage.removeItem('dash_session_expiry');
       sessionStorage.removeItem('dash_token');
+      hapusSesiPersisten();
       cachedSession = null;
     }
 
@@ -4606,6 +4659,16 @@
           startSessionTimer(SESSION_TIMEOUT_MS);
         }, { passive: true });
       });
+
+      // Tab ditutup/disembunyikan: simpan masa berlaku terakhir tanpa menunggu
+      // batas 60 detik. Dengan begitu membuka kembali tab dalam 30 menit tetap
+      // memulihkan sesi (localStorage bertahan, sessionStorage tidak).
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') setSessionExpiry(true);
+      }, { passive: true });
+      window.addEventListener('pagehide', function () {
+        setSessionExpiry(true);
+      }, { passive: true });
     }
 
     function resetSessionTimer() {
@@ -4621,6 +4684,24 @@
       var expiry = sessionStorage.getItem('dash_session_expiry');
       var token = sessionStorage.getItem('dash_token');
 
+      // Setelah browser di-refresh, sessionStorage bisa kosong (iframe Apps
+      // Script dibuat ulang). Ambil cadangan dari localStorage, lalu pulihkan
+      // ke sessionStorage supaya jalur kode lain tetap memakai sumber yang sama.
+      if (!username || !role || !expiry || !token) {
+        var tersimpan = bacaSesiPersisten();
+        if (tersimpan) {
+          username = tersimpan.username;
+          role = tersimpan.role;
+          token = tersimpan.token;
+          expiry = String(tersimpan.expiry);
+          sessionStorage.setItem('dash_username', username);
+          sessionStorage.setItem('dash_role', role);
+          sessionStorage.setItem('dash_token', token);
+          sessionStorage.setItem('dash_session_expiry', expiry);
+          cachedSession = token;
+        }
+      }
+
       // Tanpa token server, sesi tidak bisa dipulihkan (frontend lama).
       if (!username || !role || !expiry || !token) {
         clearSessionState();
@@ -4633,9 +4714,12 @@
         return false;
       }
 
+      // Masa berlaku diperpanjang 30 menit ke depan (sliding) lalu dicadangkan
+      // ulang ke localStorage.
+      setSessionExpiry();
       bindSessionActivity();
       showDashboard();
-      startSessionTimer(Math.max(expiryMs - Date.now(), 1000));
+      startSessionTimer(SESSION_TIMEOUT_MS);
       initDashboardData();
       return true;
     }
@@ -7038,13 +7122,12 @@
     // Chrome mematikan gestur refresh bawaan karena scroll dashboard ada di
     // .app-shell, bukan di dokumen. Gestur ini hanya aktif saat wadah gulir
     // berada di posisi paling atas, jadi scroll biasa tidak terganggu.
-    var PULL_AMBANG = 70;  // px tarik minimum supaya halaman dimuat ulang
+    var PULL_AMBANG = 70;  // px tarik minimum supaya data disegarkan
     var PULL_MAKS = 96;    // batas jarak visual indikator
     var pullMulaiY = 0;
     var pullJarak = 0;
     var pullAktif = false;
     var pullSedangMemuat = false;
-    var pullUrlAplikasi = null; // cache di memori saja, tidak ditulis ke storage
 
     // Hitung jarak tarik yang ditampilkan dan apakah sudah melewati ambang.
     function hitungTarikSegarkan(deltaY, ambang) {
@@ -7153,40 +7236,54 @@
       sembunyikanIndikatorTarik();
     }
 
+    // Seksi yang sedang terlihat, supaya penyegaran hanya memuat yang relevan.
+    function seksiAktifUntukSegarkan() {
+      var aktif = document.querySelector('.content-section.active');
+      return aktif && aktif.id ? aktif.id : 'section-overview';
+    }
+
+    // PENTING: jangan pernah memindahkan frame atas ke URL /exec.
+    // Dulu di sini dipanggil getAppUrl('dashboard') lalu
+    // window.top.location.href = url. Akibatnya seluruh aplikasi Apps Script
+    // dimuat ulang: top frame berganti ke halaman /exec (banner "Aplikasi ini
+    // dibuat oleh pengguna Google Apps Script"), iframe dashboard dibuat ulang
+    // dengan origin/token baru, dan sesi login di sessionStorage hilang — user
+    // dipaksa login ulang.
+    // Sekarang data dimuat ulang DI TEMPAT: token, sesi, dan posisi halaman
+    // tetap; yang diambil ulang hanya data dari server.
     function muatUlangAplikasi() {
       if (pullSedangMemuat) return;
       pullSedangMemuat = true;
       tampilkanIndikatorTarik({ jarak: PULL_AMBANG, siap: true }, true);
 
-      var pakai = function (url) {
-        if (!url) {
-          pullSedangMemuat = false;
-          sembunyikanIndikatorTarik();
-          if (typeof showToast === 'function') {
-            showToast('Gagal menyegarkan. Periksa koneksi lalu coba lagi.', 'error');
-          }
-          return;
-        }
-        pullUrlAplikasi = url;
-        try {
-          // location.reload() di dalam iframe membuat dashboard kosong
-          // (/blank). Arahkan frame paling atas ke URL aplikasi; sesi login
-          // dipulihkan dari sessionStorage oleh restoreSessionIfValid().
-          window.top.location.href = url;
-        } catch (e) {
-          window.location.href = url;
-        }
-      };
-
-      if (pullUrlAplikasi) { pakai(pullUrlAplikasi); return; }
-      if (typeof google === 'undefined' || !google.script || !google.script.run) { pakai(null); return; }
+      var seksi = seksiAktifUntukSegarkan();
       try {
-        google.script.run
-          .withSuccessHandler(function (url) { pakai(url || null); })
-          .withFailureHandler(function () { pakai(null); })
-          .getAppUrl('dashboard');
+        // Buang cache laporan supaya angka benar-benar diambil ulang dari
+        // server, bukan disajikan dari hasil muat sebelumnya.
+        batalkanCacheLaporan();
+        cachedPenjualan = [];
+
+        if (seksi === 'section-produk') {
+          produkSudahDimuat = false;
+          muatProdukSekali();
+        } else if (seksi === 'section-bahan') {
+          bahanSudahDimuat = false;
+          muatBahanSekali();
+        } else if (seksi === 'section-penjualan') {
+          loadSalesByDateRange();
+        } else if (seksi === 'section-chart') {
+          loadChartByDateRange();
+        } else {
+          loadReport();
+        }
       } catch (e) {
-        pakai(null);
+        // Kegagalan sinkron tidak boleh membuat indikator menggantung.
+      }
+
+      sembunyikanIndikatorTarik();
+      pullSedangMemuat = false;
+      if (typeof showToast === 'function') {
+        showToast('Menyegarkan data dashboard...', 'success');
       }
     }
 
@@ -7222,14 +7319,16 @@
         var endEl = document.getElementById('cdEndDate');
         if (startEl) startEl.value = today;
         if (endEl) endEl.value = today;
+        // Tab Grafik & Penjualan sengaja TIDAK diisi tanggal hari ini: sesuai
+        // aturan "semua data dulu", input periode kosong berarti tanpa filter.
         var chartStartEl = document.getElementById('chartStartDate');
         var chartEndEl = document.getElementById('chartEndDate');
-        if (chartStartEl) chartStartEl.value = today;
-        if (chartEndEl) chartEndEl.value = today;
+        if (chartStartEl) chartStartEl.value = '';
+        if (chartEndEl) chartEndEl.value = '';
         var salesStartEl = document.getElementById('salesStartDate');
         var salesEndEl = document.getElementById('salesEndDate');
-        if (salesStartEl) salesStartEl.value = today;
-        if (salesEndEl) salesEndEl.value = today;
+        if (salesStartEl) salesStartEl.value = '';
+        if (salesEndEl) salesEndEl.value = '';
         var cdDateInp = document.getElementById('cdTanggalInp');
         if (cdDateInp) cdDateInp.value = today;
         var inDateInp = document.getElementById('inTanggal');

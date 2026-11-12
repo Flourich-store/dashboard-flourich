@@ -9,10 +9,13 @@
 //   2. Ambang tarik 70 px, jarak visual dibatasi 96 px.
 //   3. Gestur memakai touchstart/touchmove/touchend + preventDefault saat
 //      benar-benar menarik, supaya tidak ikut menggulir di tengah gestur.
-//   4. Muat ulang memakai window.top.location.href ke URL aplikasi dari
-//      server (getAppUrl), BUKAN location.reload() yang terbukti merusak
-//      iframe dashboard (menjadi /blank).
-//   5. Server menyediakan getAppUrl() berbasis ScriptApp.getService().getUrl().
+//   4. Menyegarkan TIDAK memindahkan frame atas ke URL /exec dan TIDAK
+//      menyentuh sesi login. Dulu window.top.location.href = getAppUrl(...)
+//      memuat ulang seluruh aplikasi Apps Script sehingga iframe dibuat ulang
+//      dan user dipaksa login ulang. location.reload() tetap dilarang karena
+//      merusak iframe (/blank).
+//   5. Penyegaran membuang cache laporan lalu memuat ulang data seksi yang
+//      sedang aktif (Overview/Penjualan/Grafik/Produk/Bahan).
 //   6. Gestur tidak aktif di halaman login dan saat ada modal terbuka.
 //
 // Tidak membaca data produksi: aman dijalankan di repo publik.
@@ -133,11 +136,19 @@ uji('tidak aktif di halaman login dan saat modal terbuka', () => {
 });
 
 // ---------------------------------------------------------------
-// 4. Cara muat ulang: top frame, BUKAN location.reload()
+// 4. Cara menyegarkan: data dimuat ulang DI TEMPAT (tanpa navigasi)
 // ---------------------------------------------------------------
-uji('muat ulang lewat window.top.location.href', () => {
+uji('menyegarkan tidak memindahkan frame atas ke URL /exec', () => {
   const muat = potongFungsi(html, 'function muatUlangAplikasi');
-  benar(/window\.top\.location\.href\s*=/.test(muat), 'harus mengarahkan window.top.location.href');
+  benar(!/window\.top\.location/.test(muat), 'tidak boleh mengarahkan window.top.location: seluruh app dimuat ulang dan sesi login hilang');
+  benar(!/location\.href\s*=/.test(muat), 'tidak boleh mengubah location.href saat menyegarkan');
+  benar(!/getAppUrl/.test(muat), 'tidak boleh meminta URL /exec dari server untuk navigasi');
+});
+
+uji('sesi login tidak disentuh saat menyegarkan', () => {
+  const muat = potongFungsi(html, 'function muatUlangAplikasi');
+  benar(!/clearSessionState|logout\s*\(|sessionStorage\.removeItem|dash_token/.test(muat),
+    'penyegaran tidak boleh menghapus sesi/token (penyebab login ulang)');
 });
 
 uji('TIDAK memakai location.reload() (terbukti merusak iframe)', () => {
@@ -148,10 +159,24 @@ uji('TIDAK memakai location.reload() (terbukti merusak iframe)', () => {
   benar(!/location\.reload\s*\(/.test(kodeSaja), 'location.reload() dipanggil lagi di HTML');
 });
 
-uji('meminta URL aplikasi dari server lewat getAppUrl', () => {
+uji('menyegarkan membuang cache lalu memuat ulang data dari server', () => {
   const muat = potongFungsi(html, 'function muatUlangAplikasi');
-  benar(/getAppUrl\('dashboard'\)/.test(muat), "harus memanggil getAppUrl('dashboard') agar mendarat di dashboard, bukan landing page");
-  benar(/google\.script\.run/.test(muat), 'harus lewat google.script.run');
+  benar(/batalkanCacheLaporan\s*\(/.test(muat), 'cache laporan harus dibuang supaya data benar-benar diambil ulang');
+  benar(/loadReport\s*\(/.test(muat), 'Overview harus memuat ulang laporan');
+});
+
+uji('menyegarkan mengikuti seksi yang sedang aktif', () => {
+  const muat = potongFungsi(html, 'function muatUlangAplikasi');
+  benar(/seksiAktifUntukSegarkan\s*\(/.test(muat), 'harus memakai seksiAktifUntukSegarkan()');
+  benar(/section-produk[\s\S]*?muatProdukSekali\s*\(/.test(muat), 'tab Produk harus memuat ulang produk');
+  benar(/section-bahan[\s\S]*?muatBahanSekali\s*\(/.test(muat), 'tab Bahan harus memuat ulang bahan');
+  benar(/section-penjualan[\s\S]*?loadSalesByDateRange\s*\(/.test(muat), 'tab Penjualan harus memuat ulang tabel');
+  benar(/section-chart[\s\S]*?loadChartByDateRange\s*\(/.test(muat), 'tab Grafik harus memuat ulang grafik');
+});
+
+uji('getAppUrl() di server tetap tersedia sebagai API (bukan jalur refresh)', () => {
+  const fungsi = potongFungsi(gs, 'function getAppUrl');
+  benar(/ScriptApp\.getService\(\)\.getUrl\(\)/.test(fungsi), 'getAppUrl harus mengembalikan ScriptApp.getService().getUrl()');
 });
 
 // ---------------------------------------------------------------
