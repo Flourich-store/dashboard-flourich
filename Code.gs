@@ -584,18 +584,20 @@ function getAppUrl(page) {
 var SESSION_TTL_SECONDS = 21600; // 6 jam
 var ERR_UNAUTH = 'Sesi tidak valid atau telah berakhir. Silakan login kembali.';
 
-function _createSessionToken(username, role) {
+function _createSessionToken(username, role, cabang) {
   var token = Utilities.getUuid() + '-' + Date.now();
   CacheService.getScriptCache().put(
     'sess_' + token,
-    JSON.stringify({ u: String(username || ''), r: String(role || 'KASIR') }),
+    JSON.stringify({ u: String(username || ''), r: String(role || 'KASIR'), c: String(cabang || '') }),
     SESSION_TTL_SECONDS
   );
   return token;
 }
 
 // Verifikasi token -> { username, role }. Melempar Error bila tidak valid.
-// Super admin ditandai flag di sheet User (kolom 4 = SUPER_ADMIN/ADMIN/YA).
+// Super admin ditandai flag di sheet User: kolom berjudul "Flag"/"Super Admin"
+// bila ada, atau warisan lama kolom ke-4 (SUPER_ADMIN/ADMIN/YA/TRUE) selama
+// kolom ke-4 itu bukan kolom Cabang.
 function _verifyToken(token, needSuperAdmin) {
   var raw = CacheService.getScriptCache().get('sess_' + String(token || '').trim());
   if (!raw) throw new Error(ERR_UNAUTH);
@@ -650,6 +652,14 @@ function _num(v) {
 }
 
 function checkLogin(username, password){
+  // Kredensial kosong tidak pernah sah. Dulu baris kosong/tanpa password di
+  // sheet User bisa cocok dengan ("","") dan mengeluarkan token tanpa akun
+  // nyata. Frontend sudah menolaknya, tapi server tidak boleh bergantung itu.
+  var userInput = String(username || '').trim();
+  var passInput = String(password || '');
+  if (!userInput || !passInput) {
+    return { status: "error", message: "Username dan password wajib diisi" };
+  }
   try {
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('User');
@@ -661,17 +671,42 @@ function checkLogin(username, password){
     }
 
     var values = sheet.getDataRange().getValues();
+    if (!values || !values.length) {
+      return { status: "error", message: "Sheet User kosong" };
+    }
+    var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+    var idxUser = header.indexOf('username') !== -1 ? header.indexOf('username') : 0;
+    var idxPass = header.indexOf('password') !== -1 ? header.indexOf('password') : 1;
+    var idxRole = header.indexOf('role') !== -1 ? header.indexOf('role') : 2;
+    var idxCabang = header.indexOf('cabang');
+    // Kolom flag opsional: kalau sheet sudah pakai kolom Cabang, penanda SUPER_ADMIN
+    // tidak boleh lagi bergantung pada posisi kolom ke-4.
+    var idxFlag = -1;
+    ['flag', 'super admin', 'superadmin'].forEach(function (nama) {
+      var pos = header.indexOf(nama);
+      if (pos !== -1 && idxFlag === -1) idxFlag = pos;
+    });
+
     for (var i = 1; i < values.length; i++){
       var row = values[i];
-      var u = String(row[0] || '').trim();
-      var p = String(row[1] || '').trim();
-      var r = String(row[2] || 'KASIR').trim().toUpperCase();
-      // Flag super admin opsional di kolom ke-4 (SUPER_ADMIN/ADMIN/YA/TRUE)
-      var flag = String(row[3] || '').trim().toUpperCase();
-      if (r === 'SUPER_ADMIN' || flag === 'SUPER_ADMIN' || flag === 'ADMIN' || flag === 'YA' || flag === 'TRUE') r = 'SUPER_ADMIN';
-      if (u.toLowerCase() === String(username || '').trim().toLowerCase() && p === password){
-        var token = _createSessionToken(u, r);
-        return { status: "success", username: u, role: r, token: token, env: ACTIVE_ENV };
+      var u = String(row[idxUser] || '').trim();
+      var p = String(row[idxPass] || '').trim();
+      // Baris kosong / tanpa password bukan akun: jangan pernah dianggap cocok.
+      if (!u || !p) continue;
+      var r = String(row[idxRole] || 'KASIR').trim().toUpperCase();
+      var c = idxCabang !== -1 ? String(row[idxCabang] || '').trim() : '';
+
+      // Prioritas penanda SUPER_ADMIN: kolom Flag khusus -> warisan kolom ke-4
+      // (hanya bila kolom ke-4 bukan Cabang). Kolom Cabang sendiri tidak pernah
+      // dibaca sebagai flag.
+      var nilaiFlag = '';
+      if (idxFlag !== -1) nilaiFlag = String(row[idxFlag] || '').trim().toUpperCase();
+      else if (idxCabang === -1) nilaiFlag = String(row[3] || '').trim().toUpperCase();
+      if (nilaiFlag === 'SUPER_ADMIN' || nilaiFlag === 'ADMIN' || nilaiFlag === 'YA' || nilaiFlag === 'TRUE') r = 'SUPER_ADMIN';
+
+      if (u.toLowerCase() === userInput.toLowerCase() && p === passInput){
+        var token = _createSessionToken(u, r, c);
+        return { status: "success", username: u, role: r, cabang: c, token: token, env: ACTIVE_ENV };
       }
     }
     return { status: "error", message: "Username atau password salah" };

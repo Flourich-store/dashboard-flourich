@@ -37,6 +37,7 @@ const CEK = [
   { nama: 'favicon',              file: 'favicon.test.mjs',              soal: 'favicon logo Flourich ter-embed di 3 halaman (PNG 192x192)' },
   { nama: 'pull-refresh',         file: 'pull-refresh.test.mjs',         soal: 'tarik layar untuk menyegarkan data di tempat, tanpa login ulang' },
   { nama: 'sesi-login',           file: 'sesi-login.test.mjs',           soal: 'sesi login bertahan saat browser di-refresh (localStorage + masa berlaku 30 menit)' },
+  { nama: 'login-cabang',         file: 'login-cabang.test.mjs',         soal: 'checkLogin: kolom dari header, cabang di token, SUPER_ADMIN tidak bergeser' },
   { nama: 'navigasi-landing',     file: 'navigasi-landing.test.mjs',     soal: 'tombol Kembali ke Landing Page benar-benar pindah (tanpa duplikat fungsi)' },
   { nama: 'tombol-landing',       file: 'tombol-landing.test.mjs',       soal: 'tombol Masuk ke Dashboard bisa diklik (dekorasi tidak menutupi)' },
   { nama: 'tema-landing',         file: 'tema-landing.test.mjs',         soal: 'sinkronisasi tema landing page dengan dashboard (terang & gelap)' },
