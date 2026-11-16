@@ -16,6 +16,7 @@
  *   node deploy.mjs --skip-verify        -> lewati verifikasi URL
  *
  * Syarat: clasp sudah login (clasp login) dan .clasp.json menunjuk project GAS.
+ * Catatan scriptId, deploymentId & langkah otorisasi owner: lihat DEPLOY.md.
  */
 
 import { execSync } from 'node:child_process';
