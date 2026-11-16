@@ -58,6 +58,9 @@ function sandboxDengan(nilaiInput) {
     formatIDR: function (n) { return 'Rp ' + n; },
     setButtonsDisabled: function () { },
     isiTbody: function () { },
+    // Markup status memuat dipakai loadReport/loadSales/loadChart.
+    htmlMemuat: function (pesan, kolom) { return '<memuat:' + pesan + ':' + (kolom || 6) + '>'; },
+    htmlMemuatBlok: function (pesan) { return '<memuat-blok:' + pesan + '>'; },
     getToken: function () { return 'TOKEN'; },
     // Parameter cabang ikut dikirim ke server; kasir mengirim '' karena server
     // memaksa cabang dari token. Di tes ini cukup dipatok kosong.

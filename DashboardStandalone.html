@@ -2504,6 +2504,45 @@
       font-weight: 600;
     }
 
+    /* Status memuat: satu baris penuh di dalam tabel, bukan animasi yang
+       tampil di belakang header tabel. */
+    .baris-memuat td {
+      padding: 38px 12px !important;
+      text-align: center !important;
+      vertical-align: middle !important;
+      background: var(--card-bg) !important;
+    }
+
+    .memuat-blok {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--slate-600);
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .memuat-spinner {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      border: 2px solid rgba(15, 23, 42, 0.12);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    html.theme-dark .memuat-spinner {
+      border-color: rgba(148, 163, 184, 0.22);
+      border-top-color: #34d399;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .memuat-spinner { animation-duration: 1.6s; }
+    }
+
     .empty-text {
       color: var(--text-subtle);
       text-align: center;
@@ -5406,8 +5445,8 @@
       }
       setButtonsDisabled(true);
 
-      isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
-      document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
+      isiTbody('tabelData', htmlMemuat('Memuat data...', 6));
+      document.getElementById('topProductsBody').innerHTML = htmlMemuat('Memuat...', 4);
 
       safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
@@ -5451,6 +5490,22 @@
     // error, dan reset. Turut membuang state + panel kontrol, supaya tombol
     // halaman dari render sebelumnya tidak tertinggal menempel di samping
     // pesan "Gagal memuat data".
+    // Markup status memuat yang konsisten untuk tabel: satu baris <tr> penuh
+    // dengan spinner kecil di tengah. Dipakai supaya tidak ada animasi yang
+    // tampil di belakang/tertimpa header tabel.
+    function htmlMemuat(pesan, kolom) {
+      return '<tr class="baris-memuat"><td colspan="' + (kolom || 6) + '">' +
+        '<span class="memuat-blok"><span class="memuat-spinner" aria-hidden="true"></span>' +
+        escapeHtml(pesan || 'Memuat data...') + '</span></td></tr>';
+    }
+
+    // Versi blok untuk area non-tabel (grafik, daftar produk di modal).
+    function htmlMemuatBlok(pesan) {
+      return '<div class="memuat-blok" style="display:flex;padding:46px 12px;">' +
+        '<span class="memuat-spinner" aria-hidden="true"></span>' +
+        escapeHtml(pesan || 'Memuat...') + '</div>';
+    }
+
     function isiTbody(tbodyId, html) {
       var el = document.getElementById(tbodyId);
       if (el) el.innerHTML = html;
@@ -5626,7 +5681,7 @@
         return;
       }
 
-      isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
+      isiTbody('tabelData', htmlMemuat('Memuat data...', 6));
       safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
@@ -6282,7 +6337,7 @@
         return;
       }
 
-      document.getElementById('chartKategori').innerHTML = '<div class="loading-text" style="padding:60px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat grafik...</div>';
+      document.getElementById('chartKategori').innerHTML = htmlMemuatBlok('Memuat grafik...');
       safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
@@ -6483,7 +6538,7 @@
 
     function loadProduk() {
       var tbody = document.getElementById('produkTbody');
-      if (tbody) tbody.innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat produk...</td></tr>';
+      if (tbody) tbody.innerHTML = htmlMemuat('Memuat produk...', 4);
 
       safeGoogleRun('getProdukList', [getToken()], function (res) {
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
@@ -6670,7 +6725,7 @@
         return;
       }
 
-      isiTbody('cdTbody', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>');
+      isiTbody('cdTbody', htmlMemuat('Memuat...', 6));
 
       safeGoogleRun('getCreditDebitByRange', [getToken(), start, end], function (res) {
         if (res && res.status === 'success') {
