@@ -439,6 +439,21 @@
       border: 1px solid var(--border);
     }
 
+    /* Cabang aktif: kasir melihat badge, SUPER_ADMIN mendapat pemilih cabang */
+    .cabang-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: var(--bg);
+      padding: 6px 10px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--slate-600);
+      border: 1px solid var(--border);
+      max-width: 190px;
+    }
+
     .btn-logout {
       display: flex;
       align-items: center;
@@ -3191,6 +3206,12 @@
       border: 1px solid rgba(148, 163, 184, 0.22);
     }
 
+    html.theme-dark .cabang-select {
+      background: rgba(148, 163, 184, 0.08);
+      color: #cbd5e1;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
     /* btn-logout dark: handled by --logout-* CSS variables */
 
     /* --- Cards / KPI (dark) --- */
@@ -3766,6 +3787,11 @@
           </div>
         </div>
         <div class="header-info">
+          <div class="user-badge" id="cabangBadge" title="Cabang aktif" style="display:none;">
+            <i class="fa-solid fa-store"></i>
+            <span id="lblCabang">Semua cabang</span>
+          </div>
+          <select id="cabangSelect" class="cabang-select" style="display:none;" aria-label="Pilih cabang" title="Pilih cabang" onchange="gantiCabang(this.value)"></select>
           <div class="user-badge" id="userDisplayBadge">
             <i class="fa-solid fa-user-circle"></i>
             <span id="lblUserEmail">email@example.com</span>
@@ -4587,12 +4613,13 @@
     var SESSION_PERSIST_MIN_MS = 60 * 1000; // batas tulis ulang (dipanggil dari mousemove/scroll)
     var lastPersistAt = 0;
 
-    function simpanSesiPersisten(username, role, token, expiryMs) {
+    function simpanSesiPersisten(username, role, token, expiryMs, cabang) {
       try {
         localStorage.setItem(SESSION_STORE_KEY, JSON.stringify({
           username: String(username || ''),
           role: String(role || ''),
           token: String(token || ''),
+          cabang: String(cabang || ''),
           expiry: Number(expiryMs) || 0
         }));
         lastPersistAt = Date.now();
@@ -4609,7 +4636,7 @@
         if (!data || !data.username || !data.role || !data.token) { hapusSesiPersisten(); return null; }
         var expiryMs = Number(data.expiry);
         if (!isFinite(expiryMs) || expiryMs <= Date.now()) { hapusSesiPersisten(); return null; }
-        return { username: String(data.username), role: String(data.role), token: String(data.token), expiry: expiryMs };
+        return { username: String(data.username), role: String(data.role), token: String(data.token), cabang: String(data.cabang || ''), expiry: expiryMs };
       } catch (e) {
         return null;
       }
@@ -4630,7 +4657,7 @@
       if (paksa !== true && lastPersistAt && (Date.now() - lastPersistAt) < SESSION_PERSIST_MIN_MS) return;
       var username = sessionStorage.getItem('dash_username');
       if (!username) return;
-      simpanSesiPersisten(username, sessionStorage.getItem('dash_role'), sessionStorage.getItem('dash_token'), expiryMs);
+      simpanSesiPersisten(username, sessionStorage.getItem('dash_role'), sessionStorage.getItem('dash_token'), expiryMs, sessionStorage.getItem('dash_cabang'));
     }
 
     function clearSessionState() {
@@ -4638,6 +4665,7 @@
       sessionStorage.removeItem('dash_role');
       sessionStorage.removeItem('dash_session_expiry');
       sessionStorage.removeItem('dash_token');
+      sessionStorage.removeItem('dash_cabang');
       hapusSesiPersisten();
       cachedSession = null;
     }
@@ -4648,6 +4676,82 @@
     function getToken() {
       if (!cachedSession) cachedSession = sessionStorage.getItem('dash_token') || '';
       return cachedSession;
+    }
+
+    // ============================================================
+    // CABANG AKTIF
+    // ============================================================
+    // Cabang user berasal dari token (respons checkLogin). KASIR terkunci ke
+    // cabangnya sendiri - server tetap memaksa cabang dari token, jadi nilai
+    // yang dikirim frontend tidak bisa dipakai mengintip cabang lain.
+    // SUPER_ADMIN boleh memilih satu cabang atau semua cabang.
+    var CABANG_FILTER_KEY = 'dash_cabang_filter';
+
+    function getCabangSesi() {
+      return String(sessionStorage.getItem('dash_cabang') || '').trim();
+    }
+
+    function isSuperAdmin() {
+      return String(sessionStorage.getItem('dash_role') || '').toUpperCase() === 'SUPER_ADMIN';
+    }
+
+    // '' berarti semua cabang. Untuk kasir server mengabaikan nilai ini dan
+    // memakai cabang dari token.
+    function getCabangFilter() {
+      if (!isSuperAdmin()) return '';
+      try { return String(localStorage.getItem(CABANG_FILTER_KEY) || '').trim(); } catch (e) { return ''; }
+    }
+
+    function renderCabangHeader() {
+      var badge = document.getElementById('cabangBadge');
+      var lbl = document.getElementById('lblCabang');
+      var pilih = document.getElementById('cabangSelect');
+      if (!badge || !lbl || !pilih) return;
+      if (isSuperAdmin()) {
+        badge.style.display = 'none';
+        pilih.style.display = 'inline-flex';
+        if (!pilih.options.length) pilih.innerHTML = '<option value="">Semua cabang</option>';
+        pilih.value = getCabangFilter();
+      } else {
+        pilih.style.display = 'none';
+        badge.style.display = 'flex';
+        lbl.textContent = getCabangSesi() || 'Semua cabang';
+      }
+    }
+
+    function muatDaftarCabang() {
+      if (!isSuperAdmin()) return;
+      var pilih = document.getElementById('cabangSelect');
+      if (!pilih || typeof google === 'undefined' || !google.script || !google.script.run) return;
+      safeGoogleRun('getDaftarCabang', [getToken()], function (res) {
+        if (!res || res.status !== 'success') return;
+        var daftar = res.daftar || [];
+        var sekarang = getCabangFilter();
+        var html = '<option value="">Semua cabang</option>';
+        daftar.forEach(function (nama) {
+          html += '<option value="' + escapeHtml(nama) + '">' + escapeHtml(nama) + '</option>';
+        });
+        pilih.innerHTML = html;
+        if (sekarang && daftar.indexOf(sekarang) !== -1) {
+          pilih.value = sekarang;
+        } else {
+          pilih.value = '';
+          try { localStorage.removeItem(CABANG_FILTER_KEY); } catch (e) { }
+        }
+      });
+    }
+
+    // Ganti cabang: buang cache laporan (angka cabang lain tidak boleh tampil)
+    // lalu muat ulang dari server dengan parameter cabang baru.
+    function gantiCabang(nilai) {
+      var v = String(nilai || '').trim();
+      try {
+        if (v) localStorage.setItem(CABANG_FILTER_KEY, v);
+        else localStorage.removeItem(CABANG_FILTER_KEY);
+      } catch (e) { }
+      batalkanCacheLaporan();
+      showToast(v ? 'Menampilkan data cabang ' + v : 'Menampilkan data semua cabang', 'success');
+      loadReport(true);
     }
 
     function bindSessionActivity() {
@@ -4696,6 +4800,7 @@
           role = tersimpan.role;
           token = tersimpan.token;
           expiry = String(tersimpan.expiry);
+          sessionStorage.setItem('dash_cabang', tersimpan.cabang || '');
           sessionStorage.setItem('dash_username', username);
           sessionStorage.setItem('dash_role', role);
           sessionStorage.setItem('dash_token', token);
@@ -4758,6 +4863,7 @@
           sessionStorage.setItem('dash_username', result.username || username);
           sessionStorage.setItem('dash_role', result.role || 'KASIR');
           sessionStorage.setItem('dash_token', result.token);
+          sessionStorage.setItem('dash_cabang', result.cabang || '');
           cachedSession = result.token;
           setSessionExpiry();
           bindSessionActivity();
@@ -4805,6 +4911,8 @@
       var role = String(sessionStorage.getItem('dash_role') || '').toUpperCase();
       var lblEmail = document.getElementById('lblUserEmail');
       if (lblEmail) lblEmail.textContent = username;
+      renderCabangHeader();
+      muatDaftarCabang();
 
       var btnEdit = document.getElementById('btnSimpanEdit');
       // Tombol Simpan Edit hanya muncul saat benar-benar mode edit (dari editProduk).
@@ -5301,7 +5409,7 @@
       isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
       document.getElementById('topProductsBody').innerHTML = '<tr><td colspan="4" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</td></tr>';
 
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           perbaruiCacheLaporan(start, end, res);
           cachedPenjualan = res.data || [];
@@ -5519,7 +5627,7 @@
       }
 
       isiTbody('tabelData', '<tr><td colspan="6" class="loading-text"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>');
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
           renderReport(res);
@@ -6175,7 +6283,7 @@
       }
 
       document.getElementById('chartKategori').innerHTML = '<div class="loading-text" style="padding:60px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Memuat grafik...</div>';
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
           renderChart(res.chartData || []);

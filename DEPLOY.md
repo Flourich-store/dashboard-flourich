@@ -59,3 +59,18 @@ clasp deployments                                     # cek hanya ada satu deplo
   sebagai URL publik; pakai deployment bernomor.
 - **Jangan hapus semua versi** untuk "membersihkan": batas 200 versi hanya relevan di project
   lama, dan versi yang dipakai deployment tidak boleh dihapus.
+
+## Data per cabang
+
+- **Sheet User**: kolom `Cabang` (nama header, bukan posisi) menentukan cabang tiap
+  akun. Akun `SUPER_ADMIN` boleh tanpa cabang (melihat semua).
+- **Sheet Penjualan**: kolom `Cabang` dibuat otomatis di ujung kanan saat transaksi
+  baru ditulis lewat `addPenjualan` — posisi 13 kolom skema v2 tidak bergeser.
+- **Baris lama** belum punya cabang: isi manual kolom `Cabang` per baris. Selama
+  kolomnya belum ada, filter tidak diterapkan (dashboard menampilkan semua data)
+  agar layar kasir tidak kosong. Baris ber-cabang kosong TIDAK tampil saat filter
+  cabang aktif.
+- **Kasir** terkunci ke cabang dari token (parameter dari frontend diabaikan).
+  **SUPER_ADMIN** memilih cabang lewat dropdown di header, termasuk "Semua cabang".
+- Regresi: `node tests/cabang-filter.test.mjs` (13 cek) — ikut gerbang
+  `node tests/jalankan-semua.mjs`.

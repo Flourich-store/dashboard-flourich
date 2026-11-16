@@ -59,6 +59,9 @@ function sandboxDengan(nilaiInput) {
     setButtonsDisabled: function () { },
     isiTbody: function () { },
     getToken: function () { return 'TOKEN'; },
+    // Parameter cabang ikut dikirim ke server; kasir mengirim '' karena server
+    // memaksa cabang dari token. Di tes ini cukup dipatok kosong.
+    getCabangFilter: function () { return ''; },
     safeGoogleRun: function (nama, args) { dicatat.push({ fn: nama, args: args }); },
     ambilCacheLaporan: function () { return null; },
     perbaruiCacheLaporan: function () { },
@@ -120,7 +123,7 @@ uji('loadReport(): menerima mode tanpa filter sebelum validasi tanggal', () => {
   const posMode = b.indexOf('semuaData');
   const posValidasi = b.indexOf('if (!start || !end)');
   benar(posMode !== -1 && posValidasi !== -1 && posMode < posValidasi, 'mode semua-data harus ditentukan sebelum validasi tanggal');
-  benar(/'getReportByDateRange', \[getToken\(\), start, end\]/.test(b), 'rentang yang dikirim harus start/end (boleh kosong)');
+  benar(/'getReportByDateRange', \[getToken\(\), start, end, getCabangFilter\(\)\]/.test(b), 'rentang + cabang yang dikirim harus start/end + cabang (boleh kosong)');
 });
 
 uji('loadReport(): tanggal kosong mengirim rentang kosong ke server', () => {
@@ -138,6 +141,7 @@ uji('loadReport(): tanggal terisi mengirim rentang terpilih', () => {
   benar(p, 'getReportByDateRange tidak dipanggil');
   eq(p.args[1], '2026-11-01', 'start');
   eq(p.args[2], '2026-11-10', 'end');
+  eq(p.args[3], '', 'cabang default = semua cabang');
   benar(kota.dicatat.some((d) => d.set && d.set[0] === 'startDate'), 'periode terpilih harus disimpan');
 });
 

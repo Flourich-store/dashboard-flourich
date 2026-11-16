@@ -761,9 +761,92 @@ function _ensurePenjualanHppColumns(ss) {
   }
   return { sheet: sheet, idxVolume: idxVolume, idxHppSat: idxHppSat };
 }
-function getReportByDateRange(token, startDate, endDate) {
+// ============================================================
+// CABANG: kolom Penjualan & daftar cabang
+// ============================================================
+
+// Pastikan sheet Penjualan punya kolom "Cabang" di ujung kanan (idempotent).
+// Sengaja di ujung kanan supaya posisi 13 kolom skema v2 tidak bergeser.
+// Return: nomor kolom 1-based (0 bila tidak bisa).
+function _ensurePenjualanCabangColumn(ss) {
+  var sheet = ss.getSheetByName('Penjualan');
+  if (!sheet) return 0;
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return 0;
+  var head = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) {
+    return String(h || '').trim().toLowerCase();
+  });
+  var idx = head.indexOf('cabang');
+  if (idx === -1) {
+    sheet.getRange(1, lastCol + 1).setValue('Cabang').setFontWeight('bold');
+    idx = lastCol; // 0-based: kolom baru tepat setelah kolom terakhir
+  }
+  return idx + 1;
+}
+
+// Daftar nama cabang untuk pemilih di dashboard: gabungan kolom Cabang di
+// sheet Penjualan dan sheet User, unik dan terurut.
+function getDaftarCabang(token) {
   return _guardToken(function () {
-    _verifyToken(token, false);
+    var sess = _verifyToken(token, false);
+    var nama = {};
+    var ss = getSpreadsheet();
+
+    function cariKolom(sheet) {
+      if (!sheet) return -1;
+      var lebar = sheet.getLastColumn();
+      if (lebar < 1) return -1;
+      var head = sheet.getRange(1, 1, 1, lebar).getValues()[0].map(function (h) {
+        return String(h || '').trim().toLowerCase();
+      });
+      return head.indexOf('cabang');
+    }
+
+    function kumpulkan(sheet, idxNol) {
+      if (!sheet || idxNol < 0) return;
+      var baris = sheet.getLastRow() - 1;
+      if (baris < 1) return;
+      var nilai = sheet.getRange(2, idxNol + 1, baris, 1).getValues();
+      for (var i = 0; i < nilai.length; i++) {
+        var v = String(nilai[i][0] || '').trim();
+        if (v) nama[v] = true;
+      }
+    }
+
+    try {
+      var sheetPj = ss.getSheetByName('Penjualan');
+      kumpulkan(sheetPj, cariKolom(sheetPj));
+    } catch (e) { Logger.log('getDaftarCabang penjualan: ' + e); }
+    try {
+      var sheetUser = ss.getSheetByName('User');
+      kumpulkan(sheetUser, cariKolom(sheetUser));
+    } catch (e2) { Logger.log('getDaftarCabang user: ' + e2); }
+
+    return {
+      status: 'success',
+      daftar: Object.keys(nama).sort(),
+      cabangSesi: String((sess && sess.c) || ''),
+      role: String((sess && sess.r) || '')
+    };
+  });
+}
+
+function getReportByDateRange(token, startDate, endDate, cabangFilter) {
+  return _guardToken(function () {
+    var sess = _verifyToken(token, false);
+    // Filter cabang: KASIR terkunci ke cabang di token-nya (parameter diabaikan).
+    // SUPER_ADMIN boleh memilih cabang lain, atau '' / 'ALL' untuk semua cabang.
+    var cabangSesi = String((sess && sess.c) || '').trim();
+    var isSuperAdmin = String((sess && sess.r) || '').toUpperCase() === 'SUPER_ADMIN';
+    var mintaCabang = String(cabangFilter || '').trim();
+    var filterCabang = '';
+    if (isSuperAdmin) {
+      var mintaUpper = mintaCabang.toUpperCase();
+      if (mintaCabang && mintaUpper !== 'ALL' && mintaUpper !== 'SEMUA') filterCabang = mintaCabang;
+    } else {
+      filterCabang = cabangSesi;
+    }
+    var filterCabangLower = filterCabang.toLowerCase();
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) {
@@ -781,6 +864,7 @@ function getReportByDateRange(token, startDate, endDate) {
     var idxTx = -1, idxTgl = -1, idxProduk = -1, idxJumlah = -1, idxHarga = -1;
     var idxTotalHarga = -1, idxMetode = -1, idxLaba = -1, idxVolume = -1;
     var idxHppSatuan = -1;
+    var idxCabang = -1;
     var idxHPP = -1; // hanya untuk fallback legacy sheet tanpa kolom Modal
     // Kolom Modal dibaca via DUA index terpisah, bukan satu idxHPP untuk dua
     // kolom sekaligus.
@@ -815,7 +899,13 @@ function getReportByDateRange(token, startDate, endDate) {
         && idxModal === -1 && idxRevisi === -1) idxHPP = hIdx;
       if (h.includes('laba') || h.includes('bersih')) idxLaba = hIdx;
       if (h.includes('volume')) idxVolume = hIdx;
+      if (h === 'cabang' || h === 'branch' || h === 'outlet') idxCabang = hIdx;
     }
+
+    // Kolom Cabang belum ada di sheet (data lama) -> filter tidak bisa
+    // diterapkan. Tampilkan semua baris daripada dashboard kasir kosong;
+    // filter otomatis aktif begitu kolom Cabang terisi.
+    var pakaiFilterCabang = filterCabangLower !== '' && idxCabang !== -1;
 
     // Fallback ke index standard jika tidak ketemu
     if (idxTx === -1) idxTx = 0;
@@ -853,6 +943,14 @@ function getReportByDateRange(token, startDate, endDate) {
 
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
+
+      // Filter cabang: baris tanpa cabang TIDAK ikut tampil saat filter aktif,
+      // supaya data satu cabang tidak bocor ke cabang lain (termasuk angka
+      // periode pembanding untuk badge delta).
+      if (pakaiFilterCabang) {
+        var cabangBaris = idxCabang !== -1 ? String(row[idxCabang] || '').trim().toLowerCase() : '';
+        if (cabangBaris !== filterCabangLower) continue;
+      }
 
       var idTx = row[idxTx];
       var tanggalCell = row[idxTgl];
@@ -1067,6 +1165,8 @@ function getReportByDateRange(token, startDate, endDate) {
 
     return {
       status: 'success',
+      cabangAktif: filterCabang,
+      filterCabangAktif: pakaiFilterCabang,
       data: detailData,
       totalTransaksi: txCount,
       totalQtyTerjual: totalQtyTerjual,
@@ -1108,8 +1208,14 @@ function getReportByDateRange(token, startDate, endDate) {
 // ============================================================
 function addPenjualan(token, data) {
   return _guardToken(function () {
-    _verifyToken(token, false);
+    var sess = _verifyToken(token, false);
     data = data || {};
+    // Cabang transaksi: kasir mengikuti cabang di token, SUPER_ADMIN boleh
+    // mengirim cabang eksplisit lewat data.cabang.
+    var cabangSesiAdd = String((sess && sess.c) || '').trim();
+    var isSuperAdd = String((sess && sess.r) || '').toUpperCase() === 'SUPER_ADMIN';
+    var cabangData = String(data.cabang || '').trim();
+    var cabangSimpan = (isSuperAdd && cabangData) ? cabangData : cabangSesiAdd;
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
     if (!sheet) return { status: 'error', message: "Sheet Penjualan tidak ditemukan" };
@@ -1171,6 +1277,19 @@ function addPenjualan(token, data) {
       id: idTx, tanggal: tanggal, nama: namaProduk, volume: volume, hppSatuan: hpp,
       jumlah: jumlah, total: totalHarga, metode: metodePos, dibayar: totalHarga, kembali: 0
     }));
+
+    // Simpan cabang transaksi (kolom Cabang paling kanan) supaya laporan bisa
+    // difilter per cabang. Kolom dibuat otomatis bila belum ada.
+    if (cabangSimpan) {
+      try {
+        var kolomCabang = _ensurePenjualanCabangColumn(ss);
+        if (kolomCabang > 0) {
+          sheet.getRange(sheet.getLastRow(), kolomCabang).setValue(cabangSimpan);
+        }
+      } catch (eCabang) {
+        Logger.log('Simpan cabang warning: ' + eCabang);
+      }
+    }
 
     // Update stock
     try {
