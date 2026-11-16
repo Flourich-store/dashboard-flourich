@@ -117,12 +117,29 @@ function redeploy(deploymentId) {
 }
 
 // ---------- langkah 6: verifikasi ----------
+function jelaskanAksesDitolak(url) {
+  log('');
+  log('   >>> HTTP 403 "Akses Ditolak" - owner project Apps Script belum memberi izin.');
+  log('   Ini bukan masalah kode/deployment. Langkah perbaikan (cukup sekali per project):');
+  log('     1. Login browser sebagai akun Google pemilik spreadsheet dashboard.');
+  log(`     2. Buka ${url}`);
+  log('     3. Klik "Continue"/"Izinkan" sampai muncul "Authorization successful".');
+  log('     4. Buka ulang URL: harus tampil "Flourich Dashboard" (HTTP 200).');
+  log('   Rincian: DEPLOY.md bagian "Otorisasi owner (wajib sekali, setelah clone/deploy pertama)".');
+  log('');
+}
+
 async function verifyUrl(url, buildId) {
   for (let attempt = 1; attempt <= VERIFY_RETRIES; attempt++) {
     try {
       const res = await fetch(url, { redirect: 'follow' });
       const text = await res.text();
       if (text.includes(buildId)) return { ok: true, status: res.status };
+      if (res.status === 403 || /Akses Ditolak|Access denied|you need access/i.test(text)) {
+        log(`   percobaan ${attempt}/${VERIFY_RETRIES}: HTTP 403 / "Akses Ditolak" (belum diotorisasi owner).`);
+        jelaskanAksesDitolak(url);
+        return { ok: false, status: res.status, ditolakAkses: true };
+      }
       log(`   percobaan ${attempt}/${VERIFY_RETRIES}: build belum terlihat (HTTP ${res.status}), menunggu ${VERIFY_DELAY_MS / 1000}s...`);
     } catch (err) {
       log(`   percobaan ${attempt}/${VERIFY_RETRIES}: gagal fetch (${err.message})`);
@@ -130,6 +147,24 @@ async function verifyUrl(url, buildId) {
     await new Promise((r) => setTimeout(r, VERIFY_DELAY_MS));
   }
   return { ok: false };
+}
+
+// ---------- pesan bantuan ----------
+function panduanPesanError(teks) {
+  const tips = [];
+  if (/Cannot create more versions|limit of 200 versions|reached the limit/i.test(teks)) {
+    tips.push('Project menolak membuat versi baru: batas 200 versi project Apps Script ini sudah habis.');
+    tips.push('Jangan hapus versi yang sedang dipakai deployment.');
+    tips.push('Solusi: clone ke project Apps Script baru, ganti scriptId di .clasp.json, lalu ganti');
+    tips.push('deploymentId di index.html & landingpage.html.');
+    tips.push('Panduan lengkap: DEPLOY.md bagian "Kenapa pindah project" + "Perintah deploy".');
+  }
+  if (/Akses Ditolak|Access denied|\b403\b/i.test(teks)) {
+    tips.push('403 "Akses Ditolak" berarti owner belum otorisasi project: buka URL /exec sambil login');
+    tips.push('sebagai pemilik spreadsheet, lalu klik Continue/Izinkan.');
+    tips.push('Rincian: DEPLOY.md bagian "Otorisasi owner".');
+  }
+  return tips;
 }
 
 // ---------- utama ----------
@@ -171,12 +206,12 @@ async function main() {
       for (const url of urls) {
         log(`   Cek: ${url}`);
         const r = await verifyUrl(url, buildId);
-        results.push({ url, ok: r.ok });
+        results.push({ url, ok: r.ok, ditolakAkses: r.ditolakAkses });
         log(r.ok ? '   OK - build terbaru sudah tayang.' : '   GAGAL - build tidak terlihat di URL ini.');
       }
       const failed = results.filter((r) => !r.ok);
       if (failed.length > 0) {
-        throw new Error(`Verifikasi gagal untuk ${failed.length} URL. Cek kembali deployment/URL-nya.`);
+        throw new Error(`Verifikasi gagal untuk ${failed.length} URL. Cek kembali deployment/URL-nya (bila 403, lihat DEPLOY.md bagian "Otorisasi owner").`);
       }
     }
   } finally {
@@ -189,5 +224,10 @@ async function main() {
 
 main().catch((err) => {
   console.error('\n[ERROR] ' + err.message);
+  const tips = panduanPesanError(err.message);
+  if (tips.length > 0) {
+    console.error('\n[PETUNJUK]');
+    for (const t of tips) console.error('  - ' + t);
+  }
   process.exit(1);
 });
