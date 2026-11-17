@@ -454,6 +454,29 @@
       max-width: 190px;
     }
 
+    /* Filter cabang di dalam tiap modul (header tidak lagi punya pemilih) */
+    .cabang-modul {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg);
+      color: var(--slate-600);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      max-width: 100%;
+      min-width: 140px;
+    }
+
+    .cabang-modul:disabled {
+      opacity: 0.85;
+      cursor: not-allowed;
+    }
+
+    .hero-field .cabang-modul { width: 100%; }
+
     .btn-logout {
       display: flex;
       align-items: center;
@@ -3830,7 +3853,6 @@
             <i class="fa-solid fa-store"></i>
             <span id="lblCabang">Semua cabang</span>
           </div>
-          <select id="cabangSelect" class="cabang-select" style="display:none;" aria-label="Pilih cabang" title="Pilih cabang" onchange="gantiCabang(this.value)"></select>
           <div class="user-badge" id="userDisplayBadge">
             <i class="fa-solid fa-user-circle"></i>
             <span id="lblUserEmail">email@example.com</span>
@@ -3867,6 +3889,10 @@
             </div>
           </div>
           <div class="hero-controls">
+            <div class="hero-field">
+              <label for="cabangOverview">Cabang</label>
+              <select id="cabangOverview" class="cabang-modul" title="Filter cabang modul ini" onchange="gantiCabangModul('overview', this.value)"></select>
+            </div>
             <div class="hero-field">
               <label for="startDate">Periode Mulai</label>
               <input type="date" id="startDate" autocomplete="off">
@@ -3957,6 +3983,10 @@
         <div class="section-title"><i class="fa-solid fa-chart-pie"></i> Performa Penjualan per Kategori</div>
         <div class="filter-row" style="margin-top:10px;">
           <div class="filter-group">
+          <div class="filter-group">
+            <label for="cabangChart">Cabang</label>
+            <select id="cabangChart" class="cabang-modul" title="Filter cabang modul ini" onchange="gantiCabangModul('chart', this.value)"></select>
+          </div>
             <label>Start Date</label>
             <input type="date" id="chartStartDate" autocomplete="off">
           </div>
@@ -4003,6 +4033,10 @@
         <div class="section-title"><i class="fa-solid fa-wallet"></i> Catatan Keuangan</div>
         <div class="filter-row" style="margin-top:10px;">
           <div class="filter-group">
+          <div class="filter-group">
+            <label for="cabangCatatan">Cabang</label>
+            <select id="cabangCatatan" class="cabang-modul" title="Filter cabang modul ini" onchange="gantiCabangModul('catatan', this.value)"></select>
+          </div>
             <label>Start Date</label>
             <input type="date" id="cdStartDate">
           </div>
@@ -4076,6 +4110,10 @@
         <div class="section-title"><i class="fa-solid fa-table"></i> Data Penjualan</div>
         <div class="filter-row" style="margin-top:10px;">
           <div class="filter-group">
+          <div class="filter-group">
+            <label for="cabangPenjualan">Cabang</label>
+            <select id="cabangPenjualan" class="cabang-modul" title="Filter cabang modul ini" onchange="gantiCabangModul('penjualan', this.value)"></select>
+          </div>
             <label>Start Date</label>
             <input type="date" id="salesStartDate" autocomplete="off">
           </div>
@@ -4117,6 +4155,7 @@
         <div class="muted" id="nilaiStokBox" style="display:none; margin-top:10px; font-weight:700;"></div>
         <div class="btn-bar" style="margin-top:10px;">
           <button class="btn-primary btn" type="button" onclick="openProdukModal()"><i class="fa-solid fa-plus"></i>&nbsp;Kelola / Tambah Produk</button>
+          <select id="cabangProduk" class="cabang-modul" title="Filter cabang modul ini" onchange="gantiCabangModul('produk', this.value)"></select>
           <select id="produkStokFilter" class="stock-filter" title="Filter berdasarkan status stok">
             <option value="all">Semua Stok</option>
             <option value="low">Stok Menipis (≤ 10)</option>
@@ -4729,14 +4768,26 @@
     }
 
     // ============================================================
-    // CABANG AKTIF
+    // CABANG: filter per modul
     // ============================================================
     // Cabang user berasal dari token (respons checkLogin). KASIR terkunci ke
-    // cabangnya sendiri - server tetap memaksa cabang dari token, jadi nilai
+    // cabangnya sendiri; server tetap memaksa cabang dari token, jadi nilai
     // yang dikirim frontend tidak bisa dipakai mengintip cabang lain.
-    // SUPER_ADMIN boleh memilih satu cabang atau semua cabang.
-    var CABANG_FILTER_KEY = 'dash_cabang_filter';
+    // SUPER_ADMIN/ADMIN/OWNER boleh memilih cabang per modul (Overview,
+    // Penjualan, Grafik, Catatan Keuangan, Produk) - pemilihnya ada di dalam
+    // masing-masing modul, bukan di header.
+    var CABANG_MODUL_KEY = 'dash_cabang_modul';
     var peringatanCabangTampil = false;
+    var daftarCabangCache = [];
+    // id select -> kunci modul di state.
+    var MODUL_CABANG = [
+      { modul: 'overview', id: 'cabangOverview' },
+      { modul: 'penjualan', id: 'cabangPenjualan' },
+      { modul: 'chart', id: 'cabangChart' },
+      { modul: 'catatan', id: 'cabangCatatan' },
+      { modul: 'produk', id: 'cabangProduk' }
+    ];
+    var cabangModul = {};
 
     function getCabangSesi() {
       return String(sessionStorage.getItem('dash_cabang') || '').trim();
@@ -4749,87 +4800,130 @@
       return r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'OWNER';
     }
 
+    function simpanCabangModul() {
+      try { localStorage.setItem(CABANG_MODUL_KEY, JSON.stringify(cabangModul)); } catch (e) { }
+    }
+
+    function muatCabangModul() {
+      var kosong = function () {
+        MODUL_CABANG.forEach(function (m) { cabangModul[m.modul] = ''; });
+      };
+      kosong();
+      try {
+        var simpan = JSON.parse(localStorage.getItem(CABANG_MODUL_KEY) || '{}') || {};
+        MODUL_CABANG.forEach(function (m) {
+          cabangModul[m.modul] = String(simpan[m.modul] || '').trim();
+        });
+      } catch (e) { kosong(); }
+      // Migrasi sekali dari pemilih cabang lama (single filter di header):
+      // kalau nilainya masih ada, pakai untuk semua modul lalu hapus.
+      try {
+        var lama = String(localStorage.getItem('dash_cabang_filter') || '').trim();
+        if (lama) {
+          MODUL_CABANG.forEach(function (m) { if (!cabangModul[m.modul]) cabangModul[m.modul] = lama; });
+          localStorage.removeItem('dash_cabang_filter');
+          simpanCabangModul();
+        }
+      } catch (e) { }
+    }
+
     // '' berarti semua cabang. Untuk kasir server mengabaikan nilai ini dan
     // memakai cabang dari token.
-    function getCabangFilter() {
+    function getCabangFilterModul(modul) {
       if (!isSuperAdmin()) return '';
-      try { return String(localStorage.getItem(CABANG_FILTER_KEY) || '').trim(); } catch (e) { return ''; }
+      var v = String(cabangModul[modul] || '').trim();
+      var up = v.toUpperCase();
+      if (up === 'ALL' || up === 'SEMUA') return '';
+      return v;
     }
 
-    function renderCabangHeader() {
+    // Badge cabang kasir di header (informasi, bukan filter).
+    function renderCabangBadge() {
       var badge = document.getElementById('cabangBadge');
       var lbl = document.getElementById('lblCabang');
-      var pilih = document.getElementById('cabangSelect');
-      if (!badge || !lbl || !pilih) return;
-      if (isSuperAdmin()) {
-        badge.style.display = 'none';
-        pilih.style.display = 'inline-flex';
-        if (!pilih.options.length) pilih.innerHTML = '<option value="">Semua cabang</option>';
-        pilih.value = getCabangFilter();
-      } else {
-        pilih.style.display = 'none';
-        badge.style.display = 'flex';
-        lbl.textContent = getCabangSesi() || 'Semua cabang';
-      }
+      if (!badge || !lbl) return;
+      if (isSuperAdmin()) { badge.style.display = 'none'; return; }
+      badge.style.display = 'flex';
+      lbl.textContent = getCabangSesi() || 'Semua cabang';
     }
 
-    function muatDaftarCabang() {
-      if (!isSuperAdmin()) return;
-      var pilih = document.getElementById('cabangSelect');
-      if (!pilih || typeof google === 'undefined' || !google.script || !google.script.run) return;
-      safeGoogleRun('getDaftarCabang', [getToken()], function (res) {
-        if (!res || res.status !== 'success') return;
-        var daftar = res.daftar || [];
-        var sekarang = getCabangFilter();
+    // Isi semua pemilih cabang modul. Kasir melihat satu opsi terkunci.
+    function renderFilterCabangModul() {
+      MODUL_CABANG.forEach(function (m) {
+        var pilih = document.getElementById(m.id);
+        if (!pilih) return;
+        if (!isSuperAdmin()) {
+          pilih.innerHTML = '<option value="">' + escapeHtml(getCabangSesi() || 'Semua cabang') + '</option>';
+          pilih.value = '';
+          pilih.disabled = true;
+          pilih.title = 'Terkunci ke cabang akun Anda';
+          return;
+        }
+        var daftar = daftarCabangCache.slice();
+        var sekarang = getCabangFilterModul(m.modul);
         var html = '<option value="">Semua cabang</option>';
         daftar.forEach(function (nama) {
           html += '<option value="' + escapeHtml(nama) + '">' + escapeHtml(nama) + '</option>';
         });
         pilih.innerHTML = html;
+        pilih.disabled = false;
+        pilih.title = 'Filter cabang modul ini';
+        if (sekarang && daftar.length && daftar.indexOf(sekarang) === -1) {
+          // Cabang tersimpan sudah tidak ada di daftar: kembali ke semua cabang.
+          cabangModul[m.modul] = '';
+          sekarang = '';
+        }
+        pilih.value = sekarang;
+      });
+      simpanCabangModul();
+    }
+
+    function muatDaftarCabang() {
+      if (!isSuperAdmin()) { renderFilterCabangModul(); return; }
+      if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+      safeGoogleRun('getDaftarCabang', [getToken()], function (res) {
+        if (!res || res.status !== 'success') return;
+        daftarCabangCache = res.daftar || [];
+        renderFilterCabangModul();
         // Kalau sheet Penjualan belum punya kolom Cabang, filter tidak bisa
         // menyaring apa pun. Beri tahu sekali, jangan biarkan user bingung.
         if (res.punyaKolomCabangPenjualan === false && !peringatanCabangTampil) {
           peringatanCabangTampil = true;
-          pilih.title = 'Kolom Cabang di sheet Penjualan belum ada — filter cabang belum menyaring data.';
           showToast('Kolom Cabang di sheet Penjualan belum ada: filter cabang belum bisa menyaring data.', 'error');
-        }
-        if (sekarang && daftar.indexOf(sekarang) !== -1) {
-          pilih.value = sekarang;
-        } else {
-          pilih.value = '';
-          try { localStorage.removeItem(CABANG_FILTER_KEY); } catch (e) { }
         }
       });
     }
 
-    // Ganti cabang: buang semua cache (angka cabang lain tidak boleh tampil)
-    // lalu muat ulang modul yang sedang dilihat dengan parameter cabang baru.
-    function gantiCabang(nilai) {
+    // Ganti cabang pada satu modul: buang cache laporan lalu muat ulang modul
+    // itu saja, supaya modul lain tidak ikut kehilangan datanya.
+    function gantiCabangModul(modul, nilai) {
       var v = String(nilai || '').trim();
-      try {
-        if (v) localStorage.setItem(CABANG_FILTER_KEY, v);
-        else localStorage.removeItem(CABANG_FILTER_KEY);
-      } catch (e) { }
+      var up = v.toUpperCase();
+      cabangModul[modul] = (up === 'ALL' || up === 'SEMUA') ? '' : v;
+      simpanCabangModul();
       batalkanCacheLaporan();
-      // Produk/stok ikut per cabang: paksa muat ulang saat tabnya dibuka.
-      produkSudahDimuat = false;
-      cachedProduk = [];
-      // Tab yang sudah pernah dibuka dulu juga menyimpan angka cabang lama.
-      // Reset penandanya supaya membuka tab itu lagi memuat data cabang baru.
-      salesTabAutoLoaded = false;
-      chartTabAutoLoaded = false;
-      showToast(v ? 'Menampilkan data cabang ' + v : 'Menampilkan data semua cabang', 'success');
+      var label = cabangModul[modul] ? 'cabang ' + cabangModul[modul] : 'semua cabang';
 
-      var aktif = document.querySelector('.content-section.active');
-      var idAktif = aktif ? aktif.id : 'section-overview';
-
-      // Overview memuat KPI + tabel catatan keuangan, jadi keduanya ikut
-      // dimuat ulang agar angkanya tidak tertinggal di cabang sebelumnya.
-      loadReport(true);
-      if (idAktif === 'section-overview') loadCreditDebit();
-      if (idAktif === 'section-penjualan') { salesTabAutoLoaded = true; loadSalesByDateRange(true); }
-      if (idAktif === 'section-chart') { chartTabAutoLoaded = true; loadChartByDateRange(true); }
-      if (idAktif === 'section-produk') muatProdukSekali();
+      if (modul === 'overview') {
+        showToast('Overview: ' + label, 'success');
+        loadReport(true);
+      } else if (modul === 'penjualan') {
+        salesTabAutoLoaded = true;
+        showToast('Penjualan: ' + label, 'success');
+        loadSalesByDateRange(true);
+      } else if (modul === 'chart') {
+        chartTabAutoLoaded = true;
+        showToast('Grafik: ' + label, 'success');
+        loadChartByDateRange(true);
+      } else if (modul === 'catatan') {
+        showToast('Catatan keuangan: ' + label, 'success');
+        loadCreditDebit();
+      } else if (modul === 'produk') {
+        produkSudahDimuat = true;
+        showToast('Produk: ' + label, 'success');
+        loadProduk();
+      }
+      renderFilterCabangModul();
     }
 
     function bindSessionActivity() {
@@ -4994,7 +5088,8 @@
       var role = String(sessionStorage.getItem('dash_role') || '').toUpperCase();
       var lblEmail = document.getElementById('lblUserEmail');
       if (lblEmail) lblEmail.textContent = username;
-      renderCabangHeader();
+      muatCabangModul();
+      renderCabangBadge();
       muatDaftarCabang();
 
       var btnEdit = document.getElementById('btnSimpanEdit');
@@ -5392,13 +5487,16 @@
     // Pemakai: tab Grafik & tab Penjualan, yang sering memakai periode sama
     // dengan tab Overview. Satu periode dilayani cache SEKALI per section agar
     // tombol "Tampilkan" tetap berarti "muat ulang dari server".
-    function perbaruiCacheLaporan(start, end, res) {
-      reportCache = { start: start, end: end, res: res, dipakai: {} };
+    function perbaruiCacheLaporan(start, end, res, cabang) {
+      reportCache = { start: start, end: end, cabang: String(cabang || ''), res: res, dipakai: {} };
     }
 
-    function ambilCacheLaporan(start, end, sectionId) {
+    function ambilCacheLaporan(start, end, sectionId, cabang) {
       if (!reportCache || !reportCache.res) return null;
       if (reportCache.start !== start || reportCache.end !== end) return null;
+      // Tiap modul punya filter cabang sendiri: cache hanya boleh dipakai
+      // kalau cabangnya sama, supaya angka cabang lain tidak menyelinap.
+      if (String(reportCache.cabang || '') !== String(cabang || '')) return null;
       if (reportCache.dipakai[sectionId]) return null; // sudah dipakai section ini: klik berikutnya = muat ulang
       if (!reportCache.res.data && !reportCache.res.chartData) return null;
       reportCache.dipakai[sectionId] = true;
@@ -5492,9 +5590,9 @@
       isiTbody('tabelData', htmlMemuat('Memuat data...', 6));
       document.getElementById('topProductsBody').innerHTML = htmlMemuat('Memuat...', 4);
 
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilterModul('overview')], function (res) {
         if (res && res.status === 'success') {
-          perbaruiCacheLaporan(start, end, res);
+          perbaruiCacheLaporan(start, end, res, getCabangFilterModul('overview'));
           cachedPenjualan = res.data || [];
           renderReport(res);
           renderTopProducts(res.topProducts || []);
@@ -5717,7 +5815,7 @@
       // (hemat satu round-trip ±2,4-5,8 detik untuk data yang identik). Cache
       // sekali-pakai per section, jadi klik "Tampilkan" berikutnya di tab ini
       // tetap memuat ulang dari server.
-      var dariCache = ambilCacheLaporan(start, end, 'penjualan');
+      var dariCache = ambilCacheLaporan(start, end, 'penjualan', getCabangFilterModul('penjualan'));
       if (dariCache) {
         cachedPenjualan = dariCache.data || [];
         renderReport(dariCache);
@@ -5726,7 +5824,7 @@
       }
 
       isiTbody('tabelData', htmlMemuat('Memuat data...', 6));
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilterModul('penjualan')], function (res) {
         if (res && res.status === 'success') {
           cachedPenjualan = res.data || [];
           renderReport(res);
@@ -6373,7 +6471,7 @@
       // (hemat satu round-trip ±2,4-5,8 detik untuk data yang identik). Cache
       // sekali-pakai per section, jadi klik "Tampilkan" berikutnya di tab ini
       // tetap memuat ulang dari server.
-      var dariCache = ambilCacheLaporan(start, end, 'chart');
+      var dariCache = ambilCacheLaporan(start, end, 'chart', getCabangFilterModul('chart'));
       if (dariCache) {
         document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(dariCache.omsetKotor || 0);
         renderChart(dariCache.chartData || []);
@@ -6382,7 +6480,7 @@
       }
 
       document.getElementById('chartKategori').innerHTML = htmlMemuatBlok('Memuat grafik...');
-      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilter()], function (res) {
+      safeGoogleRun('getReportByDateRange', [getToken(), start, end, getCabangFilterModul('chart')], function (res) {
         if (res && res.status === 'success') {
           document.getElementById('chartTotalOmset').textContent = 'Total Omset Periode: ' + formatIDR(res.omsetKotor || 0);
           renderChart(res.chartData || []);
@@ -6522,7 +6620,7 @@
       // kedua diam-diam, bukan melempar "permintaan sedang diproses".
       if (nilaiStokInFlight) return;
       nilaiStokInFlight = true;
-      safeGoogleRun('getNilaiStok', [getToken(), getCabangFilter()], function (res) {
+      safeGoogleRun('getNilaiStok', [getToken(), getCabangFilterModul('produk')], function (res) {
         nilaiStokInFlight = false;
         if (!terapkanNilaiStok(res)) {
           var box = document.getElementById('nilaiStokBox');
@@ -6584,7 +6682,7 @@
       var tbody = document.getElementById('produkTbody');
       if (tbody) tbody.innerHTML = htmlMemuat('Memuat produk...', 4);
 
-      safeGoogleRun('getProdukList', [getToken(), getCabangFilter()], function (res) {
+      safeGoogleRun('getProdukList', [getToken(), getCabangFilterModul('produk')], function (res) {
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
@@ -6602,7 +6700,7 @@
     function loadProdukCRUD(isRetry) {
       // Nilai stok ikut berubah setiap CRUD produk dan sudah ikut di respons
       // getProdukList, jadi tidak perlu panggilan getNilaiStok terpisah.
-      safeGoogleRun('getProdukList', [getToken(), getCabangFilter()], function (res) {
+      safeGoogleRun('getProdukList', [getToken(), getCabangFilterModul('produk')], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
           renderProdukModal(cachedProduk);
@@ -6771,7 +6869,7 @@
 
       isiTbody('cdTbody', htmlMemuat('Memuat...', 6));
 
-      safeGoogleRun('getCreditDebitByRange', [getToken(), start, end, getCabangFilter()], function (res) {
+      safeGoogleRun('getCreditDebitByRange', [getToken(), start, end, getCabangFilterModul('catatan')], function (res) {
         if (res && res.status === 'success') {
           cachedCD = res.data || [];
           renderCreditDebit(cachedCD);

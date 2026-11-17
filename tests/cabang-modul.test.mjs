@@ -220,12 +220,33 @@ const badanFungsi = (nama) => {
   return html.slice(mulai, potong === -1 ? undefined : potong);
 };
 
-uji('MOD-10: ganti cabang mereset tab Penjualan/Grafik/Produk', () => {
-  const g = badanFungsi('gantiCabang');
-  ['salesTabAutoLoaded = false', 'chartTabAutoLoaded = false', 'produkSudahDimuat = false', 'batalkanCacheLaporan()']
-    .forEach((kunci) => { if (!g.includes(kunci)) throw new Error('tidak ada: ' + kunci); });
-  ['loadReport(true)', 'loadSalesByDateRange(true)', 'loadChartByDateRange(true)', 'loadCreditDebit()']
-    .forEach((kunci) => { if (!g.includes(kunci)) throw new Error('tidak memuat ulang: ' + kunci); });
+uji('MOD-10: tiap modul punya filter cabang sendiri, header tidak', () => {
+  // Pemilih cabang harus ada di dalam modulnya, bukan di header.
+  ['cabangOverview', 'cabangPenjualan', 'cabangChart', 'cabangCatatan', 'cabangProduk'].forEach((id) => {
+    if (!html.includes('id="' + id + '"')) throw new Error('select modul hilang: ' + id);
+  });
+  if (html.includes('id="cabangSelect"')) throw new Error('select cabang di header masih ada');
+  if (html.includes('function gantiCabang(')) throw new Error('gantiCabang lama masih ada');
+  if (!html.includes('function gantiCabangModul(')) throw new Error('gantiCabangModul tidak ada');
+  // Tiap modul mengirim cabangnya sendiri ke server.
+  [['overview', 'loadReport'], ['penjualan', 'loadSalesByDateRange'], ['chart', 'loadChartByDateRange'], ['catatan', 'loadCreditDebit']]
+    .forEach(([modul, fn]) => {
+      const badan = badanFungsi(fn);
+      if (!badan.includes("getCabangFilterModul('" + modul + "')")) throw new Error(fn + ' belum memakai filter ' + modul);
+    });
+  ['loadProduk', 'loadProdukCRUD', 'loadNilaiStok'].forEach((fn) => {
+    if (!badanFungsi(fn).includes("getCabangFilterModul('produk')")) throw new Error(fn + ' belum memakai filter produk');
+  });
+});
+
+uji('MOD-13: ganti cabang satu modul hanya memuat ulang modul itu', () => {
+  const g = badanFungsi('gantiCabangModul');
+  ['overview', 'penjualan', 'chart', 'catatan', 'produk'].forEach((m) => {
+    if (!g.includes("'" + m + "'")) throw new Error('cabang modul tidak ditangani: ' + m);
+  });
+  if (!g.includes('batalkanCacheLaporan()')) throw new Error('cache laporan tidak dibuang');
+  // Cache laporan harus sadar cabang supaya angka cabang lain tidak dipakai.
+  if (!html.includes('reportCache.cabang')) throw new Error('cache laporan belum sadar cabang');
 });
 
 uji('MOD-11: login menampilkan dashboard tanpa jeda 200 ms', () => {

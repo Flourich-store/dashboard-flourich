@@ -64,7 +64,7 @@ function sandboxDengan(nilaiInput) {
     getToken: function () { return 'TOKEN'; },
     // Parameter cabang ikut dikirim ke server; kasir mengirim '' karena server
     // memaksa cabang dari token. Di tes ini cukup dipatok kosong.
-    getCabangFilter: function () { return ''; },
+    getCabangFilterModul: function () { return ''; },
     safeGoogleRun: function (nama, args) { dicatat.push({ fn: nama, args: args }); },
     ambilCacheLaporan: function () { return null; },
     perbaruiCacheLaporan: function () { },
@@ -126,7 +126,7 @@ uji('loadReport(): menerima mode tanpa filter sebelum validasi tanggal', () => {
   const posMode = b.indexOf('semuaData');
   const posValidasi = b.indexOf('if (!start || !end)');
   benar(posMode !== -1 && posValidasi !== -1 && posMode < posValidasi, 'mode semua-data harus ditentukan sebelum validasi tanggal');
-  benar(/'getReportByDateRange', \[getToken\(\), start, end, getCabangFilter\(\)\]/.test(b), 'rentang + cabang yang dikirim harus start/end + cabang (boleh kosong)');
+  benar(/'getReportByDateRange', \[getToken\(\), start, end, getCabangFilterModul\('overview'\)\]/.test(b), 'rentang + cabang yang dikirim harus start/end + cabang (boleh kosong)');
 });
 
 uji('loadReport(): tanggal kosong mengirim rentang kosong ke server', () => {
