@@ -837,12 +837,12 @@ function getDaftarCabang(token) {
       if (!sheet) return -1;
       var lebar = sheet.getLastColumn();
       if (lebar < 1) return -1;
-      var head = sheet.getRange(1, 1, 1, lebar).getValues()[0].map(function (h) {
-        return String(h || '').trim().toLowerCase();
-      });
-      return head.indexOf('cabang');
+      // Pakai helper yang sama dengan modul lain: kolom bisa bernama
+      // Cabang / Branch / Outlet.
+      return _idxKolomCabang(sheet.getRange(1, 1, 1, lebar).getValues()[0]);
     }
 
+    var sudahAda = {};
     function kumpulkan(sheet, idxNol) {
       if (!sheet || idxNol < 0) return;
       var baris = sheet.getLastRow() - 1;
@@ -850,21 +850,26 @@ function getDaftarCabang(token) {
       var nilai = sheet.getRange(2, idxNol + 1, baris, 1).getValues();
       for (var i = 0; i < nilai.length; i++) {
         var v = String(nilai[i][0] || '').trim();
-        if (v) nama[v] = true;
+        if (!v) continue;
+        // "Cabang A" dan "cabang a" adalah cabang yang sama: simpan satu
+        // ejaan saja supaya dropdown tidak menampilkan duplikat.
+        var kunci = v.toLowerCase();
+        if (!sudahAda[kunci]) { sudahAda[kunci] = true; nama[v] = true; }
       }
     }
 
     var punyaKolomCabangPenjualan = false;
-    try {
-      var sheetPj = ss.getSheetByName('Penjualan');
-      var idxCabangPj = cariKolom(sheetPj);
-      punyaKolomCabangPenjualan = idxCabangPj !== -1;
-      kumpulkan(sheetPj, idxCabangPj);
-    } catch (e) { Logger.log('getDaftarCabang penjualan: ' + e); }
-    try {
-      var sheetUser = ss.getSheetByName('User');
-      kumpulkan(sheetUser, cariKolom(sheetUser));
-    } catch (e2) { Logger.log('getDaftarCabang user: ' + e2); }
+    // Gabungan cabang dari SEMUA sheet terkait: cabang yang hanya dipakai di
+    // Produk atau Credit/Debit tetap harus muncul di dropdown modul.
+    var SHEET_CABANG = ['Penjualan', 'Credit/Debit', 'Produk', 'User', 'Bahan', 'Stok Bahan'];
+    for (var si = 0; si < SHEET_CABANG.length; si++) {
+      var namaSheet = SHEET_CABANG[si];
+      try {
+        var idxCabangSheet = cariKolom(ss.getSheetByName(namaSheet));
+        if (namaSheet === 'Penjualan') punyaKolomCabangPenjualan = idxCabangSheet !== -1;
+        kumpulkan(ss.getSheetByName(namaSheet), idxCabangSheet);
+      } catch (e) { Logger.log('getDaftarCabang ' + namaSheet + ': ' + e); }
+    }
 
     return {
       status: 'success',

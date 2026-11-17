@@ -266,6 +266,46 @@ uji('MOD-12: pekerjaan berat setelah login ditunda ke frame berikutnya', () => {
   if (init.indexOf('loadReport(true)') === -1) throw new Error('loadReport(true) tidak dipanggil');
 });
 
+// ---------- 14. Gabungan cabang dari semua sheet terkait ----------
+uji('MOD-14: daftar cabang digabung dari Produk + Credit/Debit + User', () => {
+  // Penjualan sengaja TIDAK punya kolom Cabang.
+  const pjTanpaCabang = buatSheet('Penjualan', [
+    HEADER_PJ.slice(0, 13),
+    ['FR-X1', new SDate(2026, 9, 1), 'Semangka Leci 350 ml', 350, 8000, 1, 10000, 'CASH', 10000, 0, 8000, 0, 2000]
+  ]);
+  const cdB = buatSheet('Credit/Debit', [
+    HEADER_CD.slice(),
+    [new SDate(2026, 9, 1), 'CREDIT', 'OPERASIONAL', 'Listrik', 'CASH', 1000, 'BIAYA_OPERASIONAL', 'Cabang B']
+  ]);
+  const produkC = buatSheet('Produk', [
+    ['ID Produk', 'Nama Produk', 'Stok', 'Harga', 'HPP', 'Cabang'],
+    ['P9', 'Melon 250 ml', 3, 12000, 6000, 'Cabang C']
+  ]);
+  const userD = buatSheet('User', [
+    ['username', 'password', 'role', 'cabang'],
+    ['nina', 'x', 'KASIR', 'Cabang A'],
+    ['budi', 'x', 'KASIR', 'cabang a']   // ejaan beda huruf, cabang sama
+  ]);
+
+  const asli = ctx.getSpreadsheet;
+  ctx.getSpreadsheet = () => ({
+    getSheetByName: (n) => {
+      if (n === 'Penjualan') return pjTanpaCabang;
+      if (n === 'Credit/Debit') return cdB;
+      if (n === 'Produk') return produkC;
+      if (n === 'User') return userD;
+      return null;
+    }
+  });
+  try {
+    const res = ctx.getDaftarCabang('admin');
+    eq(JSON.stringify(res.daftar), JSON.stringify(['Cabang A', 'Cabang B', 'Cabang C']), 'gabungan cabang ');
+    eq(res.punyaKolomCabangPenjualan, false, 'flag kolom Penjualan ');
+  } finally {
+    ctx.getSpreadsheet = asli;
+  }
+});
+
 console.log('');
 console.log(lulus + ' lulus, ' + gagal.length + ' gagal');
 if (gagal.length) { console.log('GAGAL: ' + gagal.join(', ')); process.exit(1); }
