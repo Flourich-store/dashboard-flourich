@@ -4634,9 +4634,20 @@
       // lambat. Sekarang datanya dimuat saat tabnya dibuka (activateSection),
       // lalu diprefetch diam-diam saat browser idle agar biasanya sudah siap
       // sebelum diklik — dan prefetch itu mengalah bila laporan sedang dimuat.
-      jadwalkanPrefetchProdukBahan();
-      bindStokBahanEvents();
-      preloadCharts();
+      // Di HP, memuat chart + prefetch tepat setelah login membuat frame
+      // pertama tertahan (layar seperti macet). Pekerjaan latar ditunda ke
+      // frame berikutnya; laporan tetap diminta sekarang karena itu yang
+      // ditunggu user.
+      var mulaiKerjaLatar = function () {
+        jadwalkanPrefetchProdukBahan();
+        bindStokBahanEvents();
+        preloadCharts();
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(function () { setTimeout(mulaiKerjaLatar, 0); });
+      } else {
+        setTimeout(mulaiKerjaLatar, 0);
+      }
       loadReport(true);
     }
 
@@ -4725,13 +4736,17 @@
     // yang dikirim frontend tidak bisa dipakai mengintip cabang lain.
     // SUPER_ADMIN boleh memilih satu cabang atau semua cabang.
     var CABANG_FILTER_KEY = 'dash_cabang_filter';
+    var peringatanCabangTampil = false;
 
     function getCabangSesi() {
       return String(sessionStorage.getItem('dash_cabang') || '').trim();
     }
 
+    // Role yang boleh memilih cabang bebas. Kasir tetap terkunci ke cabangnya
+    // (server memaksa cabang dari token).
     function isSuperAdmin() {
-      return String(sessionStorage.getItem('dash_role') || '').toUpperCase() === 'SUPER_ADMIN';
+      var r = String(sessionStorage.getItem('dash_role') || '').toUpperCase();
+      return r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'OWNER';
     }
 
     // '' berarti semua cabang. Untuk kasir server mengabaikan nilai ini dan
@@ -4771,6 +4786,13 @@
           html += '<option value="' + escapeHtml(nama) + '">' + escapeHtml(nama) + '</option>';
         });
         pilih.innerHTML = html;
+        // Kalau sheet Penjualan belum punya kolom Cabang, filter tidak bisa
+        // menyaring apa pun. Beri tahu sekali, jangan biarkan user bingung.
+        if (res.punyaKolomCabangPenjualan === false && !peringatanCabangTampil) {
+          peringatanCabangTampil = true;
+          pilih.title = 'Kolom Cabang di sheet Penjualan belum ada — filter cabang belum menyaring data.';
+          showToast('Kolom Cabang di sheet Penjualan belum ada: filter cabang belum bisa menyaring data.', 'error');
+        }
         if (sekarang && daftar.indexOf(sekarang) !== -1) {
           pilih.value = sekarang;
         } else {
@@ -4780,8 +4802,8 @@
       });
     }
 
-    // Ganti cabang: buang cache laporan (angka cabang lain tidak boleh tampil)
-    // lalu muat ulang dari server dengan parameter cabang baru.
+    // Ganti cabang: buang semua cache (angka cabang lain tidak boleh tampil)
+    // lalu muat ulang modul yang sedang dilihat dengan parameter cabang baru.
     function gantiCabang(nilai) {
       var v = String(nilai || '').trim();
       try {
@@ -4789,8 +4811,21 @@
         else localStorage.removeItem(CABANG_FILTER_KEY);
       } catch (e) { }
       batalkanCacheLaporan();
+      // Produk/stok ikut per cabang: paksa muat ulang saat tabnya dibuka.
+      produkSudahDimuat = false;
+      cachedProduk = [];
       showToast(v ? 'Menampilkan data cabang ' + v : 'Menampilkan data semua cabang', 'success');
+
+      var aktif = document.querySelector('.content-section.active');
+      var idAktif = aktif ? aktif.id : 'section-overview';
+
+      // Overview memuat KPI + tabel catatan keuangan, jadi keduanya ikut
+      // dimuat ulang agar angkanya tidak tertinggal di cabang sebelumnya.
       loadReport(true);
+      if (idAktif === 'section-overview') loadCreditDebit();
+      if (idAktif === 'section-penjualan') loadSalesByDateRange(true);
+      if (idAktif === 'section-chart') loadChartByDateRange(true);
+      if (idAktif === 'section-produk') muatProdukSekali();
     }
 
     function bindSessionActivity() {
@@ -4924,13 +4959,18 @@
     function transitionToDashboard() {
       var loginPage = document.getElementById('loginPage');
       var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var tampil = function () { showDashboard(); var shell = document.getElementById('appShell'); if (shell && !reduceMotion) shell.classList.add('pane-in'); };
-      if (reduceMotion || !loginPage) { tampil(); return; }
+      // Jangan menunda tampilan dashboard 200 ms hanya untuk animasi: di HP
+      // itu terasa macet karena layar login sudah pudar tapi dashboard belum
+      // tampil. Dashboard tampil lebih dulu, animasi masuk berjalan sambil
+      // data dimuat.
+      showDashboard();
+      var shell = document.getElementById('appShell');
+      if (shell && !reduceMotion) shell.classList.add('pane-in');
+      if (reduceMotion || !loginPage) return;
       loginPage.classList.add('pane-out');
       setTimeout(function () {
         loginPage.classList.remove('pane-out');
-        tampil();
-      }, 200);
+      }, 220);
     }
 
     function showDashboard() {
@@ -6478,7 +6518,7 @@
       // kedua diam-diam, bukan melempar "permintaan sedang diproses".
       if (nilaiStokInFlight) return;
       nilaiStokInFlight = true;
-      safeGoogleRun('getNilaiStok', [getToken()], function (res) {
+      safeGoogleRun('getNilaiStok', [getToken(), getCabangFilter()], function (res) {
         nilaiStokInFlight = false;
         if (!terapkanNilaiStok(res)) {
           var box = document.getElementById('nilaiStokBox');
@@ -6540,7 +6580,7 @@
       var tbody = document.getElementById('produkTbody');
       if (tbody) tbody.innerHTML = htmlMemuat('Memuat produk...', 4);
 
-      safeGoogleRun('getProdukList', [getToken()], function (res) {
+      safeGoogleRun('getProdukList', [getToken(), getCabangFilter()], function (res) {
         cachedProduk = (res && (res.products || res.data)) ? (res.products || res.data) : [];
         renderProdukMain(cachedProduk);
         updateProdukDatalist(cachedProduk);
@@ -6558,7 +6598,7 @@
     function loadProdukCRUD(isRetry) {
       // Nilai stok ikut berubah setiap CRUD produk dan sudah ikut di respons
       // getProdukList, jadi tidak perlu panggilan getNilaiStok terpisah.
-      safeGoogleRun('getProdukList', [getToken()], function (res) {
+      safeGoogleRun('getProdukList', [getToken(), getCabangFilter()], function (res) {
         if (res && (res.products || res.data)) {
           cachedProduk = res.products || res.data || [];
           renderProdukModal(cachedProduk);
@@ -6727,7 +6767,7 @@
 
       isiTbody('cdTbody', htmlMemuat('Memuat...', 6));
 
-      safeGoogleRun('getCreditDebitByRange', [getToken(), start, end], function (res) {
+      safeGoogleRun('getCreditDebitByRange', [getToken(), start, end, getCabangFilter()], function (res) {
         if (res && res.status === 'success') {
           cachedCD = res.data || [];
           renderCreditDebit(cachedCD);

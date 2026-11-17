@@ -38,6 +38,7 @@ const CEK = [
   { nama: 'pull-refresh',         file: 'pull-refresh.test.mjs',         soal: 'tarik layar untuk menyegarkan data di tempat, tanpa login ulang' },
   { nama: 'sesi-login',           file: 'sesi-login.test.mjs',           soal: 'sesi login bertahan saat browser di-refresh (localStorage + masa berlaku 30 menit)' },
   { nama: 'cabang-filter',       file: 'cabang-filter.test.mjs',       soal: 'laporan per cabang: kasir terkunci cabangnya, SUPER_ADMIN pilih semua/cabang' },
+  { nama: 'cabang-modul',        file: 'cabang-modul.test.mjs',        soal: 'filter cabang di semua modul: Credit/Debit, produk, nilai stok, role' },
   { nama: 'login-cabang',         file: 'login-cabang.test.mjs',         soal: 'checkLogin: kolom dari header, cabang di token, SUPER_ADMIN tidak bergeser' },
   { nama: 'navigasi-landing',     file: 'navigasi-landing.test.mjs',     soal: 'tombol Kembali ke Landing Page benar-benar pindah (tanpa duplikat fungsi)' },
   { nama: 'tombol-landing',       file: 'tombol-landing.test.mjs',       soal: 'tombol Masuk ke Dashboard bisa diklik (dekorasi tidak menutupi)' },

@@ -216,9 +216,10 @@ function _hitungNilaiStok(values, idxNama, idxStok, idxHpp) {
 }
 
 // ============================================================
-function getNilaiStok(token) {
+function getNilaiStok(token, cabangFilter) {
   return _guardToken(function () {
-    _verifyToken(token, false);
+    var sess = _verifyToken(token, false);
+    var filterCabang = _cabangEfektif(sess, cabangFilter);
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Produk');
     if (!sheet) return { status: 'success', nilaiStok: 0, totalUnit: 0, rincian: [] };
@@ -226,6 +227,16 @@ function getNilaiStok(token) {
     var values = sheet.getDataRange().getValues();
     if (!values || values.length <= 1) return { status: 'success', nilaiStok: 0, totalUnit: 0, rincian: [] };
     var header = values[0].map(function (h) { return String(h || '').trim().toLowerCase(); });
+    // Stok per cabang: hanya bila sheet Produk memang punya kolom Cabang.
+    var idxCabangProduk = _idxKolomCabang(values[0]);
+    if (filterCabang && idxCabangProduk !== -1) {
+      var cabangLowerNs = filterCabang.toLowerCase();
+      var tersaring = [values[0]];
+      for (var vi = 1; vi < values.length; vi++) {
+        if (String(values[vi][idxCabangProduk] || '').trim().toLowerCase() === cabangLowerNs) tersaring.push(values[vi]);
+      }
+      values = tersaring;
+    }
     var idxNama = header.indexOf('nama produk') !== -1 ? header.indexOf('nama produk') : (header.indexOf('nama') !== -1 ? header.indexOf('nama') : 1);
     var idxStok = header.indexOf('stok') !== -1 ? header.indexOf('stok') : 2;
     var idxHpp = header.indexOf('hpp');
@@ -609,6 +620,36 @@ function _verifyToken(token, needSuperAdmin) {
   return sess;
 }
 
+// ============================================================
+// CABANG: helper bersama semua modul
+// ============================================================
+// Role yang boleh memilih cabang sendiri. Role lain (kasir) terkunci ke
+// cabang di token sesinya.
+function _bolehPilihCabang(sess) {
+  var r = String((sess && sess.r) || '').toUpperCase();
+  return r === 'SUPER_ADMIN' || r === 'ADMIN' || r === 'OWNER';
+}
+
+// Cabang efektif untuk sebuah permintaan. '' berarti semua cabang.
+function _cabangEfektif(sess, cabangFilter) {
+  var sesi = String((sess && sess.c) || '').trim();
+  if (!_bolehPilihCabang(sess)) return sesi;
+  var minta = String(cabangFilter || '').trim();
+  if (!minta) return '';
+  var up = minta.toUpperCase();
+  if (up === 'ALL' || up === 'SEMUA') return '';
+  return minta;
+}
+
+// Indeks kolom Cabang dari baris header (0-based); -1 bila sheet belum punya.
+function _idxKolomCabang(header) {
+  for (var i = 0; i < header.length; i++) {
+    var h = String(header[i] || '').trim().toLowerCase();
+    if (h === 'cabang' || h === 'branch' || h === 'outlet') return i;
+  }
+  return -1;
+}
+
 // Sanitizer transport untuk google.script.run: SATU SAJA nilai ilegal
 // (NaN, Infinity, Date, undefined) di dalam return value membuat Apps Script
 // mengirim NULL ke withSuccessHandler — frontend menampilkan "Respons kosong
@@ -813,9 +854,12 @@ function getDaftarCabang(token) {
       }
     }
 
+    var punyaKolomCabangPenjualan = false;
     try {
       var sheetPj = ss.getSheetByName('Penjualan');
-      kumpulkan(sheetPj, cariKolom(sheetPj));
+      var idxCabangPj = cariKolom(sheetPj);
+      punyaKolomCabangPenjualan = idxCabangPj !== -1;
+      kumpulkan(sheetPj, idxCabangPj);
     } catch (e) { Logger.log('getDaftarCabang penjualan: ' + e); }
     try {
       var sheetUser = ss.getSheetByName('User');
@@ -825,6 +869,7 @@ function getDaftarCabang(token) {
     return {
       status: 'success',
       daftar: Object.keys(nama).sort(),
+      punyaKolomCabangPenjualan: punyaKolomCabangPenjualan,
       cabangSesi: String((sess && sess.c) || ''),
       role: String((sess && sess.r) || '')
     };
@@ -834,18 +879,10 @@ function getDaftarCabang(token) {
 function getReportByDateRange(token, startDate, endDate, cabangFilter) {
   return _guardToken(function () {
     var sess = _verifyToken(token, false);
-    // Filter cabang: KASIR terkunci ke cabang di token-nya (parameter diabaikan).
-    // SUPER_ADMIN boleh memilih cabang lain, atau '' / 'ALL' untuk semua cabang.
-    var cabangSesi = String((sess && sess.c) || '').trim();
-    var isSuperAdmin = String((sess && sess.r) || '').toUpperCase() === 'SUPER_ADMIN';
-    var mintaCabang = String(cabangFilter || '').trim();
-    var filterCabang = '';
-    if (isSuperAdmin) {
-      var mintaUpper = mintaCabang.toUpperCase();
-      if (mintaCabang && mintaUpper !== 'ALL' && mintaUpper !== 'SEMUA') filterCabang = mintaCabang;
-    } else {
-      filterCabang = cabangSesi;
-    }
+    // Filter cabang: kasir terkunci ke cabang di token-nya (parameter
+    // diabaikan). Role admin/owner boleh memilih cabang lain, atau '' / 'ALL'
+    // untuk semua cabang.
+    var filterCabang = _cabangEfektif(sess, cabangFilter);
     var filterCabangLower = filterCabang.toLowerCase();
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName('Penjualan');
@@ -1104,7 +1141,7 @@ function getReportByDateRange(token, startDate, endDate, cabangFilter) {
     var prevBiayaOperasional = 0, prevBebanNonOperasional = 0, prevPendapatanLain = 0;
     try {
       var cdBounds = [prevStartKey, startKey].filter(Boolean).sort();
-      var cdItems = _readCreditDebitItems(ss, cdBounds[0] || '', endKey || '');
+      var cdItems = _readCreditDebitItems(ss, cdBounds[0] || '', endKey || '', pakaiFilterCabang ? filterCabang : '');
       var aggCd = _agregasiKpiCd(cdItems, startKey, endKey, prevStartKey, prevEndKey);
       biayaOperasional = aggCd.biayaOperasional;
       bebanNonOperasional = aggCd.bebanNonOperasional;
@@ -1584,10 +1621,13 @@ function _cacheProduk(payload) {
   __produkCacheAt = Date.now();
 }
 
-function getProdukList(token) {
+function getProdukList(token, cabangFilter) {
   return _guardToken(function () {
-    _verifyToken(token, false);
-    if (__produkCache && (Date.now() - __produkCacheAt) < PRODUK_CACHE_TTL_MS) {
+    var sess = _verifyToken(token, false);
+    var filterCabang = _cabangEfektif(sess, cabangFilter);
+    var kunciCacheCabang = String(filterCabang || '').toLowerCase();
+    // Cache dipisah per cabang: angka cabang lain tidak boleh ikut tampil.
+    if (__produkCache && __produkCache.cabang === kunciCacheCabang && (Date.now() - __produkCacheAt) < PRODUK_CACHE_TTL_MS) {
       var c = __produkCache;
       return {
         status: 'success', products: c.products, cached: true,
@@ -1620,9 +1660,18 @@ function getProdukList(token) {
       if (hLow === 'hpp') idxHpp = hi;
     }
 
+    // Filter cabang opsional (hanya bila sheet Produk punya kolom Cabang).
+    var idxCabangProdukList = _idxKolomCabang(values[0]);
+    var cabangListLower = kunciCacheCabang;
+    var pakaiCabangList = cabangListLower !== '' && idxCabangProdukList !== -1;
+
     var products = [];
     for (var i = 1; i < values.length; i++) {
       var row = values[i];
+      if (pakaiCabangList) {
+        var cabangBarisProduk = String(row[idxCabangProdukList] || '').trim().toLowerCase();
+        if (cabangBarisProduk !== cabangListLower) continue;
+      }
       var idProduk = String(row[idxId] || '').trim();
       if (!idProduk) continue;
 
@@ -1637,9 +1686,18 @@ function getProdukList(token) {
 
     // Nilai Stok ikut dihitung dari nilai yang SUDAH dibaca di atas (tanpa
     // pembacaan sheet tambahan) supaya tab Produk cukup satu panggilan server.
-    var nilai = _hitungNilaiStok(values, idxNama, idxStok, idxHpp);
+    // Nilai stok dihitung dari baris yang sudah tersaring cabang.
+    var valuesNilai = values;
+    if (pakaiCabangList) {
+      valuesNilai = [values[0]];
+      for (var vn = 1; vn < values.length; vn++) {
+        if (String(values[vn][idxCabangProdukList] || '').trim().toLowerCase() === cabangListLower) valuesNilai.push(values[vn]);
+      }
+    }
+    var nilai = _hitungNilaiStok(valuesNilai, idxNama, idxStok, idxHpp);
     var payload = {
       status: 'success',
+      cabang: kunciCacheCabang,
       products: products,
       nilaiStok: nilai.nilaiStok,
       totalUnit: nilai.totalUnit,
@@ -2235,7 +2293,7 @@ function _selCd(row, idx, fallbackIdx) {
   return '';
 }
 
-function _readCreditDebitItems(ss, startDate, endDate) {
+function _readCreditDebitItems(ss, startDate, endDate, cabangFilter) {
   var sheet = ss.getSheetByName('Credit/Debit');
   if (!sheet) return [];
 
@@ -2245,10 +2303,18 @@ function _readCreditDebitItems(ss, startDate, endDate) {
   var startKey = _normDateKey(startDate);
   var endKey = _normDateKey(endDate);
   var peta = _petaKolomCd(values[0]);
+  // Filter cabang opsional: hanya diterapkan bila sheet punya kolom Cabang.
+  var idxCabangCd = _idxKolomCabang(values[0]);
+  var cabangCd = String(cabangFilter || '').trim().toLowerCase();
+  var pakaiCabangCd = cabangCd !== '' && idxCabangCd !== -1;
   var items = [];
 
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
+    if (pakaiCabangCd) {
+      var cabangBarisCd = String(row[idxCabangCd] || '').trim().toLowerCase();
+      if (cabangBarisCd !== cabangCd) continue;
+    }
     var rowKey = _parseSheetDateKey(_selCd(row, peta.tanggal, 0));
     if (!rowKey) continue;
 
@@ -2431,12 +2497,13 @@ function _labaBersihFrom(o) {
     - _num(o.bebanNonOperasional);
 }
 
-function getCreditDebitByRange(token, startDate, endDate) {
+function getCreditDebitByRange(token, startDate, endDate, cabangFilter) {
   return _guardToken(function () {
-    _verifyToken(token, false);
+    var sess = _verifyToken(token, false);
+    var filterCabang = _cabangEfektif(sess, cabangFilter);
     var ss = getSpreadsheet();
-    var items = _readCreditDebitItems(ss, startDate, endDate);
-    return { status: 'success', data: items };
+    var items = _readCreditDebitItems(ss, startDate, endDate, filterCabang);
+    return { status: 'success', data: items, cabangAktif: filterCabang };
   });
 }
 
