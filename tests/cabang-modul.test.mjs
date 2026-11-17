@@ -11,7 +11,7 @@
 //   node tests/cabang-modul.test.mjs
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { targetGas } from './lib/jalur.mjs';
+import { targetGas, targetHtml } from './lib/jalur.mjs';
 
 const target = targetGas();
 
@@ -205,6 +205,44 @@ uji('MOD-9: getDaftarCabang melaporkan punyaKolomCabangPenjualan', () => {
   const res = ctx.getDaftarCabang('admin');
   eq(res.punyaKolomCabangPenjualan, true, 'flag kolom ');
   eq(JSON.stringify(res.daftar), JSON.stringify(['Cabang A', 'Cabang B']), 'daftar ');
+});
+
+// ---------- 10-12: pemeriksaan statis UI dashboard ----------
+// Bagian ini menjaga dua perbaikan UI: ganti cabang harus membuang angka
+// cabang lama di semua tab, dan login tidak boleh menunggu animasi 200 ms.
+const html = fs.readFileSync(targetHtml(), 'utf8');
+const badanFungsi = (nama) => {
+  const mulai = html.indexOf('function ' + nama + '(');
+  if (mulai === -1) throw new Error('fungsi ' + nama + ' tidak ada');
+  // Ambil sampai kira-kira fungsi berikutnya (cukup untuk pemeriksaan teks).
+  const BARIS = String.fromCharCode(10);
+  const potong = html.indexOf(BARIS + '    function ', mulai + 10);
+  return html.slice(mulai, potong === -1 ? undefined : potong);
+};
+
+uji('MOD-10: ganti cabang mereset tab Penjualan/Grafik/Produk', () => {
+  const g = badanFungsi('gantiCabang');
+  ['salesTabAutoLoaded = false', 'chartTabAutoLoaded = false', 'produkSudahDimuat = false', 'batalkanCacheLaporan()']
+    .forEach((kunci) => { if (!g.includes(kunci)) throw new Error('tidak ada: ' + kunci); });
+  ['loadReport(true)', 'loadSalesByDateRange(true)', 'loadChartByDateRange(true)', 'loadCreditDebit()']
+    .forEach((kunci) => { if (!g.includes(kunci)) throw new Error('tidak memuat ulang: ' + kunci); });
+});
+
+uji('MOD-11: login menampilkan dashboard tanpa jeda 200 ms', () => {
+  const tr = badanFungsi('transitionToDashboard');
+  const posisiTampil = tr.indexOf('showDashboard()');
+  const posisiTunda = tr.indexOf('setTimeout');
+  if (posisiTampil === -1) throw new Error('showDashboard tidak dipanggil');
+  if (posisiTunda !== -1 && posisiTunda < posisiTampil) throw new Error('showDashboard masih ditunda setTimeout');
+});
+
+uji('MOD-12: pekerjaan berat setelah login ditunda ke frame berikutnya', () => {
+  const init = badanFungsi('initDashboardData');
+  if (!init.includes('requestAnimationFrame')) throw new Error('tidak memakai requestAnimationFrame');
+  [['preloadCharts()', 'preloadCharts'], ['jadwalkanPrefetchProdukBahan()', 'prefetch produk/bahan']]
+    .forEach(([kunci, label]) => { if (!init.includes(kunci)) throw new Error('hilang: ' + label); });
+  // Laporan tetap diminta langsung, bukan ditunda.
+  if (init.indexOf('loadReport(true)') === -1) throw new Error('loadReport(true) tidak dipanggil');
 });
 
 console.log('');

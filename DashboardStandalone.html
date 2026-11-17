@@ -4814,6 +4814,10 @@
       // Produk/stok ikut per cabang: paksa muat ulang saat tabnya dibuka.
       produkSudahDimuat = false;
       cachedProduk = [];
+      // Tab yang sudah pernah dibuka dulu juga menyimpan angka cabang lama.
+      // Reset penandanya supaya membuka tab itu lagi memuat data cabang baru.
+      salesTabAutoLoaded = false;
+      chartTabAutoLoaded = false;
       showToast(v ? 'Menampilkan data cabang ' + v : 'Menampilkan data semua cabang', 'success');
 
       var aktif = document.querySelector('.content-section.active');
@@ -4823,8 +4827,8 @@
       // dimuat ulang agar angkanya tidak tertinggal di cabang sebelumnya.
       loadReport(true);
       if (idAktif === 'section-overview') loadCreditDebit();
-      if (idAktif === 'section-penjualan') loadSalesByDateRange(true);
-      if (idAktif === 'section-chart') loadChartByDateRange(true);
+      if (idAktif === 'section-penjualan') { salesTabAutoLoaded = true; loadSalesByDateRange(true); }
+      if (idAktif === 'section-chart') { chartTabAutoLoaded = true; loadChartByDateRange(true); }
       if (idAktif === 'section-produk') muatProdukSekali();
     }
 
