@@ -39,6 +39,7 @@ const CEK = [
   { nama: 'sesi-login',           file: 'sesi-login.test.mjs',           soal: 'sesi login bertahan saat browser di-refresh (localStorage + masa berlaku 30 menit)' },
   { nama: 'cabang-filter',       file: 'cabang-filter.test.mjs',       soal: 'laporan per cabang: kasir terkunci cabangnya, SUPER_ADMIN pilih semua/cabang' },
   { nama: 'header-mobile',       file: 'header-mobile.test.mjs',       soal: 'header HP: logo tidak menyusut, username/status/tombol tidak terpotong' },
+  { nama: 'teks-mobile',         file: 'teks-mobile.test.mjs',         soal: 'teks HP 320-390px: nama cabang di select & subjudul tile aksi cepat tidak terpotong' },
   { nama: 'cabang-modul',        file: 'cabang-modul.test.mjs',        soal: 'filter cabang di semua modul: Credit/Debit, produk, nilai stok, role' },
   { nama: 'login-cabang',         file: 'login-cabang.test.mjs',         soal: 'checkLogin: kolom dari header, cabang di token, SUPER_ADMIN tidak bergeser' },
   { nama: 'navigasi-landing',     file: 'navigasi-landing.test.mjs',     soal: 'tombol Kembali ke Landing Page benar-benar pindah (tanpa duplikat fungsi)' },

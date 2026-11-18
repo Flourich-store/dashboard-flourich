@@ -475,6 +475,14 @@
       cursor: not-allowed;
     }
 
+    /* <select> tidak bisa membungkus teks. Bila nama cabang terpanjang lebih
+       lebar dari kotaknya (layar 320px), JS memasang varian ini supaya nama
+       tetap tampil utuh, bukan terpotong di tengah kata. */
+    .cabang-modul--padat {
+      font-size: 11.5px;
+      padding: 9px 5px;
+    }
+
     .hero-field .cabang-modul { width: 100%; }
 
     .btn-logout {
@@ -2864,6 +2872,12 @@
            di blok 768px punya spesifisitas sama dan muncul SETELAH ini, sehingga
            padding horizontal 16px ikut menimpa (chip 57px = 32px padding). */
         .hero-trend-toggle .tchip { flex: 1 1 0; min-width: 0; padding: 12px 8px !important; }
+
+        /* Subjudul tile aksi cepat dipaksa satu baris + ellipsis, sehingga di
+           320px "Pemasukan & biaya operasional" terpotong 28px dan "Tambah,
+           ubah & hapus produk" 19px. Biarkan membungkus; tingginya tile
+           bertambah sedikit dan teks tetap terbaca. */
+        .quick-sub { white-space: normal; overflow: visible; }
       }
 
       .bnav-item:active { transform: scale(0.94); }
@@ -4884,6 +4898,31 @@
       lbl.textContent = getCabangSesi() || 'Semua cabang';
     }
 
+    // Select tidak bisa membungkus teks, jadi nama cabang panjang akan
+    // terpotong di kotaknya (320px: butuh 240px, tersedia 212px). Ukur lebar
+    // intrinsik select tiruan berisi opsi yang sama lalu pakai varian padat
+    // bila tidak muat. Lebar intrinsik = teks opsi terpanjang + panah + padding.
+    function sesuaikanPadatCabang(pilih) {
+      if (!pilih || !pilih.options) return;
+      var induk = pilih.parentNode;
+      if (!induk) return;
+      // Select di modul yang sedang tersembunyi berukuran 0: jangan diubah,
+      // diukur lagi saat modulnya dibuka (activateSection).
+      var lebar = pilih.getBoundingClientRect().width;
+      if (!lebar) return;
+      var ukur = document.createElement('select');
+      ukur.className = 'cabang-modul';
+      ukur.setAttribute('aria-hidden', 'true');
+      ukur.style.cssText = 'position:absolute;left:-9999px;top:0;width:auto;max-width:none;min-width:0;visibility:hidden;pointer-events:none;';
+      ukur.innerHTML = pilih.innerHTML;
+      induk.appendChild(ukur);
+      // Clone selalu memakai kelas dasar, jadi yang diukur adalah kebutuhan
+      // lebar pada font normal (bukan hasil pengecilan sebelumnya).
+      var butuh = ukur.getBoundingClientRect().width;
+      induk.removeChild(ukur);
+      pilih.classList.toggle('cabang-modul--padat', butuh > lebar + 0.5);
+    }
+
     // Isi semua pemilih cabang modul. Kasir melihat satu opsi terkunci.
     function renderFilterCabangModul() {
       MODUL_CABANG.forEach(function (m) {
@@ -4894,6 +4933,7 @@
           pilih.value = '';
           pilih.disabled = true;
           pilih.title = 'Terkunci ke cabang akun Anda';
+          sesuaikanPadatCabang(pilih);
           return;
         }
         var daftar = daftarCabangCache.slice();
@@ -4911,9 +4951,22 @@
           sekarang = '';
         }
         pilih.value = sekarang;
+        sesuaikanPadatCabang(pilih);
       });
       simpanCabangModul();
     }
+
+    // Rotasi layar atau jendela dilebarkan: hitung ulang varian padat agar
+    // font tidak tetap kecil padahal ruangnya sudah cukup.
+    var timerPadatCabang = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(timerPadatCabang);
+      timerPadatCabang = setTimeout(function () {
+        MODUL_CABANG.forEach(function (m) {
+          sesuaikanPadatCabang(document.getElementById(m.id));
+        });
+      }, 150);
+    });
 
     function muatDaftarCabang() {
       if (!isSuperAdmin()) { renderFilterCabangModul(); return; }
@@ -7387,6 +7440,16 @@
           var isActive = section.id === targetId;
           section.classList.toggle('active', isActive);
           section.classList.toggle('hidden', !isActive);
+        });
+
+        // Filter cabang baru punya lebar setelah modulnya tampil, jadi varian
+        // padat (nama cabang panjang) dihitung ulang di sini.
+        MODUL_CABANG.forEach(function (m) {
+          var pilihCabang = document.getElementById(m.id);
+          if (pilihCabang && document.getElementById(targetId) &&
+              document.getElementById(targetId).contains(pilihCabang)) {
+            sesuaikanPadatCabang(pilihCabang);
+          }
         });
 
         // Container-scroll (mobile): tiap modul mulai dari atas — scroll
