@@ -2931,8 +2931,8 @@
         background-color: var(--bg-surface) !important;
         flex-direction: column;
         align-items: stretch;
-        padding: 12px 14px;
-        gap: 10px;
+        padding: 10px 12px;
+        gap: 8px;
         border-radius: 0 0 16px 16px;
         border: 1px solid var(--border-color) !important;
         border-bottom: 2px solid var(--border-color) !important;
@@ -2967,6 +2967,43 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      /* Header mobile: teks tidak boleh terpotong.
+         - Logo dulu menyusut sampai 30px (rasionya rusak, tulisan FLOURICH
+           terpotong). Sekarang logo mempertahankan ukuran & rasionya.
+         - Badge status dan tombol tidak boleh dipecah ke dua baris.
+         - Baris info boleh membungkus, jadi username tampil utuh dan tombol
+           turun ke baris berikutnya hanya bila memang tidak muat. */
+      .brand-wrapper { flex-wrap: wrap; row-gap: 8px; }
+      .brand-wrapper .logo-left {
+        flex: 0 0 auto;
+        width: auto;
+        /* Logo aslinya persegi (1600x1600) dengan wordmark FLOU/RICH di
+           dalamnya. 30px membuat wordmark tak terbaca; 44px masih ringkas
+           tapi brand-nya jelas. */
+        height: 44px;
+        max-width: 40vw;
+      }
+      .brand-wrapper .live-badge {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+      .header-info {
+        flex-wrap: wrap;
+        gap: 8px;
+        row-gap: 8px;
+      }
+      .header-info > .user-badge {
+        /* Baris sendiri: username tampil utuh, tombol turun satu baris. */
+        flex: 1 1 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+      .header-info .theme-toggle,
+      .header-info .btn-logout {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
+      .header-info .btn-logout { margin-left: auto; }
       .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
       .card { padding: 16px; }
       .kpi-card { min-height: 0; }
